@@ -35,4 +35,3 @@ else:
     "bytecode": base64.encodebytes(code.co_code).decode('ascii'),
     "lnotab": base64.encodebytes(code.co_lnotab).decode('ascii'), # the line number table
   }, sys.stdout, indent=2)
-  # print(dir(code))
