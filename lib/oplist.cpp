@@ -1,5 +1,6 @@
 #include "oplist.hpp"
 
+namespace mypy {
 const char *oplist[] = {
 	"<0>",
 	"POP_TOP",
@@ -258,3 +259,4 @@ const char *oplist[] = {
 	"<254>",
 	"<255>"
 };
+}

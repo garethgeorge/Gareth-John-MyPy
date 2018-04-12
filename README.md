@@ -1,8 +1,16 @@
+# Building
+```
+mkdir build
+cd build 
+cmake -G "Unix Makefiles" ..
+make -j 3
+```
+
 # TODO LIST
  - possibly separate lib out into a separate cmakelist for building into a static library for linking against
  
 
- # Gareth Reading Stuff
+# Gareth Reading Stuff
 ## Random Links
  https://tech.blog.aknin.name/tag/block-stack/
 https://docs.python.org/3.5/library/dis.html#python-bytecode-instructions

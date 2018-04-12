@@ -12,7 +12,7 @@ namespace mypy {
 struct Code;
 
 // see https://www.boost.org/doc/libs/1_55_0/doc/html/variant/tutorial.html
-
+// we use boost::variant as a compact union type carrying type information
 using Value = boost::variant<
     int64_t,
     double,

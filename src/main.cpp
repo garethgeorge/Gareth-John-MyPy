@@ -12,10 +12,14 @@
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
 using std::string;
+using namespace mypy;
 
 
 int main(const int argc, const char *argv[]) 
 {
+    std::cout << "statistics: " << std::endl;
+    std::cout << "\tsize of 'Value' union struct: " << sizeof(mypy::Value) << std::endl;
+
     pt::ptree root;
     try {
         pt::read_json(std::cin, root);
@@ -29,6 +33,11 @@ int main(const int argc, const char *argv[])
         "JSON representation" << std::endl;
 
     auto code = std::make_shared<mypy::Code>(root);
+    std::cout << "printing op codes" << std::endl;
+    for (const Code::ByteCode bytecode : code->bytecode) {
+        std::cout << oplist[bytecode] << std::endl;
+    }
+
 
     // std::string decoded = base64_decode(root.get<std::string>("co_code"));
     

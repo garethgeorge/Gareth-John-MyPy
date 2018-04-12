@@ -2,7 +2,11 @@
 
 #include <stdint.h>
 
+namespace mypy {
 extern const char *oplist[];
+extern uint8_t opargs[];
+
+namespace op {
 
 const uint8_t POP_TOP = 1;
 const uint8_t ROT_TWO = 2;
@@ -122,5 +126,9 @@ const uint8_t FORMAT_VALUE = 155;
 const uint8_t BUILD_CONST_KEY_MAP = 156;
 const uint8_t BUILD_STRING = 157;
 const uint8_t BUILD_TUPLE_UNPACK_WITH_CALL = 158;
+}
+
+}
+
 
 #endif
