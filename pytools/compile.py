@@ -54,7 +54,7 @@ else:
     # https://late.am/post/2012/03/26/exploring-python-code-objects.html
     return {
       "type": "code",
-      "bytecode": base64.encodebytes(code.co_code).decode('ascii'),
+      "co_code": base64.encodebytes(code.co_code).decode('ascii'),
       "lnotab": base64.encodebytes(code.co_lnotab).decode('ascii'), # the line number table
       "constants": list(map(helper, code.co_consts)),
     }

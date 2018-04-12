@@ -9,6 +9,8 @@
 
 using std::string;
 
+// from stack overflow 
+// https://stackoverflow.com/questions/7053538/how-do-i-encode-a-string-to-base64-using-only-boost
 string base64_decode(string input)
 {
   using namespace boost::archive::iterators;

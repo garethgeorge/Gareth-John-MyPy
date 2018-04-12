@@ -11,7 +11,6 @@ parser.add_argument("pycfile", help="the pyc file that we are to load in!")
 
 args = parser.parse_args()
 
-
 header_size = 12 if sys.version_info >= (3, 3) else 8
 
 with open(args.pycfile, "rb") as f:

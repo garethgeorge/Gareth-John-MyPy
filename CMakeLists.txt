@@ -7,7 +7,7 @@ set (MyPy_VERSION_MAJOR 1)
 set (MyPy_VERSION_MINOR 0)
 
 add_executable(main 
-  main.cpp 
+  src/main.cpp 
   lib/oplist.cpp
   lib/base64.cpp
 )
