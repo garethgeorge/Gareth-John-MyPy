@@ -7,6 +7,7 @@
 #include <boost/property_tree/json_parser.hpp>
 #include "../lib/oplist.hpp"
 #include "../lib/base64.hpp"
+#include "./interpreter.hpp"
 
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
@@ -27,19 +28,19 @@ int main(const int argc, const char *argv[])
         "successfully parsed source code from intermediate "
         "JSON representation" << std::endl;
 
-    std::string decoded = base64_decode(root.get<std::string>("co_code"));
-    
-    
+    auto code = std::make_shared<mypy::Code>(root);
 
-    for (int i = 0; i < decoded.length(); ++i) {
-        const unsigned char c = decoded[i];
-        // TODO: this naive approach does not take arguments of the bytecode
-        // instructions into account, we will have to go back and add actual
-        // understanding of the instructions to skip these
-        // I would propose adding a bytecode class into lib/oplist which 
-        // can hold this clearly necessary metadata.
-        printf("%2X | %s\n", (unsigned)c, oplist[c]);
-    }
+    // std::string decoded = base64_decode(root.get<std::string>("co_code"));
+    
+    // for (int i = 0; i < decoded.length(); ++i) {
+    //     const unsigned char c = decoded[i];
+    //     // TODO: this naive approach does not take arguments of the bytecode
+    //     // instructions into account, we will have to go back and add actual
+    //     // understanding of the instructions to skip these
+    //     // I would propose adding a bytecode class into lib/oplist which 
+    //     // can hold this clearly necessary metadata.
+    //     printf("%2X | %s\n", (unsigned)c, oplist[c]);
+    // }
 
     return 0;
 }

@@ -56,10 +56,10 @@ else:
       "type": "code",
       "co_code": base64.encodebytes(code.co_code).decode('ascii'),
       "lnotab": base64.encodebytes(code.co_lnotab).decode('ascii'), # the line number table
-      "constants": list(map(helper, code.co_consts)),
+      "co_consts": list(map(helper, code.co_consts)),
     }
   if args.indentJSON:
-    json.dump(jsonify_code(code_base), sys.stdout,indent=2, sort_keys=True)
+    json.dump(jsonify_code(code_base), sys.stdout, indent=2, sort_keys=True)
   else:
     json.dump(jsonify_code(code_base), sys.stdout)
   print("")
