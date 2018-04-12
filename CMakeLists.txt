@@ -6,8 +6,11 @@ project(MyPy)
 set (MyPy_VERSION_MAJOR 1)
 set (MyPy_VERSION_MINOR 0)
 
-add_executable(main main.cpp)
-
+add_executable(main 
+  main.cpp 
+  lib/oplist.cpp
+  lib/base64.cpp
+)
 
 # Boost 
 set(Boost_USE_STATIC_LIBS        ON)  # only find static libs
