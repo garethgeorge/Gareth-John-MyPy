@@ -5,39 +5,25 @@
 #include <vector>
 #include <stack>
 #include <boost/property_tree/ptree.hpp>
+#include <boost/variant/variant.hpp>
 
 namespace mypy {
 
-struct Value {
-    // TODO: actually make this a virtual class and have
-    // literal types inherit from it ?
-    // Don't forget to mark destructor virtual
-    enum Type {
-        NONE,
-        INT,
-        FLOAT,
-    };
+struct Code;
 
-    Type type = Type::NONE;
-    uint64_t value = 0;
+// see https://www.boost.org/doc/libs/1_55_0/doc/html/variant/tutorial.html
 
-    static Value fromJSONConstant(const boost::property_tree::ptree& tree);
-};
+using Value = boost::variant<
+    int64_t,
+    double,
+    std::string,
+    std::shared_ptr<Code>
+>;
 
 struct Code {
     using ByteCode = uint8_t;
-    
-    struct CodeConstant {
-        enum Type {
-            CODE,
-            LITERAL
-        };
-        Type type;
-        std::shared_ptr<Code> code = nullptr;
-        std::shared_ptr<Value> value = nullptr;
-    };
 
-    std::vector<CodeConstant> constants;
+    std::vector<Value> constants;
     std::vector<ByteCode> bytecode;
     
     Code(const boost::property_tree::ptree& tree);

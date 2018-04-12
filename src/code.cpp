@@ -23,23 +23,15 @@ Code::Code(const pt::ptree& tree) {
     for (const auto& constValue : co_consts) {
         const auto type = constValue.second.get<std::string>("type");
         if (type == "literal") {
-            Code::CodeConstant constant;
-            constant.type = Code::CodeConstant::Type::LITERAL;
-            constant.value = std::make_shared<Value>();
-            constant.value->type = Value::Type::INT;
-            constant.value->value = 15;
-            this->constants.push_back(constant);
+            // std::cout << "literal value: " << constValue.second.get<std::string>("value") << std::endl;
+            // std::cout << "TODO: stop interpreting all literals as strings!" << std::endl;
+            this->constants.push_back(constValue.second.get<std::string>("value"));
         } else if (type == "code") {
-            Code::CodeConstant constant;
-            constant.type = Code::CodeConstant::Type::CODE;
-            constant.code = std::make_shared<Code>(constValue.second);
-            this->constants.push_back(constant);
+            this->constants.push_back(std::make_shared<Code>(constValue.second));
         } else {
             throw std::runtime_error(std::string("unrecognized type of constant: ") + type);
         }
     }
-
-    
 }
 
 Code::~Code() {
