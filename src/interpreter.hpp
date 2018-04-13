@@ -7,7 +7,7 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/variant/variant.hpp>
 
-namespace mypy {
+namespace py {
 
 struct Code;
 

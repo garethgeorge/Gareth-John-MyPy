@@ -12,13 +12,13 @@
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
 using std::string;
-using namespace mypy;
+using namespace py;
 
 
 int main(const int argc, const char *argv[]) 
 {
     std::cout << "statistics: " << std::endl;
-    std::cout << "\tsize of 'Value' union struct: " << sizeof(mypy::Value) << std::endl;
+    std::cout << "\tsize of 'Value' union struct: " << sizeof(py::Value) << std::endl;
 
     pt::ptree root;
     try {
@@ -32,24 +32,20 @@ int main(const int argc, const char *argv[])
         "successfully parsed source code from intermediate "
         "JSON representation" << std::endl;
 
-    auto code = std::make_shared<mypy::Code>(root);
+    auto code = std::make_shared<py::Code>(root);
     std::cout << "printing op codes" << std::endl;
-    for (const Code::ByteCode bytecode : code->bytecode) {
-        std::cout << oplist[bytecode] << std::endl;
+
+    for (int i = 0; i < code->bytecode.size(); i++) {
+        Code::ByteCode bytecode = code->bytecode[i];
+        if (bytecode == 0) continue ;
+        printf("%10d %s\n", i, op::name[bytecode]);
+        if (bytecode == op::LOAD_CONST) {
+            std::cout << "\tconstant: " << code->constants[code->bytecode[i + 1]] << std::endl;
+        }
+        if (bytecode >= 0x5A) {
+            i += 1;
+        }
     }
-
-
-    // std::string decoded = base64_decode(root.get<std::string>("co_code"));
-    
-    // for (int i = 0; i < decoded.length(); ++i) {
-    //     const unsigned char c = decoded[i];
-    //     // TODO: this naive approach does not take arguments of the bytecode
-    //     // instructions into account, we will have to go back and add actual
-    //     // understanding of the instructions to skip these
-    //     // I would propose adding a bytecode class into lib/oplist which 
-    //     // can hold this clearly necessary metadata.
-    //     printf("%2X | %s\n", (unsigned)c, oplist[c]);
-    // }
 
     return 0;
 }
