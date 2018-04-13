@@ -1,9 +1,10 @@
 #include <iostream>
 #include <stdexcept>
-#include <boost/foreach.hpp>
+#include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
-#include "interpreter.hpp"
+#include "pyinterpreter.hpp"
+#include "pyvalue_types.hpp"
 #include "../lib/base64.hpp"
 
 namespace pt = boost::property_tree;
@@ -27,9 +28,12 @@ Code::Code(const pt::ptree& tree) {
         if (type == "literal") {
             // TODO: make this properly handle the type information for the 
             // constant literal
-            this->constants.push_back(constValue.second.get<std::string>("value"));
+            const auto tmp = std::make_shared<StringLiteral>(
+                constValue.second.get<std::string>("value")
+            );
+            this->constants.push_back(tmp);
         } else if (type == "code") {
-            this->constants.push_back(std::make_shared<Code>(constValue.second));
+            // this->constants.push_back(std::make_shared<Code>(constValue.second));
         } else {
             throw std::runtime_error(std::string("unrecognized type of constant: ") + type);
         }

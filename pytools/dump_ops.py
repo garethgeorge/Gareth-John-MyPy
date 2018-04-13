@@ -17,9 +17,6 @@ with open("oplist.hpp", "w") as hpp, open("oplist.cpp", "w") as cpp:
     hpp.write(
 """
 const uint8_t HAVE_ARGUMENT = 0x%x;
-inline uint8_t operand_length(uint8_t opcode) {
-    return opcode >= HAVE_ARGUMENT ? 2 : 0;
-}
 
 """ % (dis.HAVE_ARGUMENT, dis.EXTENDED_ARG))
 

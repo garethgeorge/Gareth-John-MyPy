@@ -14,7 +14,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(main 
   src/main.cpp 
-  src/code.cpp 
+  src/pycode.cpp 
+  src/pyinterpreter.cpp
+  src/pyvalue.cpp
+  src/pyframe.cpp
   lib/oplist.cpp
   lib/base64.cpp
 )

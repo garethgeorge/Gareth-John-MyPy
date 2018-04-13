@@ -9,7 +9,7 @@ const uint8_t HAVE_ARGUMENT = 0x5a;
 const uint8_t SPECIAL_EXTENDED_ARG = 0x90;
 inline uint8_t operand_length(uint8_t opcode) {
     if (opcode < HAVE_ARGUMENT) return 0;
-    return 2;
+    return 1;
 }
 
 const uint8_t POP_TOP         = 0x01;
