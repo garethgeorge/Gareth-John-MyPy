@@ -328,7 +328,7 @@ void FrameState::eval_next() {
             const Value val1 = this->value_stack.top();
             this->value_stack.pop();
             const Value result = boost::apply_visitor(
-                eval_helpers::numeric_visitor<eval_helpers::op_sub>(), 
+                eval_helpers::numeric_visitor<eval_helpers::op_mult>(), 
                 val1, val2
             );
             this->value_stack.push(result);
