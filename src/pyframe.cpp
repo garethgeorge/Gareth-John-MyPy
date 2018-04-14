@@ -167,7 +167,7 @@ void FrameState::eval_next() {
         exit(0);
         return ;
     }
-    
+
     DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])
     switch (bytecode) {
         case 0:
@@ -175,20 +175,25 @@ void FrameState::eval_next() {
         case op::LOAD_NAME:
         {
             try {
-                if (this->ns_local_shortcut[arg] != nullptr) {
+                const std::string& name = this->code->co_names.at(arg);
+#ifdef FRAME_NS_LOCAL_SHORTCUT
+                const size_t cache_idx = arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *));
+                if (this->ns_local_shortcut[cache_idx].value != nullptr &&
+                    this->ns_local_shortcut[cache_idx].key == &name) {
                     DEBUG("op::LOAD_NAME ('%s') loaded a local from ns_local_shortcut", name.c_str());
-                    this->value_stack.push(*(this->ns_local_shortcut[arg]));
+                    this->value_stack.push(*(this->ns_local_shortcut[cache_idx].value));
                 } else {
-                    const std::string& name = this->code->co_names.at(arg);
+#endif
                     const auto& globals = this->interpreter_state->ns_globals;
                     const auto& builtins = this->interpreter_state->ns_bulitins;
-
                     auto itr_local = this->ns_local.find(name);
                     if (itr_local != this->ns_local.end()) {
                         DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());
                         this->value_stack.push(itr_local->second);
-                        Value& tmp = itr_local->second;
-                        this->ns_local_shortcut[arg] = &tmp;
+#ifdef FRAME_NS_LOCAL_SHORTCUT
+                        this->ns_local_shortcut[cache_idx].key = &name;
+                        this->ns_local_shortcut[cache_idx].value = &(itr_local->second);
+#endif
                     } else {
                         auto itr_global = globals.find(name);
                         if (itr_global != globals.end()) {
@@ -204,7 +209,9 @@ void FrameState::eval_next() {
                             }
                         }
                     }
+#ifdef FRAME_NS_LOCAL_SHORTCUT
                 }
+#endif
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_NAME tried to load name out of range");
             }
@@ -304,8 +311,7 @@ void FrameState::eval_next() {
             this->value_stack.pop();
             const Value val1 = this->value_stack.top();
             this->value_stack.pop();
-            const Value result = boost::apply_visitor(eval_helpers::add_visitor(), val1, val2);
-            this->value_stack.push(result);
+            this->value_stack.push(boost::apply_visitor(eval_helpers::add_visitor(), val1, val2));
             break ;
         }
         case op::BINARY_SUBTRACT:
@@ -314,11 +320,10 @@ void FrameState::eval_next() {
             this->value_stack.pop();
             const Value val1 = this->value_stack.top();
             this->value_stack.pop();
-            const Value result = boost::apply_visitor(
+            this->value_stack.push(boost::apply_visitor(
                 eval_helpers::numeric_visitor<eval_helpers::op_sub>(), 
                 val1, val2
-            );
-            this->value_stack.push(result);
+            ));
             break;
         }
         case op::BINARY_MULTIPLY:
@@ -327,11 +332,10 @@ void FrameState::eval_next() {
             this->value_stack.pop();
             const Value val1 = this->value_stack.top();
             this->value_stack.pop();
-            const Value result = boost::apply_visitor(
+            this->value_stack.push(boost::apply_visitor(
                 eval_helpers::numeric_visitor<eval_helpers::op_mult>(), 
                 val1, val2
-            );
-            this->value_stack.push(result);
+            ));
             break;
         }
         case op::RETURN_VALUE:

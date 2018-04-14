@@ -1,5 +1,7 @@
 #include <iostream>
 #include <stdexcept>
+#include <sstream>
+#include <boost/process.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 
@@ -11,6 +13,7 @@
 #include "../lib/debug.hpp"
 
 namespace pt = boost::property_tree;
+namespace bp = boost::process;
 
 namespace py {
 
@@ -72,6 +75,33 @@ Code::Code(const pt::ptree& tree) {
 }   
 
 Code::~Code() {
+}
+
+std::shared_ptr<Code> Code::fromProgram(const std::string& python) {
+    bp::pipe feed_in;
+    bp::pipe feed_out;
+    DEBUG("spawning off child process");
+    bp::child c("python ../pytools/compile.py", bp::std_out > feed_out, bp::std_in < feed_in);
+    feed_in.write(python.c_str(), python.size());
+    feed_in.close();
+
+    std::stringstream ss;
+    char buffer[1 << 10];
+    while (feed_out.is_open() && feed_out.read(buffer, sizeof(buffer) / sizeof(char)) != 0) {
+        ss << buffer;
+    }
+    // DEBUG("compiled python to JSON %s", ss.str().c_str());
+
+    pt::ptree root;
+    try {
+        DEBUG("trying to read JSON");
+        pt::read_json(ss, root);
+        DEBUG("read successful.");
+        return std::make_shared<Code>(root);
+    } catch (pt::json_parser::json_parser_error error) {
+        pyerror("error parsing json input from pytools/compile.py");
+        return nullptr;
+    }
 }
 
 }

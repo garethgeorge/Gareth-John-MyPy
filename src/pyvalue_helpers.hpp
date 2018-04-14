@@ -9,6 +9,18 @@ using std::string;
 namespace py {
 namespace value_helper {
 
+struct visitor_is_truthy: public boost::static_visitor<bool> {
+    bool operator()(double) const;
+    bool operator()(int64_t) const;
+    bool operator()(const ValueString&) const;
+    // TODO: empty sequence, empty mapping
+    // https://docs.python.org/2.4/lib/truth.html
+    template<typename T>
+    bool operator()(T v) const {
+        return true;
+    }
+};
+
 struct visitor_repr: public boost::static_visitor<std::string> {
     string operator()(double) const;
 

@@ -7,9 +7,9 @@
 #include <unordered_map>
 #include <stdexcept>
 #include <boost/property_tree/ptree_fwd.hpp>
-
 #include "pyerror.hpp"
 #include "pyvalue.hpp"
+#include "optflags.hpp"
 
 namespace py {
 
@@ -30,6 +30,8 @@ struct Code {
     
     Code(const boost::property_tree::ptree& tree);
     ~Code();
+
+    static std::shared_ptr<Code> fromProgram(const std::string& python);
 };
 
 struct Block {
@@ -53,7 +55,14 @@ struct FrameState {
     std::stack<Value> value_stack;
     std::stack<Block> block_stack;
     Namespace ns_local;
-    Value *ns_local_shortcut[256] = {0};
+
+#ifdef FRAME_NS_LOCAL_SHORTCUT
+    struct NameCacheEntry {
+        const std::string *key = nullptr;
+        Value *value = nullptr;
+    };
+    NameCacheEntry ns_local_shortcut[8] = {};
+#endif
     
     FrameState(
         InterpreterState *interpreter_state, 

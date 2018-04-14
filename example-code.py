@@ -1,2 +1,4 @@
-print("hello world!")
-print("what is the airspeed velocity of a fully laden swallow?")
+x = 0
+while x < 10000000:
+  x += 1
+print(x)
