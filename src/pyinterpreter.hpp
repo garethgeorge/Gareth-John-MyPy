@@ -15,18 +15,17 @@ namespace py {
 
 struct Code;
 struct InterpreterState;
-struct Value;
 
 // see https://www.boost.org/doc/libs/1_55_0/doc/html/variant/tutorial.html
 // we use boost::variant as a compact union type carrying type information
 
-using Namespace = std::unordered_map<std::string, std::shared_ptr<Value>>;
+using Namespace = std::unordered_map<std::string, Value>;
 
 struct Code {
     using ByteCode = uint8_t;
 
     std::vector<ByteCode> bytecode;
-    std::vector<std::shared_ptr<Value>> co_consts;
+    std::vector<Value> co_consts;
     std::vector<std::string> co_names;
     
     Code(const boost::property_tree::ptree& tree);
@@ -38,7 +37,7 @@ struct FrameState {
     FrameState *parent_frame = nullptr;
     InterpreterState *interpreter_state = nullptr;
     std::shared_ptr<Code> code;
-    std::stack<std::shared_ptr<Value>> value_stack;
+    std::stack<Value> value_stack;
     Namespace ns_local;
 
     FrameState(

@@ -4,10 +4,10 @@
 #include <boost/property_tree/json_parser.hpp>
 
 #include "pyinterpreter.hpp"
-#include "pyvalue_types.hpp"
+#include "pyvalue.hpp"
 #include "../lib/base64.hpp"
 
-// #define DEBUG_ON
+#define DEBUG_ON
 #include "../lib/debug.hpp"
 
 namespace pt = boost::property_tree;
@@ -34,31 +34,29 @@ Code::Code(const pt::ptree& tree) {
             const auto real_type = constValue.second.get<std::string>("real_type");
             if (real_type == "<class 'str'>") {
                 DEBUG("constant at index %lu is string", this->co_consts.size());
-                const auto tmp = std::make_shared<StringValue>(
-                    constValue.second.get<std::string>("value")
+                this->co_consts.push_back(
+                    std::make_shared<std::string>(constValue.second.get<std::string>("value"))
                 );
-                this->co_consts.push_back(tmp);    
             } else if (real_type == "<class 'int'>") {
                 DEBUG("constant at index %lu is int", this->co_consts.size());
-                const auto tmp = std::make_shared<LiteralValue>(
+                this->co_consts.push_back(
                     constValue.second.get<int64_t>("value")
                 );
-                this->co_consts.push_back(tmp);
             } else if (real_type == "<class 'float'>") {
                 DEBUG("constant at index %lu is float", this->co_consts.size());
-                const auto tmp = std::make_shared<LiteralValue>(
+                this->co_consts.push_back(
                     constValue.second.get<double>("value")
                 );
-                this->co_consts.push_back(tmp);  
             } else if (real_type == "<class 'NoneType'>") {
                 DEBUG("constant at index %lu is nonetype", this->co_consts.size());
-                const auto tmp = std::make_shared<NoneValue>();
-                this->co_consts.push_back(tmp);
+                this->co_consts.push_back(
+                    value::NoneType()
+                );
             } else {
                 throw pyerror(std::string("unrecognized type of constant: ") + real_type);
             }
         } else if (type == "code") {
-            // this->constants.push_back(std::make_shared<Code>(constValue.second));
+            this->co_consts.push_back(std::make_shared<Code>(constValue.second));
         } else {
             throw pyerror(std::string("unrecognized type of constant: ") + type);
         }
