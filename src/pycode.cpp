@@ -77,11 +77,11 @@ Code::Code(const pt::ptree& tree) {
 Code::~Code() {
 }
 
-std::shared_ptr<Code> Code::fromProgram(const std::string& python) {
+std::shared_ptr<Code> Code::fromProgram(const std::string& python, const std::string& compilePyPath) {
     bp::pipe feed_in;
     bp::pipe feed_out;
     DEBUG("spawning off child process");
-    bp::child c("python ../pytools/compile.py", bp::std_out > feed_out, bp::std_in < feed_in);
+    bp::child c(std::string("python ") + compilePyPath, bp::std_out > feed_out, bp::std_in < feed_in);
     feed_in.write(python.c_str(), python.size());
     feed_in.close();
 

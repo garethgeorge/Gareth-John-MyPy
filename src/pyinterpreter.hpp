@@ -31,7 +31,7 @@ struct Code {
     Code(const boost::property_tree::ptree& tree);
     ~Code();
 
-    static std::shared_ptr<Code> fromProgram(const std::string& python);
+    static std::shared_ptr<Code> fromProgram(const std::string& python, const std::string& compilePyPath);
 };
 
 struct Block {

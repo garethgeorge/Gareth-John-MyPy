@@ -5,6 +5,7 @@
 #include <boost/program_options.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <boost/filesystem.hpp>
 #include "../lib/oplist.hpp"
 #include "../lib/base64.hpp"
 #include "pyinterpreter.hpp"
@@ -17,6 +18,7 @@
 
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
+namespace fs = boost::filesystem;
 using std::string;
 using namespace py;
 
@@ -27,15 +29,16 @@ int main(const int argc, const char *argv[])
     std::cout << "\tsize of 'Value' union struct: " << sizeof(py::Value) << std::endl;
     std::cout << "\tsize of 'Frame': " << sizeof(py::FrameState) << std::endl;
 #endif
-
+    fs::path full_path = fs::system_complete(argv[0]).parent_path();
+    
     po::options_description desc("Options"); 
     string filename;
     bool load_json;
     desc.add_options() 
-      ("help", "Print help messages")
-      ("load_json", po::value<bool>(&load_json)->default_value(false)->implicit_value(false), "")
-      ("file", po::value<string>(&filename)->default_value("")->implicit_value(""), "filename");
-
+        ("help", "Print help messages")
+        ("load_json", po::value<bool>(&load_json)->default_value(false)->implicit_value(false), "")
+        ("file", po::value<string>(&filename)->default_value("")->implicit_value(""), "filename");
+    
     po::variables_map vm; 
     try 
     {
@@ -87,11 +90,11 @@ int main(const int argc, const char *argv[])
             DEBUG("loading python source from file");
             std::ifstream fstream(filename);
             std::string s(std::istreambuf_iterator<char>(fstream), eos);;
-            code = Code::fromProgram(s);
+            code = Code::fromProgram(s, (full_path / "../pytools/compile.py").string());
         } else {
             DEBUG("loading python source from stdin");
             std::string s(std::istreambuf_iterator<char>(std::cin), eos);;
-            code = Code::fromProgram(s);
+            code = Code::fromProgram(s, (full_path / "../pytools/compile.py").string());
         }
     } 
     
