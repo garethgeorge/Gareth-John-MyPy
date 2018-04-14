@@ -10,13 +10,16 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_BUILD_TYPE Release)
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 add_executable(mypy 
   src/main.cpp 
   src/pycode.cpp 
   src/pyinterpreter.cpp
   src/pyframe.cpp
+  src/pyvalue_helpers.cpp
   src/builtins/builtins.cpp
   lib/oplist.cpp
   lib/base64.cpp

@@ -37,16 +37,8 @@ int main(const int argc, const char *argv[])
 
     auto code = std::make_shared<py::Code>(root);
     
-    // try adding
-    // std::shared_ptr<Value> a = std::make_shared<LiteralValue>((double)1.5);
-    // std::shared_ptr<Value> b = std::make_shared<LiteralValue>((double)1.5);
-    // std::cout << "trying the add." << std::endl;
-    // a->add(b);
-    // std::cout << "done trying the add." << std::endl;
-
     InterpreterState state(code);
     builtins::inject_builtins(state.ns_bulitins);
-    
     state.eval();
 
     return 0;

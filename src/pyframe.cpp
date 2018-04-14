@@ -4,7 +4,7 @@
 #include "pyinterpreter.hpp"
 #include "../lib/oplist.hpp"
 #include "pyvalue.hpp"
-// #define DEBUG_ON
+#define DEBUG_ON
 #include "../lib/debug.hpp"
 
 using std::string;
@@ -72,7 +72,6 @@ namespace eval_helpers {
         std::string operator()(value::NoneType) const {
             return "NoneType";
         }
-
     };
     
     struct add_visitor: public boost::static_visitor<Value> {
@@ -88,7 +87,7 @@ namespace eval_helpers {
         Value operator()(int64_t v1, int64_t v2) const {
             return v1 + v2;
         }
-
+        
         Value operator()(const std::shared_ptr<std::string>& v1, const std::shared_ptr<std::string> &v2) const {
             return std::make_shared<std::string>(*v1 + *v2);
         }
@@ -109,13 +108,12 @@ namespace eval_helpers {
             DEBUG("call_visitor dispatching CFunction->action");
             func->action(frame, args);
         }
-
+        
         template<typename T>
         void operator()(T) const {
             throw pyerror(string("can not call object of type ") + typeid(T).name());
         }
     };
-    
 }
 
 
@@ -161,8 +159,20 @@ void FrameState::eval_next() {
                     }
                 }
             } catch (std::out_of_range& err) {
-                throw pyerror("op::LOAD_NAME tried to load constant out of range");
+                throw pyerror("op::LOAD_NAME tried to load name out of range");
             }
+            break ;
+        }
+        case op::STORE_NAME:
+        {
+            try {
+                const std::string& name = this->code->co_names.at(arg);
+                this->ns_local[name] = this->value_stack.top();
+                this->value_stack.pop();
+            } catch (std::out_of_range& err) {
+                throw pyerror("op::LOAD_NAME tried to store name out of range");
+            }
+
             break ;
         }
         case op::LOAD_CONST:
@@ -211,7 +221,8 @@ void FrameState::eval_next() {
             this->value_stack.pop();
             const Value val1 = this->value_stack.top();
             this->value_stack.pop();
-            boost::apply_visitor(eval_helpers::add_visitor(), val1, val2);
+            const Value result = boost::apply_visitor(eval_helpers::add_visitor(), val1, val2);
+            this->value_stack.push(result);
             break ;
         }
         case op::RETURN_VALUE:

@@ -40,6 +40,11 @@ Proposed Execution Workflow
 
 When you’re “running” Python code, you’re actually evaluating frames (recall ceval.c: PyEval_EvalFrameEx). For now we’re happy to lump frame objects and code objects together; in reality they are rather distinct, but we’ll explore that some other time.
 
+## Implementing objects
+https://tech.blog.aknin.name/2010/05/12/pythons-innards-objects-101/
+
+https://docs.python.org/3/c-api/typeobj.html#type-objects
+
 ## Implementing functions
 
 https://docs.python.org/2/c-api/function.html 

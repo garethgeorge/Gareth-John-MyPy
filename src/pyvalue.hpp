@@ -22,13 +22,16 @@ namespace value {
     struct CFunction;
 }
 
-// TODO: determine how to properly apply the 'const' attribute to this class
+using ValueString = std::shared_ptr<std::string>;
+using ValueCode = std::shared_ptr<const Code>;
+using ValueCFunction = std::shared_ptr<const value::CFunction>;
+
 using Value = boost::variant<
     int64_t,
     double,
-    std::shared_ptr<std::string>,
-    std::shared_ptr<const Code>,
-    std::shared_ptr<const value::CFunction>,
+    ValueString,
+    ValueCode,
+    ValueCFunction,
     value::NoneType
 >;
 
