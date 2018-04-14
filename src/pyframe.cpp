@@ -175,26 +175,33 @@ void FrameState::eval_next() {
         case op::LOAD_NAME:
         {
             try {
-                const std::string& name = this->code->co_names.at(arg);
-                auto globals = this->interpreter_state->ns_globals;
-                auto builtins = this->interpreter_state->ns_bulitins;
-
-                auto itr_local = this->ns_local.find(name);
-                if (itr_local != this->ns_local.end()) {
-                    DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());
-                    this->value_stack.push(itr_local->second);
+                if (this->ns_local_shortcut[arg] != nullptr) {
+                    DEBUG("op::LOAD_NAME ('%s') loaded a local from ns_local_shortcut", name.c_str());
+                    this->value_stack.push(*(this->ns_local_shortcut[arg]));
                 } else {
-                    auto itr_global = globals.find(name);
-                    if (itr_global != globals.end()) {
-                        DEBUG("op::LOAD_NAME ('%s') loaded a global", name.c_str());
-                        this->value_stack.push(itr_global->second);
+                    const std::string& name = this->code->co_names.at(arg);
+                    const auto& globals = this->interpreter_state->ns_globals;
+                    const auto& builtins = this->interpreter_state->ns_bulitins;
+
+                    auto itr_local = this->ns_local.find(name);
+                    if (itr_local != this->ns_local.end()) {
+                        DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());
+                        this->value_stack.push(itr_local->second);
+                        Value& tmp = itr_local->second;
+                        this->ns_local_shortcut[arg] = &tmp;
                     } else {
-                        auto itr_builtin = builtins.find(name);
-                        if (itr_builtin != builtins.end()) {
-                            DEBUG("op::LOAD_NAME ('%s') loaded a builtin", name.c_str());
-                            this->value_stack.push(itr_builtin->second);
+                        auto itr_global = globals.find(name);
+                        if (itr_global != globals.end()) {
+                            DEBUG("op::LOAD_NAME ('%s') loaded a global", name.c_str());
+                            this->value_stack.push(itr_global->second);
                         } else {
-                            throw pyerror(string("op::LOAD_NAME name not found: ") + name);
+                            auto itr_builtin = builtins.find(name);
+                            if (itr_builtin != builtins.end()) {
+                                DEBUG("op::LOAD_NAME ('%s') loaded a builtin", name.c_str());
+                                this->value_stack.push(itr_builtin->second);
+                            } else {
+                                throw pyerror(string("op::LOAD_NAME name not found: ") + name);
+                            }
                         }
                     }
                 }
@@ -212,8 +219,7 @@ void FrameState::eval_next() {
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_NAME tried to store name out of range");
             }
-
-            break ;
+            break;
         }
         case op::LOAD_CONST:
         {
@@ -345,6 +351,7 @@ void FrameState::eval_next() {
             newBlock.pc_start = this->r_pc + 2;
             newBlock.pc_delta = arg;
             this->block_stack.push(newBlock);
+            DEBUG("new block stack height: %llu", this->block_stack.size())
             break ;
         }
         case op::POP_BLOCK:

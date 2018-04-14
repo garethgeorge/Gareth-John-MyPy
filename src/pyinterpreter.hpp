@@ -53,7 +53,8 @@ struct FrameState {
     std::stack<Value> value_stack;
     std::stack<Block> block_stack;
     Namespace ns_local;
-
+    Value *ns_local_shortcut[256] = {0};
+    
     FrameState(
         InterpreterState *interpreter_state, 
         FrameState *parent_frame, 
