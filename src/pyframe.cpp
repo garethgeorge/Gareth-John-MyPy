@@ -6,6 +6,8 @@
 #define DEBUG_ON
 #include "../lib/debug.hpp"
 
+using std::string;
+
 namespace py {
 
 FrameState::FrameState(
@@ -58,12 +60,31 @@ void FrameState::eval_next() {
         case op::LOAD_NAME:
         {
             try {
-                DEBUG("op::LOAD_NAME pushed StringValue(%s)", this->code->co_names.at(arg).c_str());
-                this->value_stack.push(
-                    std::make_shared<StringValue>(this->code->co_names.at(arg))
-                );
+                const std::string& name = this->code->co_names.at(arg);
+                auto globals = this->interpreter_state->ns_globals;
+                auto builtins = this->interpreter_state->ns_bulitins;
+
+                auto itr_local = this->ns_local.find(name);
+                if (itr_local != this->ns_local.end()) {
+                    DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());
+                    this->value_stack.push(itr_local->second);
+                } else {
+                    auto itr_global = globals.find(name);
+                    if (itr_global != globals.end()) {
+                        DEBUG("op::LOAD_NAME ('%s') loaded a global", name.c_str());
+                        this->value_stack.push(itr_global->second);
+                    } else {
+                        auto itr_builtin = builtins.find(name);
+                        if (itr_builtin != builtins.end()) {
+                            DEBUG("op::LOAD_NAME ('%s') loaded a builtin", name.c_str());
+                            this->value_stack.push(itr_builtin->second);
+                        } else {
+                            throw pyerror(string("op::LOAD_NAME name not found: ") + name);
+                        }
+                    }
+                }
             } catch (std::out_of_range& err) {
-                throw std::runtime_error("op::LOAD_NAME tried to load constant out of range");
+                throw pyerror("op::LOAD_NAME tried to load constant out of range");
             }
             break ;
         }
@@ -75,7 +96,7 @@ void FrameState::eval_next() {
                     this->code->co_consts.at(arg)
                 );
             } catch (std::out_of_range& err) {
-                throw std::runtime_error("op::LOAD_CONST tried to load constant out of range");
+                throw pyerror("op::LOAD_CONST tried to load constant out of range");
             }
             break ;
         }

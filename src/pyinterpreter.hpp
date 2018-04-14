@@ -20,7 +20,7 @@ struct Value;
 // see https://www.boost.org/doc/libs/1_55_0/doc/html/variant/tutorial.html
 // we use boost::variant as a compact union type carrying type information
 
-using Namespace = std::unordered_map<std::string, Value>;
+using Namespace = std::unordered_map<std::string, std::shared_ptr<Value>>;
 
 struct Code {
     using ByteCode = uint8_t;
