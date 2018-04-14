@@ -47,9 +47,10 @@ else:
             else:
                 return {
                     "type": "literal",
+                    "real_type": str(type(obj)),
                     "value": obj
                 }
-          
+        
         # to deeply understand this object
         # https://late.am/post/2012/03/26/exploring-python-code-objects.html
         return { # TODO: consider converting to some binary format instead of JSON
@@ -57,7 +58,17 @@ else:
             "co_code": base64.encodebytes(code.co_code).decode('ascii').replace("\n", ""), # our C++ base64 decoder does not take kindly to new lines.
             "co_lnotab": base64.encodebytes(code.co_lnotab).decode('ascii').replace("\n", ""), # the line number table
             "co_consts": list(map(helper, code.co_consts)),
-            # "linestarts": list(dis.findlinestarts(code)), 
+            "co_name": code.co_name,
+            "co_filename": code.co_filename,
+            "co_argcount": code.co_argcount,
+            "co_kwonlyargcount": code.co_kwonlyargcount,
+            "co_nlocals": code.co_nlocals,
+            "co_stacksize": code.co_stacksize,
+            "co_consts": code.co_consts or None,
+            "co_names": code.co_names or None,
+            "co_varnames": code.co_varnames or None,
+            "co_freevars": code.co_freevars or None,
+            "co_cellvars": code.co_cellvars or None, 
         }
     if args.indentJSON:
         json.dump(jsonify_code(code_base), sys.stdout, indent=2, sort_keys=True)
