@@ -10,9 +10,15 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
 
+set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+set(CMAKE_CXX_FLAGS_DEBUG "-g")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-add_executable(main 
+add_executable(mypy 
   src/main.cpp 
   src/pycode.cpp 
   src/pyinterpreter.cpp
@@ -31,5 +37,5 @@ set(Boost_USE_STATIC_RUNTIME    OFF)
 find_package(Boost 1.66.0 COMPONENTS filesystem system )
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
-  target_link_libraries(main ${Boost_LIBRARIES})
+  target_link_libraries(mypy ${Boost_LIBRARIES})
 endif()

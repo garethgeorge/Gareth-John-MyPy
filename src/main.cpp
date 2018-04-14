@@ -8,7 +8,7 @@
 #include "../lib/oplist.hpp"
 #include "../lib/base64.hpp"
 #include "./pyinterpreter.hpp"
-#include "./pyvalue.hpp"
+#include "./pyvalue_types.hpp"
 
 namespace po = boost::program_options;
 namespace pt = boost::property_tree;
@@ -18,7 +18,6 @@ using namespace py;
 
 int main(const int argc, const char *argv[]) 
 {
-
     std::cout << "statistics: " << std::endl;
     std::cout << "\tsize of 'Value' union struct: " << sizeof(py::Value) << std::endl;
     std::cout << "\tsize of 'Frame': " << sizeof(py::FrameState) << std::endl;
@@ -36,19 +35,13 @@ int main(const int argc, const char *argv[])
         "JSON representation" << std::endl;
 
     auto code = std::make_shared<py::Code>(root);
-    // std::cout << "printing op codes" << std::endl;
-
-    // for (int i = 0; i < code->bytecode.size(); i++) {
-    //     Code::ByteCode bytecode = code->bytecode[i];
-    //     if (bytecode == 0) continue ;
-    //     printf("%10d %s\n", i, op::name[bytecode]);
-    //     if (bytecode == op::LOAD_CONST) {
-    //         std::cout << "\tconstant: " << code->constants[code->bytecode[i + 1]] << std::endl;
-    //     }
-    //     if (bytecode >= 0x5A) {
-    //         i += 1;
-    //     }
-    //  }
+    
+    // try adding
+    // std::shared_ptr<Value> a = std::make_shared<LiteralValue>((double)1.5);
+    // std::shared_ptr<Value> b = std::make_shared<LiteralValue>((double)1.5);
+    // std::cout << "trying the add." << std::endl;
+    // a->add(b);
+    // std::cout << "done trying the add." << std::endl;
 
     InterpreterState state(code);
     state.eval();

@@ -64,7 +64,6 @@ else:
             "co_kwonlyargcount": code.co_kwonlyargcount,
             "co_nlocals": code.co_nlocals,
             "co_stacksize": code.co_stacksize,
-            "co_consts": code.co_consts or None,
             "co_names": code.co_names or None,
             "co_varnames": code.co_varnames or None,
             "co_freevars": code.co_freevars or None,

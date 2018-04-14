@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <stdint.h>
 #include <boost/variant/variant.hpp>
+#include "pyerror.hpp"
 
 namespace py {
 
@@ -12,11 +13,11 @@ struct Value {
     using Type = size_t;
 
     virtual Type getType() {
-        throw std::runtime_error("getType not implemented on py::Value");
+        throw pyerror("getType not implemented on py::Value");
     }
     
-    virtual std::shared_ptr<Value> add(std::shared_ptr<Value>& other) {
-        throw std::runtime_error("add not implemented on py::Value");
+    virtual std::shared_ptr<Value> add(std::shared_ptr<Value>&) {
+        throw pyerror("add not implemented on py::Value");
     }
 };
 

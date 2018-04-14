@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <boost/property_tree/ptree_fwd.hpp>
 
+#include "pyerror.hpp"
 #include "pyvalue.hpp"
 
 namespace py {
@@ -24,8 +25,9 @@ using Namespace = std::unordered_map<std::string, Value>;
 struct Code {
     using ByteCode = uint8_t;
 
-    std::vector<std::shared_ptr<Value>> constants;
     std::vector<ByteCode> bytecode;
+    std::vector<std::shared_ptr<Value>> co_consts;
+    std::vector<std::string> co_names;
     
     Code(const boost::property_tree::ptree& tree);
     ~Code();
@@ -45,6 +47,7 @@ struct FrameState {
         std::shared_ptr<Code>& code);
 
     void eval_next();
+    void print_next();
 };
 
 struct InterpreterState {
