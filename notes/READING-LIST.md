@@ -1,3 +1,6 @@
+# Python Source Code
+https://github.com/python/cpython/blob/master/Include/typeslots.h
+
 # Gareth Reading Stuff
 ## Random Links
  https://tech.blog.aknin.name/tag/block-stack/

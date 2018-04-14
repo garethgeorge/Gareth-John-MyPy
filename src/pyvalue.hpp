@@ -27,6 +27,7 @@ using ValueCode = std::shared_ptr<const Code>;
 using ValueCFunction = std::shared_ptr<const value::CFunction>;
 
 using Value = boost::variant<
+    bool,
     int64_t,
     double,
     ValueString,

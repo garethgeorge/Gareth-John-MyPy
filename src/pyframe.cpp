@@ -1,10 +1,12 @@
 #include <stdio.h>
 #include <iostream>
+#include <utility>
+#include <boost/variant/get.hpp>
 
 #include "pyinterpreter.hpp"
 #include "../lib/oplist.hpp"
 #include "pyvalue.hpp"
-#define DEBUG_ON
+// #define DEBUG_ON
 #include "../lib/debug.hpp"
 
 using std::string;
@@ -47,32 +49,6 @@ void FrameState::print_next() {
 }
 
 namespace eval_helpers {
-
-    struct typename_visitor: public boost::static_visitor<std::string> {
-        std::string operator()(double) const {
-            return "double";
-        }
-
-        std::string operator()(int64_t) const {
-            return "int64_t";
-        }
-
-        std::string operator()(std::shared_ptr<std::string> str) const {
-            return std::string("(string)") + *str;
-        }
-
-        std::string operator()(std::shared_ptr<const Code>) const {
-            return "code";
-        }
-
-        std::string operator()(std::shared_ptr<const value::CFunction>) const {
-            return "CFunction";
-        }
-
-        std::string operator()(value::NoneType) const {
-            return "NoneType";
-        }
-    };
     
     struct add_visitor: public boost::static_visitor<Value> {
         Value operator()(double v1, double v2) const {
@@ -98,8 +74,70 @@ namespace eval_helpers {
         }
     };
     
-    struct call_visitor: public boost::static_visitor<void> {
+    struct op_lt {
+        template<typename T1, typename T2>
+        static bool action(T1 v1, T2 v2) {
+            return v1 < v2;
+        }
+    };
 
+    struct op_lte {
+        template<typename T1, typename T2>
+        static bool action(T1 v1, T2 v2) {
+            return v1 <= v2;
+        }
+    };
+
+    struct op_gt {
+        template<typename T1, typename T2>
+        static bool action(T1 v1, T2 v2) {
+            return v1 > v2;
+        }
+    };
+
+    struct op_gte {
+        template<typename T1, typename T2>
+        static bool action(T1 v1, T2 v2) {
+            return v1 >= v2;
+        }
+    };
+
+    struct op_sub {
+        template<typename T1, typename T2>
+        static auto action(T1 v1, T2 v2) {
+            return v1 - v2;
+        }
+    };
+
+    struct op_mult {
+        template<typename T1, typename T2>
+        static auto action(T1 v1, T2 v2) {
+            return v1 * v2;
+        }
+    };
+    
+    template<class T>
+    struct numeric_visitor: public boost::static_visitor<Value> {
+        Value operator()(double v1, double v2) const {
+            return T::action(v1, v2);
+        }
+        Value operator()(double v1, int64_t v2) const {
+            return T::action(v1, v2);
+        }
+        Value operator()(int64_t v1, double v2) const {
+            return T::action(v1, v2);
+        }
+        Value operator()(int64_t v1, int64_t v2) const {
+            return T::action(v1, v2);
+        }
+        
+        template<typename T1, typename T2>
+        Value operator()(T1, T2) const {
+            throw pyerror(string("type error in numeric_visitor, can not work on values of types ") + typeid(T1).name() + " and " + typeid(T2).name());
+        }
+    };
+    
+    struct call_visitor: public boost::static_visitor<void> {
         FrameState& frame;
         std::vector<Value>& args;
         call_visitor(FrameState& frame, std::vector<Value>& args) : frame(frame), args(args) {}
@@ -119,8 +157,10 @@ namespace eval_helpers {
 
 void FrameState::eval_next() {
     Code::ByteCode bytecode = code->bytecode[this->r_pc];
-    uint8_t arg = code->bytecode[this->r_pc + 1];
+    // TODO: figure out how to load extended arguments
 
+    uint32_t arg = code->bytecode[this->r_pc + 1];
+    
     if (this->r_pc >= this->code->bytecode.size()) {
         DEBUG("overflowed program, popped stack frame, however this indicates a failure so we will exit.");
         this->interpreter_state->callstack.pop();
@@ -128,7 +168,7 @@ void FrameState::eval_next() {
         return ;
     }
     
-    DEBUG("EVALUATE BYTECODE: %s", op::name[bytecode])
+    DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])
     switch (bytecode) {
         case 0:
             break;
@@ -215,6 +255,43 @@ void FrameState::eval_next() {
             this->value_stack.push(temp2);
             break ;
         }
+        case op::COMPARE_OP:
+        {
+            const Value val2 = this->value_stack.top();
+            this->value_stack.pop();
+            const Value val1 = this->value_stack.top();
+            this->value_stack.pop();
+            Value result;
+            switch (arg) {
+                case op::cmp::LT:
+                    result = boost::apply_visitor(
+                        eval_helpers::numeric_visitor<eval_helpers::op_lt>(),
+                        val1, val2);
+                    break;
+                case op::cmp::LTE:
+                    result = boost::apply_visitor(
+                        eval_helpers::numeric_visitor<eval_helpers::op_lte>(),
+                        val1, val2);
+                    break;
+                case op::cmp::GT:
+                    result = boost::apply_visitor(
+                        eval_helpers::numeric_visitor<eval_helpers::op_gt>(),
+                        val1, val2);
+                    break;
+                case op::cmp::GTE:
+                    result = boost::apply_visitor(
+                        eval_helpers::numeric_visitor<eval_helpers::op_gte>(),
+                        val1, val2);
+                    break;
+                default:
+                    throw pyerror(string("operator ") + op::cmp::name[arg] + " not implemented.");
+            }
+            this->value_stack.push(result);
+            break;
+        }
+        case op::INPLACE_ADD:
+        // see https://stackoverflow.com/questions/15376509/when-is-i-x-different-from-i-i-x-in-python
+        // INPLACE_ADD should call __iadd__ method on full objects, falls back to __add__ if not available.
         case op::BINARY_ADD:
         {
             const Value val2 = this->value_stack.top();
@@ -225,6 +302,32 @@ void FrameState::eval_next() {
             this->value_stack.push(result);
             break ;
         }
+        case op::BINARY_SUBTRACT:
+        {
+            const Value val2 = this->value_stack.top();
+            this->value_stack.pop();
+            const Value val1 = this->value_stack.top();
+            this->value_stack.pop();
+            const Value result = boost::apply_visitor(
+                eval_helpers::numeric_visitor<eval_helpers::op_sub>(), 
+                val1, val2
+            );
+            this->value_stack.push(result);
+            break;
+        }
+        case op::BINARY_MULTIPLY:
+        {
+            const Value val2 = this->value_stack.top();
+            this->value_stack.pop();
+            const Value val1 = this->value_stack.top();
+            this->value_stack.pop();
+            const Value result = boost::apply_visitor(
+                eval_helpers::numeric_visitor<eval_helpers::op_sub>(), 
+                val1, val2
+            );
+            this->value_stack.push(result);
+            break;
+        }
         case op::RETURN_VALUE:
         {
             auto val = this->value_stack.top();
@@ -234,11 +337,46 @@ void FrameState::eval_next() {
             this->interpreter_state->callstack.pop();
             break ;
         }
+        case op::SETUP_LOOP:
+        {
+            Block newBlock;
+            newBlock.type = Block::Type::LOOP;
+            newBlock.level = this->value_stack.size();
+            newBlock.pc_start = this->r_pc + 2;
+            newBlock.pc_delta = arg;
+            this->block_stack.push(newBlock);
+            break ;
+        }
+        case op::POP_BLOCK:
+            this->block_stack.pop();
+            break ;
+        case op::POP_JUMP_IF_FALSE:
+        {
+            // TODO: implement handling for truthy values.
+            auto top = this->value_stack.top();
+            this->value_stack.pop();
+            try {
+                if (!boost::get<bool>(top)) {
+                    this->r_pc = arg;
+                }
+            } catch (boost::bad_get& e) {
+                // TODO: does not actually matter what the type of the condition is :o
+                throw pyerror("expected condition to have type bool, got bad type.");
+            }
+            break;
+        }
+        case op::JUMP_ABSOLUTE:
+            this->r_pc = arg;
+            return ;
         default:
         {
             DEBUG("UNIMPLEMENTED BYTECODE: %s", op::name[bytecode])
+            throw pyerror("UNIMPLEMENTED BYTECODE");
         }
     }
+    
+    // REMINDER: some instructions like op::JUMP_ABSOLUTE return early, so they
+    // do not reach this point
     
     if (bytecode < op::HAVE_ARGUMENT) {
         this->r_pc += 1;

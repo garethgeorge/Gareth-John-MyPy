@@ -11,7 +11,6 @@ inline uint8_t operand_length(uint8_t opcode) {
     if (opcode < HAVE_ARGUMENT) return 0;
     return 1;
 }
-
 const uint8_t POP_TOP         = 0x01;
 const uint8_t ROT_TWO         = 0x02;
 const uint8_t ROT_THREE       = 0x03;
@@ -130,6 +129,23 @@ const uint8_t FORMAT_VALUE    = 0x9b;
 const uint8_t BUILD_CONST_KEY_MAP = 0x9c;
 const uint8_t BUILD_STRING    = 0x9d;
 const uint8_t BUILD_TUPLE_UNPACK_WITH_CALL = 0x9e;
+namespace cmp {
+
+const uint8_t LT = 0;
+const uint8_t LTE = 1;
+const uint8_t EQ = 2;
+const uint8_t NEQ = 3;
+const uint8_t GT = 4;
+const uint8_t GTE = 5;
+const uint8_t IN = 6;
+const uint8_t NOTIN = 7;
+const uint8_t IS = 8;
+const uint8_t ISNOT = 9;
+const uint8_t EXCEPTION_MATCH = 10;
+
+extern const char* name[];
+
+}
 }
 }
 #endif

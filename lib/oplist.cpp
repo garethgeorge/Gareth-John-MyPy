@@ -259,5 +259,10 @@ const char *name[] = {
     "<254>",
     "<255>"
 };
+
+const char *cmp::name[] = {
+    "<", "<=", "==", "!=", ">", ">=", "in", "not in", "is", "is not", "exception match", "BAD"
+};
+
 }
 }

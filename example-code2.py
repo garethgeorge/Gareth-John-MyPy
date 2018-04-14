@@ -1,3 +1,4 @@
-x = 234
-y = 123
-print(x + y)
+x = 2
+while x < 1000000:
+  x = x * 2
+  print(x)
