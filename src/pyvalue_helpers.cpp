@@ -18,6 +18,10 @@ bool visitor_is_truthy::operator()(const ValueString& s) const {
     return s->size() != 0;
 }
 
+bool visitor_is_truthy::operator()(const value::NoneType) const {
+    return false;
+}
+
 
 /*
     visitor_repr

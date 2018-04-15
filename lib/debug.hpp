@@ -5,7 +5,6 @@
 #include <string>
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#define DEBUG_CLASS(message) printf("%s %s->%s: %s\n", __FILENAME__, typeid(*this).name(), __PRETTY_FUNCTION__, message)
 #define DEBUG(message, ...) { \
         char buffer[1 << 10]; \
         sprintf(buffer, message, ##__VA_ARGS__); \
@@ -14,7 +13,7 @@
 
 #else 
 
-#define DEBUG(...) 
+#define DEBUG(...)
 
 #endif
 

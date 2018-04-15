@@ -13,6 +13,10 @@ struct visitor_is_truthy: public boost::static_visitor<bool> {
     bool operator()(double) const;
     bool operator()(int64_t) const;
     bool operator()(const ValueString&) const;
+    bool operator()(const value::NoneType) const;
+    inline bool operator()(bool val) const {
+        return val;
+    }
     // TODO: empty sequence, empty mapping
     // https://docs.python.org/2.4/lib/truth.html
     template<typename T>

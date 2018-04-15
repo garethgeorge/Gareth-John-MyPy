@@ -3,10 +3,9 @@
 #include <utility>
 #include <boost/variant/get.hpp>
 
+#include "pyframe.hpp"
 #include "pyinterpreter.hpp"
 #include "../lib/oplist.hpp"
-#include "pyvalue.hpp"
-// #define DEBUG_ON
 #include "../lib/debug.hpp"
 
 using std::string;
@@ -176,7 +175,7 @@ void FrameState::eval_next() {
         {
             try {
                 const std::string& name = this->code->co_names.at(arg);
-#ifdef FRAME_NS_LOCAL_SHORTCUT
+#ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
                 const size_t cache_idx = arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *));
                 if (this->ns_local_shortcut[cache_idx].value != nullptr &&
                     this->ns_local_shortcut[cache_idx].key == &name) {
@@ -190,7 +189,7 @@ void FrameState::eval_next() {
                     if (itr_local != this->ns_local.end()) {
                         DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());
                         this->value_stack.push(itr_local->second);
-#ifdef FRAME_NS_LOCAL_SHORTCUT
+#ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
                         this->ns_local_shortcut[cache_idx].key = &name;
                         this->ns_local_shortcut[cache_idx].value = &(itr_local->second);
 #endif
@@ -209,7 +208,7 @@ void FrameState::eval_next() {
                             }
                         }
                     }
-#ifdef FRAME_NS_LOCAL_SHORTCUT
+#ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
                 }
 #endif
             } catch (std::out_of_range& err) {
