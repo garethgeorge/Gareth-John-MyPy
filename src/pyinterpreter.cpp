@@ -13,15 +13,7 @@ InterpreterState::InterpreterState(
     );
 }
 
-void InterpreterState::eval() {
-    while (!this->callstack.empty()) {
-        // TODO: try caching the top of the stack
-        #ifdef PRINT_OPS
-        this->callstack.top().eval_print();
-        #else
-        this->callstack.top().eval_next();
-        #endif
-    }
-}
+// InterpreterState::eval can be found in pyframe.cpp to allow inlining
+
 
 }

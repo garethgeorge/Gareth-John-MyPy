@@ -1,7 +1,9 @@
+#pragma once
 #ifndef PYFRAME_H
 #define PYFRAME_H
 
 #include <stack>
+#include <vector>
 #include <memory>
 #include <unordered_map>
 
@@ -33,7 +35,7 @@ struct FrameState {
     FrameState *parent_frame = nullptr;
     InterpreterState *interpreter_state = nullptr;
     std::shared_ptr<Code> code;
-    std::stack<Value> value_stack;
+    std::vector<Value> value_stack;
     std::stack<Block> block_stack;
     Namespace ns_local;
 

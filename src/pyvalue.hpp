@@ -1,14 +1,17 @@
+#pragma once
 #ifndef VALUE_H
 #define VALUE_H
 
 #include <memory>
-#include <stdexcept>
 #include <stdint.h>
-#include <boost/variant/variant.hpp>
+#include <vector>
+#include <variant>
 #include <functional>
 #include "pyerror.hpp"
 
 namespace py {
+
+using Namespace = std::unordered_map<std::string, Value>;
 
 // forward declarations
 struct Code;
@@ -26,14 +29,14 @@ using ValueString = std::shared_ptr<std::string>;
 using ValueCode = std::shared_ptr<const Code>;
 using ValueCFunction = std::shared_ptr<const value::CFunction>;
 
-using Value = boost::variant<
+using Value = std::variant<
     bool,
     int64_t,
     double,
     ValueString,
     ValueCode,
     ValueCFunction,
-    value::NoneType
+    value::NoneType,
 >;
 
 namespace value {
@@ -42,6 +45,27 @@ namespace value {
         CFunction(const std::function<void(FrameState&, std::vector<Value>&)>& action) : action(action) { };
     };
 }
+
+// the beginning of objcet definitions
+struct PyObjectType;
+
+struct PyObject {
+    using PyObjShared = std::shared_ptr<PyObject>;
+    PyObjectType *type;
+};
+
+struct PyObjectType {
+    using PyObjMethod = std::function<PyObjShared(PyObjShared&,PyObjShared&)>*;
+
+    PyObjMethod add;
+    PyObjMethod sub;
+    PyObjMethod mul;
+    PyObjMethod div;
+    PyObjMethod str;
+
+    Namespace properties;
+};
+
 
 }
 

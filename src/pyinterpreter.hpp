@@ -1,3 +1,4 @@
+#pragma once
 #ifndef INTERPRETER_H
 #define INTERPRETER_H
 
@@ -13,8 +14,6 @@
 
 namespace py {
 
-// see https://www.boost.org/doc/libs/1_55_0/doc/html/variant/tutorial.html
-// we use boost::variant as a compact union type carrying type information
 struct Code;
 
 using Namespace = std::unordered_map<std::string, Value>;

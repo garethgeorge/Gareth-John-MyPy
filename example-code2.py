@@ -1,7 +1,4 @@
-x = 2
-i = 1
-while i < 10:
-  i += 1
-  x = x * 2
-  print(x)
-print("done!")
+x = 20
+while x < 10000000:
+  x += 1
+print(x)

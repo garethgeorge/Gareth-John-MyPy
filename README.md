@@ -1,9 +1,12 @@
+
 # Building
+__note: you must have installed a version of gcc that support std=c++17 to build this project__
+you can get the latest version from brew install gcc 
 ```
 mkdir build
-cd build 
-cmake -G "Unix Makefiles" ..
-make -j 3
+cd build
+sh ../setup-build-dir.sh
+make 
 ```
 
 # TODO LIST
