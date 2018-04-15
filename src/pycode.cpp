@@ -4,12 +4,14 @@
 #include <boost/process.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
+#include <vector>
+#include <algorithm>
 
 #include "pyinterpreter.hpp"
 #include "pyvalue.hpp"
 #include "../lib/base64.hpp"
 
-// #define DEBUG_ON
+#define DEBUG_ON
 #include "../lib/debug.hpp"
 
 namespace pt = boost::property_tree;
@@ -86,11 +88,13 @@ std::shared_ptr<Code> Code::fromProgram(const std::string& python, const std::st
     feed_in.close();
 
     std::stringstream ss;
-    char buffer[1 << 10];
-    while (feed_out.is_open() && feed_out.read(buffer, sizeof(buffer) / sizeof(char)) != 0) {
-        ss << buffer;
+    std::vector<char> buffer;
+    buffer.resize(1024, '\0');
+    while (feed_out.is_open() && feed_out.read(&(buffer.front()), buffer.size()-1) != 0) {
+        ss << &(buffer.front());
+        std::fill(buffer.begin(), buffer.end(), '\0');
     }
-    // DEBUG("compiled python to JSON %s", ss.str().c_str());
+    DEBUG("compiled python to JSON %s", ss.str().c_str());
 
     pt::ptree root;
     try {
