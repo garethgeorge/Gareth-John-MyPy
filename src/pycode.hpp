@@ -9,13 +9,16 @@
 #include "pyvalue.hpp"
 #include "../lib/json_fwd.hpp"
 
+using json = nlohmann::json;
+
 namespace py {
 
-using json = nlohmann::json;
 
 struct Code {
     using ByteCode = uint8_t;
 
+    uint64_t co_stacksize;
+    uint64_t co_nlocals;
     std::vector<ByteCode> bytecode;
     std::vector<Value> co_consts;
     std::vector<std::string> co_names;

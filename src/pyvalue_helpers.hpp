@@ -10,17 +10,12 @@ using std::string;
 namespace py {
 namespace value_helper {
 
-// auto visitor_is_truthy = [](auto&& arg) -> bool {
-//             using T = std::decay_t<decltype(arg)>;
-//             if constexpr (std::is_integral<T>::value || std::is_floating_point<T>::value) {
-//                 return arg == 0;
-//             } else if constexpr (std::is_same_v<T, bool>) {
-//                 return arg;
-//             } else if constexpr (std::is_same_v<T, std::string>)
-//                 return arg.length() != 0;
-//             return true;
-//         };
+// helper function for creating a class with overloads
+// see http://en.cppreference.com/w/cpp/utility/variant/visit 
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
+// a visitor that, given a type, returns its truthyness 
 struct visitor_is_truthy {
     bool operator()(double) const;
     bool operator()(int64_t) const;
@@ -37,6 +32,7 @@ struct visitor_is_truthy {
     }
 };
 
+// this visitor evaluates the python repr(obj) method
 struct visitor_repr {
     string operator()(double) const;
 
@@ -53,11 +49,11 @@ struct visitor_repr {
     }
 };
 
-struct visitor_str {
-    template<typename T>
-    string operator()(const T& v) const {
-        return visitor_repr()(v);
-    }
+// this visitor evaluates the python str(obj) method, only differs from
+// repr in the case of true objects so as you can see it just wraps repr
+struct visitor_str : public visitor_repr {
+    using visitor_repr::operator();
+    // TODO: add specialization for handling additional types
 };
 
 template<class T>

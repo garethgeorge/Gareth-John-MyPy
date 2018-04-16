@@ -10,7 +10,6 @@
 #include <errno.h>
 #include <fcntl.h>
 
-
 #include "pycode.hpp"
 #include "pyvalue.hpp"
 #include "../lib/base64.hpp"
@@ -31,6 +30,9 @@ Code::Code(const json& tree) {
     std::cout << std::setw(4) << tree << std::endl;
 #endif
     
+    this->co_stacksize = tree.at("co_stacksize").get<uint64_t>();
+    this->co_nlocals = tree.at("co_nlocals").get<uint64_t>();
+
     // decode the bytecode and push it into the bytecode property :)
     std::string base64bytecode = tree.at("co_code").get<std::string>();
     std::string bytecode = base64_decode(base64bytecode);

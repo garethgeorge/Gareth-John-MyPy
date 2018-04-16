@@ -20,15 +20,18 @@ FrameState::FrameState(
         FrameState *parent_frame, 
         std::shared_ptr<Code>& code) 
 {
+    DEBUG("constructed a new frame");
     this->interpreter_state = interpreter_state;
     this->parent_frame = parent_frame;
     this->code = code;
+    DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
+    this->value_stack.reserve(code->co_stacksize);
 }
 
 void FrameState::print_next() {
     Code::ByteCode bytecode = code->bytecode[this->r_pc];
     if (this->r_pc >= this->code->bytecode.size()) {
-        printf("popped a frame from the call stack dealio.");
+        printf("popped a frame from the call stack");
         this->interpreter_state->callstack.pop();
         return ;
     }
@@ -54,88 +57,105 @@ namespace eval_helpers {
 
     using value_helper::numeric_visitor;
     
-    struct op_lt {
+    /*
+        op_ classes are binary operation helper classes,
+        when numeric_visitor is templated with a class defining a static method
+        T3 action(T1, T2);
+        it then applies that method to any numeric input types, and returns the
+        resulting value. For objects it should fall back to a lookup into the 
+        object's type info table. For any other type it helpfully throws a 
+        pyerror indicating a type mismatch was encountered.
+    */
+    struct op_lt { // a < b
         template<typename T1, typename T2>
         static bool action(T1 v1, T2 v2) {
             return v1 < v2;
         }
     };
 
-    struct op_lte {
+    struct op_lte { // a <= b
         template<typename T1, typename T2>
         static bool action(T1 v1, T2 v2) {
             return v1 <= v2;
         }
     };
 
-    struct op_gt {
+    struct op_gt { // a > b
         template<typename T1, typename T2>
         static bool action(T1 v1, T2 v2) {
             return v1 > v2;
         }
     };
 
-    struct op_gte {
+    struct op_gte { // a >= b
         template<typename T1, typename T2>
         static bool action(T1 v1, T2 v2) {
             return v1 >= v2;
         }
     };
 
-    struct op_eq {
+    struct op_eq { // a == b
         template<typename T1, typename T2>
         static bool action(T1 v1, T2 v2) {
             return v1 == v2;
         }
     };
 
-    struct op_neq {
+    struct op_neq { // a != b
         template<typename T1, typename T2>
         static bool action(T1 v1, T2 v2) {
             return v1 != v2;
         }
     };
 
-    struct op_sub {
+    struct op_sub { // a - b
         template<typename T1, typename T2>
         static auto action(T1 v1, T2 v2) {
             return v1 - v2;
         }
     };
 
-    struct op_add {
+    struct op_add { // a + b
         template<typename T1, typename T2>
         static auto action(T1 v1, T2 v2) {
             return v1 + v2;
         }
     };
 
-    struct op_mult {
+    struct op_mult { // a * b
         template<typename T1, typename T2>
         static auto action(T1 v1, T2 v2) {
             return v1 * v2;
         }
     };
 
-    struct op_divide {
+    struct op_divide { // a / b
         template<typename T1, typename T2>
         static auto action(T1 v1, T2 v2) {
             return v1 / v2;
         }
     };
 
-    struct op_modulo {
+    struct op_modulo { // a % b
+
+        // for integer values it is sufficient to use the default % operator
         static auto action(int64_t v1, int64_t v2) {
             return v1 % v2;
         }
 
+        // for other type we fall back to the fmod operator, a more general
+        // mod which always returns a float value of sufficient precision
         template<typename T1, typename T2>
         static auto action(T1 v1, T2 v2) {
             return std::fmod(v1, v2);
         }
     };
-
+    
     struct add_visitor: public numeric_visitor<op_add> {
+        /*
+            the add visitor is simply a numeric_visitor with op_add but also
+            including one additional function for string addition
+        */
         using numeric_visitor<op_add>::operator();
         
         Value operator()(const std::shared_ptr<std::string>& v1, const std::shared_ptr<std::string> &v2) const {
@@ -144,6 +164,15 @@ namespace eval_helpers {
     };
     
     struct call_visitor {
+        /*
+            the call visitor is a helpful visitor class that actually includes 
+            some amount of state, it takes the argument list as well as the current
+            frame. 
+
+            It may be possible to refactor this into a visitor using the lambda
+            style syntax ideally.
+        */
+
         FrameState& frame;
         std::vector<Value>& args;
         call_visitor(FrameState& frame, std::vector<Value>& args) : frame(frame), args(args) {}
@@ -182,6 +211,8 @@ inline void FrameState::eval_next() {
             try {
                 const std::string& name = this->code->co_names.at(arg);
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
+                // if NS_LOCAL_SHORTCUT optimization is turned on, see if we can
+                // find the variable in the cache
                 auto& local_shortcut_entry = this->ns_local_shortcut[arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *))];
                 if (local_shortcut_entry.value != nullptr &&
                     local_shortcut_entry.key == &name) {
@@ -196,6 +227,8 @@ inline void FrameState::eval_next() {
                         DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());
                         this->value_stack.push_back(itr_local->second);
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
+                        // if NS_LOCAL_SHORTCUT optimization is turned on,
+                        // turn on this optimization in the cache
                         local_shortcut_entry.key = &name;
                         local_shortcut_entry.value = &(itr_local->second);
 #endif
@@ -258,8 +291,11 @@ inline void FrameState::eval_next() {
             // or better, have functions take a begin and end range iterator
             std::vector<Value> args(this->value_stack.end() - arg, this->value_stack.end());
             this->value_stack.resize(this->value_stack.size() - arg);
-            std::visit(eval_helpers::call_visitor(*this, args), this->value_stack.back());
-            this->value_stack.pop_back();
+            std::visit(
+                eval_helpers::call_visitor(*this, args), 
+                this->value_stack.back()
+            );
+
             break ;
         }
         case op::POP_TOP:

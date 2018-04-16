@@ -11,8 +11,6 @@
 
 namespace py {
 
-using Namespace = std::unordered_map<std::string, Value>;
-
 // forward declarations
 struct Code;
 struct FrameState;
@@ -36,7 +34,7 @@ using Value = std::variant<
     ValueString,
     ValueCode,
     ValueCFunction,
-    value::NoneType,
+    value::NoneType
 >;
 
 namespace value {
@@ -46,25 +44,25 @@ namespace value {
     };
 }
 
-// the beginning of objcet definitions
-struct PyObjectType;
+// the beginning of a prototype for object definitions
+// struct PyObjectType;
 
-struct PyObject {
-    using PyObjShared = std::shared_ptr<PyObject>;
-    PyObjectType *type;
-};
+// struct PyObject {
+//     using PyObjShared = std::shared_ptr<PyObject>;
+//     PyObjectType *type;
+// };
 
-struct PyObjectType {
-    using PyObjMethod = std::function<PyObjShared(PyObjShared&,PyObjShared&)>*;
+// struct PyObjectType {
+//     using PyObjMethod = std::function<PyObjShared(PyObjShared&,PyObjShared&)>*;
 
-    PyObjMethod add;
-    PyObjMethod sub;
-    PyObjMethod mul;
-    PyObjMethod div;
-    PyObjMethod str;
+//     PyObjMethod add;
+//     PyObjMethod sub;
+//     PyObjMethod mul;
+//     PyObjMethod div;
+//     PyObjMethod str;
 
-    Namespace properties;
-};
+//     Namespace properties;
+// };
 
 
 }
