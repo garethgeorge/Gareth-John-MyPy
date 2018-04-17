@@ -24,7 +24,7 @@ namespace py {
 
 Code::Code(const json& tree) {
     DEBUG("loading in source code from json");
-
+    
 #ifdef DEBUG_ON
     std::cout << __FILENAME__ << " ";
     std::cout << std::setw(4) << tree << std::endl;
@@ -98,7 +98,7 @@ Code::~Code() {
 
 std::shared_ptr<Code> Code::fromProgram(const std::string& python, const std::string& compilePyPath) {
     procxx::process compilePyProc{"python3", compilePyPath.c_str()};
-
+    
     DEBUG("execing compile python process");
     compilePyProc.exec();
     compilePyProc << python;

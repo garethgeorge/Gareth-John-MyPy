@@ -177,7 +177,7 @@ namespace eval_helpers {
         std::vector<Value>& args;
         call_visitor(FrameState& frame, std::vector<Value>& args) : frame(frame), args(args) {}
 
-        void operator()(const std::shared_ptr<const value::CFunction>& func) const {
+        void operator()(const ValueCFunction& func) const {
             DEBUG("call_visitor dispatching CFunction->action");
             func->action(frame, args);
         }
@@ -190,27 +190,27 @@ namespace eval_helpers {
 }
 
 void FrameState::print_stack() const {
-    std::cout << "[";
+    std::cerr << "[";
     for (size_t i = 0; i < this->value_stack.size(); ++i) {
         if (i != 0) {
-            std::cout << ", ";
+            std::cerr << ", ";
         }
         const Value& val = this->value_stack[i];
-        std::cout << i << "_";
+        std::cerr << i << "_";
         std::visit(value_helper::overloaded {
-            [](auto arg) { throw pyerror("unimplemented stack printer for stack value"); },
-            [](double arg) { std::cout << "double(" << arg << ")"; },
-            [](int64_t arg) { std::cout << "int64(" << arg << ")"; },
-            [](ValueString arg) {std::cout << "ValueString(" << *arg << ")"; },
-            [](ValueCFunction arg) {std::cout << "CFunction()"; },
-            [](ValueCode arg) {std::cout << "Code()"; },
-            [](value::NoneType) {std::cout << "None"; },
-            [](bool val) {if (val) std::cout << "bool(true)"; else std::cout << "bool(false)"; }
+            [](auto&& arg) { throw pyerror("unimplemented stack printer for stack value"); },
+            [](double arg) { std::cerr << "double(" << arg << ")"; },
+            [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
+            [](const ValueString& arg) {std::cerr << "ValueString(" << *arg << ")"; },
+            [](const ValueCFunction& arg) {std::cerr << "CFunction()"; },
+            [](const ValueCode& arg) {std::cerr << "Code()"; },
+            [](value::NoneType) {std::cerr << "None"; },
+            [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
         }, val);
     }
-    std::cout << "].len = " << this->value_stack.size();
+    std::cerr << "].len = " << this->value_stack.size();
 
-    std::cout << std::endl;
+    std::cerr << std::endl;
 }
 
 
@@ -283,9 +283,10 @@ inline void FrameState::eval_next() {
             this->check_stack_size(1);
             try {
                 const std::string& name = this->code->co_names.at(arg);
-                auto& local_shortcut_entry = this->ns_local_shortcut[arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *))];
 
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
+                auto& local_shortcut_entry = 
+                    this->ns_local_shortcut[arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *))];
                 if (local_shortcut_entry.value != nullptr &&
                     local_shortcut_entry.key == &name) {
                     *(local_shortcut_entry.value) = std::move(this->value_stack.back());
@@ -318,7 +319,9 @@ inline void FrameState::eval_next() {
             DEBUG("op::CALL_FUNCTION attempted to call a function with %d arguments", arg);
             this->check_stack_size(1 + arg);
             
-            std::vector<Value> args(this->value_stack.end() - arg, this->value_stack.end());
+            std::vector<Value> args(
+                this->value_stack.end() - arg,
+                this->value_stack.end());
             this->value_stack.resize(this->value_stack.size() - arg);
             // note our usage of std::move, std::move denotes that rather than
             // copy constructing assignment, we should actually move the value 
@@ -326,9 +329,9 @@ inline void FrameState::eval_next() {
             // in the future
             Value func = std::move(this->value_stack.back());
             this->value_stack.pop_back();
-
+            
             std::visit(
-                eval_helpers::call_visitor(*this, args), 
+                eval_helpers::call_visitor(*this, args),
                 func
             );
 
@@ -342,7 +345,6 @@ inline void FrameState::eval_next() {
         }
         case op::ROT_TWO:
         {
-            // TODO: use std::swap here
             std::swap(*(this->value_stack.end()), *(this->value_stack.end() - 1));
             break ;
         }
@@ -379,14 +381,12 @@ inline void FrameState::eval_next() {
                 case op::cmp::EQ:
                     result = std::visit(
                         eval_helpers::numeric_visitor<eval_helpers::op_eq>(),
-                        val1, val2
-                    );
+                        val1, val2);
                     break ;
                 case op::cmp::NEQ:
                     result = std::visit(
                         eval_helpers::numeric_visitor<eval_helpers::op_neq>(),
-                        val1, val2
-                    );
+                        val1, val2);
                     break ;
                 default:
                     throw pyerror(string("operator ") + op::cmp::name[arg] + " not implemented.");
@@ -507,9 +507,8 @@ inline void FrameState::eval_next() {
     
     // REMINDER: some instructions like op::JUMP_ABSOLUTE return early, so they
     // do not reach this point
-
 #ifdef DEBUG_STACK
-    std::cout << "\tSTACK AFTER op::" << op::name[bytecode] << ": ";
+    std::cerr << "\tSTACK AFTER op::" << op::name[bytecode] << ": ";
     this->print_stack();
 #endif
 

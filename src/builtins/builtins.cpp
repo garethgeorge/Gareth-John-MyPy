@@ -19,9 +19,6 @@ extern void inject_builtins(Namespace& ns) {
     // TODO: add argument count support
     ns["print"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
         try {
-            std::vector<std::string> strings;
-            strings.resize(args.size());
-
             for (auto it = args.rbegin(); it != args.rend(); ++it) {
                 const std::string str = std::visit(value_helper::visitor_str(), *it);
                 std::cout << str;

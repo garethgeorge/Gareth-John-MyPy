@@ -48,7 +48,7 @@ struct visitor_repr {
     template<typename T> 
     string operator()(T) const {
         // TODO: use typetraits to generate this.
-        return "<repr>";
+        throw pyerror("unimplemented repr for type");
     }
 };
 

@@ -12,15 +12,31 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O2")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+# TODO: have a cmake file per directory which adds its own sources
+# see https://stackoverflow.com/questions/7046956/populating-srcs-from-cmakelists-txt-in-subdirectories
+file(GLOB_RECURSE SRCS_LIB
+  "lib/*.cpp"
+  "lib/*.hpp")
+
+file(GLOB_RECURSE SRCS_MYPY 
+  "src/*.cpp"
+  "src/*.hpp")
+list(FILTER SRCS_MYPY EXCLUDE REGEX ".*vm_main.cpp$")
 
 add_executable(mypy
   src/vm_main.cpp 
-  src/pycode.cpp 
-  src/pyinterpreter.cpp
-  src/pyframe.cpp
-  src/pyvalue_helpers.cpp
-  src/builtins/builtins.cpp
-  lib/oplist.cpp
-  lib/base64.cpp
+  ${SRCS_LIB}
+  ${SRCS_MYPY}
+)
+
+file(GLOB_RECURSE SRCS_tests
+  "test/*.cpp"
+  "test/*.hpp")
+
+add_executable(cmake_test
+  ${SRCS_tests}
+  ${SRCS_LIB}
+  ${SRCS_MYPY}
 )

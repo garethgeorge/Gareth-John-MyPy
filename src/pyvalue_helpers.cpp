@@ -27,8 +27,7 @@ bool visitor_is_truthy::operator()(const value::NoneType) const {
     visitor_repr
 */
 string visitor_repr::operator()(bool v) const {
-    if (v) return "true";
-    return "false";
+    return v ? "true" : "false";
 }
 
 string visitor_repr::operator()(double d) const {

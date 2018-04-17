@@ -55,7 +55,7 @@ struct FrameState {
     
     FrameState(
         InterpreterState *interpreter_state, 
-        FrameState *parent_frame, 
+        FrameState *parent_frame, // null for the top frame on the stack
         std::shared_ptr<Code>& code);
 
     void eval_next();

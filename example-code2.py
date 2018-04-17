@@ -1,7 +1,4 @@
 x = 0
-while True:
+while x < 10000000:
   x = x + 1
-
-  if x > 1000:
-    print(x)
-    return 
+print(x)

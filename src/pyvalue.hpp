@@ -17,7 +17,6 @@ struct FrameState;
 
 // the value namespace for C value types
 namespace value {
-   
     struct NoneType { };
 
     struct CFunction;
@@ -43,7 +42,7 @@ using Value = std::variant<
 namespace value {
     struct CFunction {
         std::function<void(FrameState&, std::vector<Value>&)> action;
-        CFunction(const std::function<void(FrameState&, std::vector<Value>&)>& action) : action(action) { };
+        CFunction(const std::function<void(FrameState&, std::vector<Value>&)>& _action) : action(_action) { };
     };
 }
 

@@ -9,7 +9,7 @@
 #define DEBUG(message, ...) { \
         char buffer[1 << 10]; \
         sprintf(buffer, message, ##__VA_ARGS__); \
-        printf("%s %s: %s\n", __FILENAME__, __PRETTY_FUNCTION__, buffer); \
+        fprintf(stderr, "%s %s: %s\n", __FILENAME__, __PRETTY_FUNCTION__, buffer); \
     }
 
 #else 
