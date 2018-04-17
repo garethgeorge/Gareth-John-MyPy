@@ -13,7 +13,6 @@ using json = nlohmann::json;
 
 namespace py {
 
-
 struct Code {
     using ByteCode = uint8_t;
 
@@ -25,7 +24,7 @@ struct Code {
     
     Code(const json& tree);
     ~Code();
-
+    
     static std::shared_ptr<Code> fromProgram(const std::string& python, const std::string& compilePyPath);
 };
 

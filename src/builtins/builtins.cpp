@@ -6,6 +6,7 @@
 #include <variant>
 #include "builtins.hpp"
 #include "../pyvalue_helpers.hpp"
+#include "../pyerror.hpp"
 
 using std::string;
 

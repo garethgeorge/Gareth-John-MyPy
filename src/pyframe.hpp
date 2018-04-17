@@ -61,20 +61,14 @@ struct FrameState {
     void eval_next();
     void print_next();
 
-    // helper method for popping a value from this->value_stack
-    // throws pyerror("value stack is empty") when an error is encountered
-    inline Value pop_value() {
-        if (this->value_stack.size() == 0) {
-            pyerror("value stack is empty, no more values to pop.");
+    void print_stack() const;
+
+    // helper method for checking the stack has enough values for the current
+    // operation!
+    inline const void check_stack_size(size_t expected) {
+        if (this->value_stack.size() < expected) {
+            throw pyerror("INTERNAL ERROR: not enough values on stack to complete operation");
         }
-        Value tmp = std::move(this->value_stack.back());
-        this->value_stack.pop_back();
-        return std::move(tmp);
-    }
-    
-    // helper method for pushing a value onto the value stack
-    inline void push_value(const Value&& value) {
-        this->value_stack.push_back(std::move(value));
     }
 };
 

@@ -22,6 +22,7 @@ struct visitor_is_truthy {
     bool operator()(const ValueString&) const;
     bool operator()(const value::NoneType) const;
     inline bool operator()(bool val) const {
+        // inline this to make the common case fast
         return val;
     }
     // TODO: empty sequence, empty mapping
@@ -34,6 +35,8 @@ struct visitor_is_truthy {
 
 // this visitor evaluates the python repr(obj) method
 struct visitor_repr {
+    string operator()(bool) const;
+    
     string operator()(double) const;
 
     string operator()(int64_t) const;
@@ -76,7 +79,6 @@ struct numeric_visitor {
         throw pyerror(string("type error in numeric_visitor, can not work on values of types ") + typeid(T1).name() + " and " + typeid(T2).name());
     }
 };
-
 
 }
 }

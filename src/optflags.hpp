@@ -9,5 +9,6 @@
 #define OPT_FRAME_NS_LOCAL_SHORTCUT
 
 // #define DEBUG_ON
+#define DEBUG_LEVEL 2 // 1 is light debug printing, 2 includes stack dumps and more expensive debug
 
 #endif

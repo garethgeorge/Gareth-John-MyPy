@@ -23,6 +23,9 @@ namespace value {
     struct CFunction;
 }
 
+// larger value types should be wrapped by a shared_ptr,
+// this is because we want to keep the size of our std::variant class small,
+// it also allows sharing string objects between multiple values whenever possible
 using ValueString = std::shared_ptr<std::string>;
 using ValueCode = std::shared_ptr<const Code>;
 using ValueCFunction = std::shared_ptr<const value::CFunction>;

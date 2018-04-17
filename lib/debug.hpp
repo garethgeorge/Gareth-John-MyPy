@@ -1,4 +1,5 @@
 #ifndef DEBUG_H
+#define DEBUG_H 
 
 #ifdef DEBUG_ON
 

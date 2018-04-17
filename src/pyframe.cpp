@@ -43,7 +43,7 @@ void FrameState::print_next() {
 
     printf("%10llu %s\n", this->r_pc, op::name[bytecode]);
     if (bytecode == op::LOAD_CONST) {
-        // printf("\tconstant: %s\n", ((std::string)code->constants[code->bytecode[this->r_pc + 1]]).c_str());
+        // printf("\tconstant: %s\n", ((std::string)code->co_consts[code->bytecode[this->r_pc + 1]]).c_str());
     }
     
     if (bytecode < op::HAVE_ARGUMENT) {
@@ -189,6 +189,28 @@ namespace eval_helpers {
     };
 }
 
+void FrameState::print_stack() const {
+    std::cout << "[";
+    for (size_t i = 0; i < this->value_stack.size(); ++i) {
+        const Value& val = this->value_stack[i];
+        std::cout << i << "_";
+        std::visit(value_helper::overloaded {
+            [](auto arg) { throw pyerror("unimplemented stack printer for stack value"); },
+            [](double arg) { std::cout << "double(" << arg << ")"; },
+            [](int64_t arg) { std::cout << "int64(" << arg << ")"; },
+            [](ValueString arg) {std::cout << "ValueString(" << *arg << ")"; },
+            [](ValueCFunction arg) {std::cout << "CFunction()"; },
+            [](ValueCode arg) {std::cout << "Code()"; },
+            [](value::NoneType) {std::cout << "None"; },
+            [](bool val) {if (val) std::cout << "bool(true)"; else std::cout << "bool(false)"; }
+        }, val);
+        std::cout << ", ";
+    }
+    std::cout << "] (" << this->value_stack.size() << " elements)";
+
+    std::cout << std::endl;
+}
+
 
 inline void FrameState::eval_next() {
     Code::ByteCode bytecode = code->bytecode[this->r_pc];
@@ -218,38 +240,37 @@ inline void FrameState::eval_next() {
                     local_shortcut_entry.key == &name) {
                     DEBUG("op::LOAD_NAME ('%s') loaded a local from ns_local_shortcut", name.c_str());
                     this->value_stack.push_back(*(local_shortcut_entry.value));
-                } else {
+                    break ;
+                } 
 #endif
-                    const auto& globals = this->interpreter_state->ns_globals;
-                    const auto& builtins = this->interpreter_state->ns_bulitins;
-                    auto itr_local = this->ns_local.find(name);
-                    if (itr_local != this->ns_local.end()) {
-                        DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());
-                        this->value_stack.push_back(itr_local->second);
+                const auto& globals = this->interpreter_state->ns_globals;
+                const auto& builtins = this->interpreter_state->ns_bulitins;
+                auto itr_local = this->ns_local.find(name);
+                if (itr_local != this->ns_local.end()) {
+                    DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());
+                    this->value_stack.push_back(itr_local->second);
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
-                        // if NS_LOCAL_SHORTCUT optimization is turned on,
-                        // turn on this optimization in the cache
-                        local_shortcut_entry.key = &name;
-                        local_shortcut_entry.value = &(itr_local->second);
+                    // if NS_LOCAL_SHORTCUT optimization is turned on,
+                    // turn on this optimization in the cache
+                    local_shortcut_entry.key = &name;
+                    local_shortcut_entry.value = &(itr_local->second);
 #endif
-                    } else {
-                        auto itr_global = globals.find(name);
-                        if (itr_global != globals.end()) {
-                            DEBUG("op::LOAD_NAME ('%s') loaded a global", name.c_str());
-                            this->value_stack.push_back(itr_global->second);
-                        } else {
-                            auto itr_builtin = builtins.find(name);
-                            if (itr_builtin != builtins.end()) {
-                                DEBUG("op::LOAD_NAME ('%s') loaded a builtin", name.c_str());
-                                this->value_stack.push_back(itr_builtin->second);
-                            } else {
-                                throw pyerror(string("op::LOAD_NAME name not found: ") + name);
-                            }
-                        }
-                    }
-#ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
-                }
-#endif
+                    break ;
+                } 
+                auto itr_global = globals.find(name);
+                if (itr_global != globals.end()) {
+                    DEBUG("op::LOAD_NAME ('%s') loaded a global", name.c_str());
+                    this->value_stack.push_back(itr_global->second);
+                    break ;
+                } 
+                auto itr_builtin = builtins.find(name);
+                if (itr_builtin != builtins.end()) {
+                    DEBUG("op::LOAD_NAME ('%s') loaded a builtin", name.c_str());
+                    this->value_stack.push_back(itr_builtin->second);
+                    break ;
+                } 
+                
+                throw pyerror(string("op::LOAD_NAME name not found: ") + name);
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_NAME tried to load name out of range");
             }
@@ -257,15 +278,21 @@ inline void FrameState::eval_next() {
         }
         case op::STORE_NAME:
         {
+            this->check_stack_size(1);
             try {
                 const std::string& name = this->code->co_names.at(arg);
                 auto& local_shortcut_entry = this->ns_local_shortcut[arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *))];
+
+#ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
                 if (local_shortcut_entry.value != nullptr &&
                     local_shortcut_entry.key == &name) {
                     *(local_shortcut_entry.value) = std::move(this->value_stack.back());
                 } else {
                     this->ns_local[name] = std::move(this->value_stack.back());
                 }
+#else 
+                this->ns_local[name] = std::move(this->value_stack.back());
+#endif
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_NAME tried to store name out of range");
@@ -287,19 +314,27 @@ inline void FrameState::eval_next() {
         case op::CALL_FUNCTION:
         {
             DEBUG("op::CALL_FUNCTION attempted to call a function with %d arguments", arg);
-            // TODO: optimize function call to use std::move instead!!!
-            // or better, have functions take a begin and end range iterator
+            this->check_stack_size(1 + arg);
+            
             std::vector<Value> args(this->value_stack.end() - arg, this->value_stack.end());
             this->value_stack.resize(this->value_stack.size() - arg);
+            // note our usage of std::move, std::move denotes that rather than
+            // copy constructing assignment, we should actually move the value 
+            // and invalidate the source because the source will not be used 
+            // in the future
+            Value func = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+
             std::visit(
                 eval_helpers::call_visitor(*this, args), 
-                this->value_stack.back()
+                func
             );
 
             break ;
         }
         case op::POP_TOP:
         {
+            this->check_stack_size(1);
             this->value_stack.pop_back();
             break ;
         }
@@ -311,6 +346,7 @@ inline void FrameState::eval_next() {
         }
         case op::COMPARE_OP:
         {
+            this->check_stack_size(2);
             const Value val2 = std::move(this->value_stack.back());
             this->value_stack.pop_back();
             const Value val1 = std::move(this->value_stack.back());
@@ -361,6 +397,7 @@ inline void FrameState::eval_next() {
         // INPLACE_ADD should call __iadd__ method on full objects, falls back to __add__ if not available.
         case op::BINARY_ADD:
         {
+            this->check_stack_size(2);
             this->value_stack[this->value_stack.size() - 2] = 
                 std::move(std::visit(eval_helpers::add_visitor(), 
                     this->value_stack[this->value_stack.size() - 2],
@@ -371,6 +408,7 @@ inline void FrameState::eval_next() {
         case op::INPLACE_SUBTRACT:
         case op::BINARY_SUBTRACT:
         {
+            this->check_stack_size(2);
             this->value_stack[this->value_stack.size() - 2] = 
                 std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_sub>(),
                     this->value_stack[this->value_stack.size() - 2],
@@ -381,6 +419,7 @@ inline void FrameState::eval_next() {
         case op::INPLACE_FLOOR_DIVIDE:
         case op::BINARY_FLOOR_DIVIDE:
         {
+            this->check_stack_size(2);
             this->value_stack[this->value_stack.size() - 2] = 
                 std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_divide>(),
                     this->value_stack[this->value_stack.size() - 2],
@@ -391,6 +430,7 @@ inline void FrameState::eval_next() {
         case op::INPLACE_MULTIPLY:
         case op::BINARY_MULTIPLY:
         {
+            this->check_stack_size(2);
             this->value_stack[this->value_stack.size() - 2] = 
                 std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_mult>(),
                     this->value_stack[this->value_stack.size() - 2],
@@ -401,6 +441,7 @@ inline void FrameState::eval_next() {
         case op::INPLACE_MODULO:
         case op::BINARY_MODULO:
         {
+            this->check_stack_size(2);
             this->value_stack[this->value_stack.size() - 2] = 
                 std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_modulo>(),
                     this->value_stack[this->value_stack.size() - 2],
@@ -410,6 +451,7 @@ inline void FrameState::eval_next() {
         }
         case op::RETURN_VALUE:
         {
+            this->check_stack_size(1);
             auto val = this->value_stack.back();
             if (this->parent_frame != nullptr) {
                 this->parent_frame->value_stack.push_back(std::move(val));
@@ -433,12 +475,14 @@ inline void FrameState::eval_next() {
             break ;
         case op::POP_JUMP_IF_FALSE:
         {
+            this->check_stack_size(1);
             // TODO: implement handling for truthy values.
             Value top = std::move(this->value_stack.back());
             this->value_stack.pop_back();
             try {
                 if (!std::get<bool>(top)) {
                     this->r_pc = arg;
+                    return ;
                 }
             } catch (std::bad_variant_access& e) {
                 // TODO: does not actually matter what the type of the condition is :o
@@ -461,7 +505,12 @@ inline void FrameState::eval_next() {
     
     // REMINDER: some instructions like op::JUMP_ABSOLUTE return early, so they
     // do not reach this point
-    
+
+#ifdef DEBUG_ON
+    std::cout << "\tSTACK AFTER OPERATION:";
+    this->print_stack();
+#endif
+
     if (bytecode < op::HAVE_ARGUMENT) {
         this->r_pc += 1;
     } else {
@@ -470,13 +519,22 @@ inline void FrameState::eval_next() {
 }
 
 void InterpreterState::eval() {
-    while (!this->callstack.empty()) {
-        // TODO: try caching the top of the stack
-        #ifdef PRINT_OPS
-        this->callstack.top().eval_print();
-        #else
-        this->callstack.top().eval_next();
-        #endif
+    try {
+        while (!this->callstack.empty()) {
+            // TODO: try caching the top of the stack
+            #ifdef PRINT_OPS
+            this->callstack.top().eval_print();
+            #else
+            this->callstack.top().eval_next();
+            #endif
+        }
+    } catch (const pyerror& err) {
+        const auto& frame = this->callstack.top();
+        std::cout << "ENCOUNTERED ERROR WHILE EVALUATING OPERATION: " 
+            << op::name[frame.code->bytecode[frame.r_pc]] << std::endl;
+        std::cout << "\tSTACK:";
+        frame.print_stack();
+        throw err;
     }
 }
 
