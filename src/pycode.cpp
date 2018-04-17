@@ -106,10 +106,21 @@ std::shared_ptr<Code> Code::fromProgram(const std::string& python, const std::st
     
     std::istreambuf_iterator<char> eos;
     std::string outputJson(std::istreambuf_iterator<char>(compilePyProc.output()), eos);
+    std::string outputError(std::istreambuf_iterator<char>(compilePyProc.error()), eos);
+
+    if (outputError.size() > 0) {
+        std::cout << "ERROR PARSING SOURCE CODE: " << std::endl << outputError;
+        throw pyerror("source code error");
+    }
     
     DEBUG("trying to read JSON");
     json tree;
-    tree = json::parse(outputJson.c_str());
+    try {
+        tree = json::parse(outputJson.c_str());
+    } catch (std::exception& err) {
+        std::cout << outputJson << std::endl;
+        throw err;
+    }
     DEBUG("read successful.");
     return std::make_shared<Code>(tree);
 }

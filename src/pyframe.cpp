@@ -8,7 +8,7 @@
 #include "pyframe.hpp"
 #include "pyinterpreter.hpp"
 #include "../lib/oplist.hpp"
-#define DEBUG_ON
+// #define DEBUG_ON
 #include "../lib/debug.hpp"
 
 using std::string;
@@ -192,6 +192,9 @@ namespace eval_helpers {
 void FrameState::print_stack() const {
     std::cout << "[";
     for (size_t i = 0; i < this->value_stack.size(); ++i) {
+        if (i != 0) {
+            std::cout << ", ";
+        }
         const Value& val = this->value_stack[i];
         std::cout << i << "_";
         std::visit(value_helper::overloaded {
@@ -204,9 +207,8 @@ void FrameState::print_stack() const {
             [](value::NoneType) {std::cout << "None"; },
             [](bool val) {if (val) std::cout << "bool(true)"; else std::cout << "bool(false)"; }
         }, val);
-        std::cout << ", ";
     }
-    std::cout << "] (" << this->value_stack.size() << " elements)";
+    std::cout << "].len = " << this->value_stack.size();
 
     std::cout << std::endl;
 }
@@ -506,8 +508,8 @@ inline void FrameState::eval_next() {
     // REMINDER: some instructions like op::JUMP_ABSOLUTE return early, so they
     // do not reach this point
 
-#ifdef DEBUG_ON
-    std::cout << "\tSTACK AFTER OPERATION:";
+#ifdef DEBUG_STACK
+    std::cout << "\tSTACK AFTER op::" << op::name[bytecode] << ": ";
     this->print_stack();
 #endif
 
