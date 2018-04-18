@@ -517,26 +517,24 @@ inline void FrameState::eval_next() {
             return ;
         case op::MAKE_FUNCTION:
         {
-            //this->check_stack_size(arg + 2);
+            this->check_stack_size(arg + 2);
 
             // Pop the name and code
             Value name = std::move(value_stack.back());
-            value_stack.pop_back();
+            this->value_stack.pop_back();
             Value code = std::move(value_stack.back());
-            value_stack.pop_back();
+            this->value_stack.pop_back();
 
             // Pop the arguments
-            std::vector<Value> v;
+            /*std::vector<Value> v;
             v.reserve(arg);
-
-#ifdef JOHN_PRINTS_ON
-            fprintf(stderr,"I SHOULD CHANGE THIS LINE BELOW TO NOT LOOPING BUT BY PASSING IT AN ITERATOR\n",arg);
-#endif
-            // I SHOULD CHANGE THIS LINE BELOW TO NOT LOOPING BUT BY PASSING IT AN ITERATOR
             for(int i = 0;i < arg;i++){
                 v.push_back(std::move(value_stack.back()));
                 value_stack.pop_back();
-            }
+            }*/
+
+            std::vector<Value> v( this->value_stack.end() - arg, this->value_stack.end());
+            this->value_stack.resize(this->value_stack.size() - arg);
 
 #ifdef JOHN_PRINTS_ON
             fprintf(stderr,"Creating a function that accepts %d default args:\n",arg);
@@ -550,9 +548,10 @@ inline void FrameState::eval_next() {
             // Create the function object
             // Error here if the wrong types
             try {
-                value_stack.push_back(std::make_shared<value::PyFunc>(value::PyFunc(std::get<ValueString>(name), 
+                ValuePyFunction nv = std::make_shared<value::PyFunc>(value::PyFunc(std::get<ValueString>(name), 
                                                           std::get<ValueCode>(code), 
-                                                          v)));
+                                                          v));
+                this->value_stack.push_back(nv);
             } catch (std::bad_variant_access&) {
                 pyerror("MAKE_FUNCTION called with bad stack");
             }
