@@ -189,6 +189,22 @@ namespace eval_helpers {
     };
 }
 
+// Bad ugly copy paste but I got annoted at type errors
+// Will improve later
+void FrameState::print_value(Value& val) const {
+    std::visit(value_helper::overloaded {
+            [](auto&& arg) { throw pyerror("unimplemented stack printer for stack value"); },
+            [](double arg) { std::cerr << "double(" << arg << ")"; },
+            [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
+            [](const ValueString arg) {std::cerr << "ValueString(" << *arg << ")"; },
+            [](const ValueCFunction arg) {std::cerr << "CFunction()"; },
+            [](const ValueCode arg) {std::cerr << "Code()"; },
+            [](const ValuePyFunction arg) {std::cerr << "Python Code()"; },
+            [](value::NoneType) {std::cerr << "None"; },
+            [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
+        }, val);
+}
+
 void FrameState::print_stack() const {
     std::cerr << "[";
     for (size_t i = 0; i < this->value_stack.size(); ++i) {
@@ -204,6 +220,7 @@ void FrameState::print_stack() const {
             [](const ValueString& arg) {std::cerr << "ValueString(" << *arg << ")"; },
             [](const ValueCFunction& arg) {std::cerr << "CFunction()"; },
             [](const ValueCode& arg) {std::cerr << "Code()"; },
+            [](const ValuePyFunction& arg) {std::cerr << "Python Code()"; },
             [](value::NoneType) {std::cerr << "None"; },
             [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
         }, val);
@@ -492,12 +509,55 @@ inline void FrameState::eval_next() {
             }
             break;
         }
-        case op::JUMP_ABSOLUTE:
+ //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////       case op::JUMP_ABSOLUTE:
             this->r_pc = arg;
             return ;
         case op::JUMP_FORWARD:
             this->r_pc += arg;
             return ;
+        case op::MAKE_FUNCTION:
+        {
+            //this->check_stack_size(arg + 2);
+
+            // Pop the name and code
+            Value name = std::move(value_stack.back());
+            value_stack.pop_back();
+            Value code = std::move(value_stack.back());
+            value_stack.pop_back();
+
+            // Pop the arguments
+            std::vector<Value> v;
+            v.reserve(arg);
+
+#ifdef JOHN_PRINTS_ON
+            fprintf(stderr,"I SHOULD CHANGE THIS LINE BELOW TO NOT LOOPING BUT BY PASSING IT AN ITERATOR\n",arg);
+#endif
+            // I SHOULD CHANGE THIS LINE BELOW TO NOT LOOPING BUT BY PASSING IT AN ITERATOR
+            for(int i = 0;i < arg;i++){
+                v.push_back(std::move(value_stack.back()));
+                value_stack.pop_back();
+            }
+
+#ifdef JOHN_PRINTS_ON
+            fprintf(stderr,"Creating a function that accepts %d default args:\n",arg);
+            print_value(name);
+            fprintf(stderr,"\nThose default args are:\n",arg);
+            for(int i = 0;i < v.size();i++){
+                print_value(v[i]);
+                fprintf(stderr,"\n",arg);
+            }
+#endif
+            // Create the function object
+            // Error here if the wrong types
+            try {
+                value_stack.push_back(std::make_shared<value::PyFunc>(value::PyFunc(std::get<ValueString>(name), 
+                                                          std::get<ValueCode>(code), 
+                                                          v)));
+            } catch (std::bad_variant_access&) {
+                pyerror("MAKE_FUNCTION called with bad stack");
+            }
+            break;
+        }
         default:
         {
             DEBUG("UNIMPLEMENTED BYTECODE: %s", op::name[bytecode])

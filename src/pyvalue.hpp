@@ -20,6 +20,8 @@ namespace value {
     struct NoneType { };
 
     struct CFunction;
+
+    struct PyFunc;
 }
 
 // larger value types should be wrapped by a shared_ptr,
@@ -28,6 +30,7 @@ namespace value {
 using ValueString = std::shared_ptr<std::string>;
 using ValueCode = std::shared_ptr<const Code>;
 using ValueCFunction = std::shared_ptr<const value::CFunction>;
+using ValuePyFunction = std::shared_ptr<const value::PyFunc>;
 
 using Value = std::variant<
     bool,
@@ -36,13 +39,31 @@ using Value = std::variant<
     ValueString,
     ValueCode,
     ValueCFunction,
-    value::NoneType
+    value::NoneType,
+    ValuePyFunction
 >;
 
 namespace value {
     struct CFunction {
         std::function<void(FrameState&, std::vector<Value>&)> action;
         CFunction(const std::function<void(FrameState&, std::vector<Value>&)>& _action) : action(_action) { };
+    };
+}
+
+// A struct that holds a python function
+namespace value {
+    struct PyFunc{
+        // It's code
+        ValueCode code;
+
+        // It's name
+        ValueString name;
+
+        // It's default argument
+        std::vector<Value> def_args;
+
+        // Constructor
+        PyFunc(std::shared_ptr<std::string> nm, std::shared_ptr<const Code> c, std::vector<Value> defaults) { };
     };
 }
 

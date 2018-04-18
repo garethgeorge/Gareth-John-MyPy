@@ -61,6 +61,7 @@ struct FrameState {
     void eval_next();
     void print_next();
 
+    void print_value(Value& val) const;
     void print_stack() const;
 
     // helper method for checking the stack has enough values for the current
