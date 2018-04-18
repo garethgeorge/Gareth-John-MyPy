@@ -53,21 +53,23 @@ namespace value {
 // A struct that holds a python function
 namespace value {
     struct PyFunc{
-        // It's code
-        ValueCode code;
-
         // It's name
-        ValueString name;
+        const ValueString name;
+        
+        // It's code
+        const ValueCode code;
 
         // It's default argument
-        std::vector<Value> def_args;
+        const std::shared_ptr<std::vector<Value>> def_args;
 
         // Constructor
-        PyFunc(ValueString name, ValueCode code, std::vector<Value> def_args) {
+        /*PyFunc(const ValueString& name,const ValueCode& code, std::vector<Value> def_args) {
             this->name = name;
             this->code = code;
             this->def_args = def_args;
-         };
+         };*/
+
+        // PyFunc(const ValueString& name,const ValueCode& code,const std::vector<Value> def_args) { };
     };
 }
 

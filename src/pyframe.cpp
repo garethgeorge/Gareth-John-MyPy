@@ -212,16 +212,15 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
 #endif 
     // put values into the local pool
     // the name is the constant at the argument number it is, the vaue has been passed in or uses the default
-    fprintf(stderr,"Values:\n");
     for(int i = 0;i < args.size();i++){
         add_to_ns_local(
             this->code->co_varnames[i], // Read the name to save to from the constants pool
-            i < args.size() ? std::move(args[i]) : func->def_args[i]  // read the value from passed in args, or else the default
+            i < args.size() ? std::move(args[i]) : (*(func->def_args))[i]  // read the value from passed in args, or else the default
         );
         #ifdef JOHN_PRINTS_ON
             fprintf(stderr,"Name: %s\n",this->code->co_varnames[i].c_str());
             fprintf(stderr,"Value: ");
-            Value v2 = args.size() ? std::move(args[i]) : func->def_args[i]; // Baaaaaaaad copy/paste
+            Value v2 = args.size() ? std::move(args[i]) : (*(func->def_args))[i]; // Baaaaaaaad copy/paste
             print_value(v2);
             fprintf(stderr,"\n");
         #endif
@@ -577,24 +576,28 @@ inline void FrameState::eval_next() {
                 value_stack.pop_back();
             }*/
 
-            std::vector<Value> v( this->value_stack.end() - arg, this->value_stack.end());
+            std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end()));
+            //std::vector v(this->value_stack.end() - arg, this->value_stack.end());
             this->value_stack.resize(this->value_stack.size() - arg);
 
 #ifdef JOHN_PRINTS_ON
             fprintf(stderr,"Creating a function that accepts %d default args:\n",arg);
             print_value(name);
             fprintf(stderr,"\nThose default args are:\n",arg);
-            for(int i = 0;i < v.size();i++){
-                print_value(v[i]);
+            for(int i = 0;i < v->size();i++){
+                print_value((*v)[i]);
                 fprintf(stderr,"\n",arg);
             }
 #endif
             // Create the function object
             // Error here if the wrong types
             try {
-                ValuePyFunction nv = std::make_shared<value::PyFunc>(
+                /*ValuePyFunction nv = std::make_shared<value::PyFunc>(
                     value::PyFunc(std::get<ValueString>(name), std::get<ValueCode>(code), v)
-                );
+                );*/
+                //value::PyFunc npf {std::get<ValueString>(name), std::get<ValueCode>(code), v};
+                //ValuePyFunction nv = std::make_shared<value::PyFunc>;
+                ValuePyFunction nv = std::make_shared<value::PyFunc>(value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(code), v});
                 this->value_stack.push_back(nv);
             } catch (std::bad_variant_access&) {
                 pyerror("MAKE_FUNCTION called with bad stack");
