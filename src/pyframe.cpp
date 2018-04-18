@@ -204,20 +204,22 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
     fprintf(stderr,"(initialize_from_pyfunc) Assigning the following values to names:\n");
 #endif 
     // put values into the local pool
-    // the name is the constant at the argument number it is, the vaue has been passed in or uses the default
+    // the name is the constant (co_varnames) at the argument number it is
+    // the value has been passed in or uses the default
     for(int i = 0;i < this->code->co_argcount;i++){
-        add_to_ns_local(
-            this->code->co_varnames[i], // Read the name to save to from the constants pool
-            // read the value from passed in args, or else the default
-            i < args.size() ? std::move(args[i]) : (*(func->def_args))[i] 
-        );
         #ifdef JOHN_PRINTS_ON
             fprintf(stderr,"Name: %s\n",this->code->co_varnames[i].c_str());
             fprintf(stderr,"Value: ");
-            Value v2 = args.size() ? std::move(args[i]) : (*(func->def_args))[i]; // Baaaaaaaad copy/paste
+            Value v2 = i < args.size() ? args[i] : (*(func->def_args))[i]; // Baaaaaaaad copy/paste
             print_value(v2);
             fprintf(stderr,"\n");
         #endif
+        add_to_ns_local(
+            // Read the name to save to from the constants pool
+            this->code->co_varnames[i], 
+            // read the value from passed in args, or else the default
+            i < args.size() ? std::move(args[i]) : (*(func->def_args))[i] 
+        );
     }
 }
 
@@ -236,7 +238,7 @@ void FrameState::print_value(Value& val) const {
             [](const ValueString arg) {std::cerr << "ValueString(" << *arg << ")"; },
             [](const ValueCFunction arg) {std::cerr << "CFunction()"; },
             [](const ValueCode arg) {std::cerr << "Code()"; },
-            [](const ValuePyFunction arg) {std::cerr << "Python Code()"; },
+            [](const ValuePyFunction arg) {std::cerr << "Python Function()"; },
             [](value::NoneType) {std::cerr << "None"; },
             [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
         }, val);
@@ -631,10 +633,12 @@ inline void FrameState::eval_next() {
             Value code = std::move(value_stack.back());
             this->value_stack.pop_back();
 
+            // Create a shared pointer to a vector from the args
             std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(
                 std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end())
             );
-            //std::vector v(this->value_stack.end() - arg, this->value_stack.end());
+            
+            // Remove the args from the value stack
             this->value_stack.resize(this->value_stack.size() - arg);
 
 #ifdef JOHN_PRINTS_ON
@@ -654,7 +658,7 @@ inline void FrameState::eval_next() {
                 );
                 this->value_stack.push_back(nv);
             } catch (std::bad_variant_access&) {
-                pyerror("MAKE_FUNCTION called with bad stack");
+                throw pyerror("MAKE_FUNCTION called with bad stack");
             }
             break;
         }
