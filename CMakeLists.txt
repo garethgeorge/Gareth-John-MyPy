@@ -2,6 +2,9 @@
 cmake_minimum_required(VERSION 3.11)
 project(MyPy)
 
+set(CMAKE_C_COMPILER "gcc-7")
+set(CMAKE_CXX_COMPILER "g++-7")
+
 set (MyPy_VERSION_MAJOR 1)
 set (MyPy_VERSION_MINOR 0)
 

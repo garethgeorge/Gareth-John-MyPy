@@ -16,7 +16,6 @@ check_double(x + 10.5)
     }
 
     SECTION( "multiply two values" ) {
-        std::cout << "RUNNING THIS!!!!" << std::endl;
         const char *theCode = R"(
 x = 5
 check_int(x * 5)
@@ -31,7 +30,6 @@ check_double(5.5 * x)
     }
 
     SECTION( "subtract two values" ) {
-        std::cout << "RUNNING THIS!!!!" << std::endl;
         const char *theCode = R"(
 x = 5
 check_int(x - 5)
@@ -43,7 +41,6 @@ check_int(x - 5)
     }
 
     SECTION( "add two strings" ) {
-        std::cout << "RUNNING THIS!!!!" << std::endl;
         const char *theCode = R"(
 x = "test"
 check_string(x + " test")
@@ -55,7 +52,6 @@ check_string(x + " test")
     }
 
     SECTION( "can not multiply an int and a string" ) {
-        std::cout << "RUNNING THIS!!!!" << std::endl;
         const char *theCode = R"(
 x = 5
 x * "test"

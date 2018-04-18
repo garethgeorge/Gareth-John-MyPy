@@ -8,7 +8,7 @@
 #include "pyframe.hpp"
 #include "pyinterpreter.hpp"
 #include "../lib/oplist.hpp"
-#define DEBUG_ON
+// #define DEBUG_ON
 #include "../lib/debug.hpp"
 
 using std::string;
