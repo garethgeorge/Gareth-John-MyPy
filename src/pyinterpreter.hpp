@@ -21,7 +21,7 @@ using Namespace = std::unordered_map<std::string, Value>;
 struct InterpreterState {
     std::stack<FrameState> callstack;
     Namespace ns_globals;
-    Namespace ns_bulitins;
+    Namespace ns_builtins;
 
     InterpreterState(std::shared_ptr<Code>& code);
 

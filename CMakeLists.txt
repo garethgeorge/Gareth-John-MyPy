@@ -1,6 +1,5 @@
 # https://cmake.org/cmake-tutorial/
-
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.11)
 project(MyPy)
 
 set (MyPy_VERSION_MAJOR 1)
@@ -23,6 +22,7 @@ file(GLOB_RECURSE SRCS_LIB
 file(GLOB_RECURSE SRCS_MYPY 
   "src/*.cpp"
   "src/*.hpp")
+
 list(FILTER SRCS_MYPY EXCLUDE REGEX ".*vm_main.cpp$")
 
 add_executable(mypy

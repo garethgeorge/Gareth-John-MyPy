@@ -1,5 +1,3 @@
-print("hello world")
-print("my name is gareth")
-x = "test"
-y = "test2"
-print(x + y)
+x = 5
+check_int(x * 11)
+check_double(x + 10.5)

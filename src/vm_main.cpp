@@ -36,15 +36,15 @@ int main(const int argc, const char *argv[])
         DEBUG("loading python source from file");
         std::ifstream fstream(argv[1]);
         std::string s(std::istreambuf_iterator<char>(fstream), eos);;
-        code = Code::fromProgram(s, "../pytools/compile.py");
+        code = Code::from_program(s, "../pytools/compile.py");
     } else {
         DEBUG("loading python source from stdin");
         std::string s(std::istreambuf_iterator<char>(std::cin), eos);;
-        code = Code::fromProgram(s, "../pytools/compile.py");
+        code = Code::from_program(s, "../pytools/compile.py");
     }
     
     InterpreterState state(code);
-    builtins::inject_builtins(state.ns_bulitins);
+    builtins::inject_builtins(state.ns_builtins);
     state.eval();
 
     return 0;

@@ -8,7 +8,7 @@
 #include "pyframe.hpp"
 #include "pyinterpreter.hpp"
 #include "../lib/oplist.hpp"
-// #define DEBUG_ON
+#define DEBUG_ON
 #include "../lib/debug.hpp"
 
 using std::string;
@@ -246,7 +246,7 @@ inline void FrameState::eval_next() {
                 } 
 #endif
                 const auto& globals = this->interpreter_state->ns_globals;
-                const auto& builtins = this->interpreter_state->ns_bulitins;
+                const auto& builtins = this->interpreter_state->ns_builtins;
                 auto itr_local = this->ns_local.find(name);
                 if (itr_local != this->ns_local.end()) {
                     DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());

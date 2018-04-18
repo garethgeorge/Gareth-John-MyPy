@@ -96,7 +96,7 @@ Code::Code(const json& tree) {
 Code::~Code() {
 }
 
-std::shared_ptr<Code> Code::fromProgram(const std::string& python, const std::string& compilePyPath) {
+std::shared_ptr<Code> Code::from_program(const std::string& python, const std::string& compilePyPath) {
     procxx::process compilePyProc{"python3", compilePyPath.c_str()};
     
     DEBUG("execing compile python process");

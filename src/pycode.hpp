@@ -25,7 +25,7 @@ struct Code {
     Code(const json& tree);
     ~Code();
     
-    static std::shared_ptr<Code> fromProgram(const std::string& python, const std::string& compilePyPath);
+    static std::shared_ptr<Code> from_program(const std::string& python, const std::string& compilePyPath);
 };
 
 }
