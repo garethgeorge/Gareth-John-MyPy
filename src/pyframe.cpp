@@ -187,13 +187,7 @@ namespace eval_helpers {
 
             // Push a new FrameState
             frame.interpreter_state->callstack.push(
-                //std::move(
-                    FrameState(
-                        frame.interpreter_state,
-                        &frame,
-                        func->code
-                    )
-                //)
+                std::move( FrameState(frame.interpreter_state, &frame, func->code))
             );
             frame.interpreter_state->callstack.top().initialize_from_pyfunc(func,args);
         }
@@ -552,7 +546,7 @@ inline void FrameState::eval_next() {
             }
             break;
         }
- //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////       case op::JUMP_ABSOLUTE:
+        case op::JUMP_ABSOLUTE:
             this->r_pc = arg;
             return ;
         case op::JUMP_FORWARD:
@@ -576,7 +570,9 @@ inline void FrameState::eval_next() {
                 value_stack.pop_back();
             }*/
 
-            std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end()));
+            std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(
+                std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end())
+            );
             //std::vector v(this->value_stack.end() - arg, this->value_stack.end());
             this->value_stack.resize(this->value_stack.size() - arg);
 
@@ -597,7 +593,9 @@ inline void FrameState::eval_next() {
                 );*/
                 //value::PyFunc npf {std::get<ValueString>(name), std::get<ValueCode>(code), v};
                 //ValuePyFunction nv = std::make_shared<value::PyFunc>;
-                ValuePyFunction nv = std::make_shared<value::PyFunc>(value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(code), v});
+                ValuePyFunction nv = std::make_shared<value::PyFunc>(
+                    value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(code), v}
+                );
                 this->value_stack.push_back(nv);
             } catch (std::bad_variant_access&) {
                 pyerror("MAKE_FUNCTION called with bad stack");
