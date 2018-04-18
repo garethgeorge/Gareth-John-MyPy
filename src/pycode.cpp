@@ -91,6 +91,14 @@ Code::Code(const json& tree) {
             name.get<std::string>()
         );
     }
+
+    // load var names
+    for (const json& vname : tree.at("co_varnames")) {
+        DEBUG("loaded var name %lu) %s", this->co_names.size(), vname.get<std::string>().c_str())
+        this->co_varnames.push_back(
+            vname.get<std::string>()
+        );
+    }
 }   
 
 Code::~Code() {

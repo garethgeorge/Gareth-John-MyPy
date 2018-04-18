@@ -207,15 +207,24 @@ namespace eval_helpers {
 
 void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args){
 #ifdef JOHN_PRINTS_ON
-    fprintf(stderr,"The logic here is going to need to be more complicated to be correct\nFor example, it needs to consider defailt args at all in the first place\nIt also needs to read co_argcount from the Code object");
+    fprintf(stderr,"The logic here is going to need to be more complicated to be correct!\n");
+    fprintf(stderr,"Assigning the following values to names:\n");
 #endif 
     // put values into the local pool
     // the name is the constant at the argument number it is, the vaue has been passed in or uses the default
+    fprintf(stderr,"Values:\n");
     for(int i = 0;i < args.size();i++){
         add_to_ns_local(
-            *std::get<std::shared_ptr<std::string>>(func->code->co_consts[i]), // Read the name to save to from the constants pool
+            this->code->co_varnames[i], // Read the name to save to from the constants pool
             i < args.size() ? std::move(args[i]) : func->def_args[i]  // read the value from passed in args, or else the default
-        ); 
+        );
+        #ifdef JOHN_PRINTS_ON
+            fprintf(stderr,"Name: %s\n",this->code->co_varnames[i].c_str());
+            fprintf(stderr,"Value: ");
+            Value v2 = args.size() ? std::move(args[i]) : func->def_args[i]; // Baaaaaaaad copy/paste
+            print_value(v2);
+            fprintf(stderr,"\n");
+        #endif
     }
 }
 
