@@ -32,6 +32,7 @@ Code::Code(const json& tree) {
     
     this->co_stacksize = tree.at("co_stacksize").get<uint64_t>();
     this->co_nlocals = tree.at("co_nlocals").get<uint64_t>();
+    this->co_argcount = tree.at("co_argcount").get<uint64_t>();
 
     // decode the bytecode and push it into the bytecode property :)
     std::string base64bytecode = tree.at("co_code").get<std::string>();
