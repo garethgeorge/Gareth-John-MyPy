@@ -63,7 +63,11 @@ namespace value {
         std::vector<Value> def_args;
 
         // Constructor
-        PyFunc(std::shared_ptr<std::string> nm, std::shared_ptr<const Code> c, std::vector<Value> defaults) { };
+        PyFunc(ValueString name, ValueCode code, std::vector<Value> def_args) {
+            this->name = name;
+            this->code = code;
+            this->def_args = def_args;
+         };
     };
 }
 

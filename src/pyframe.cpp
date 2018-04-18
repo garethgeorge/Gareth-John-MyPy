@@ -187,12 +187,13 @@ namespace eval_helpers {
 
             // Push a new FrameState
             frame.interpreter_state->callstack.push(
-                std::move(FrameState(
-                    frame.interpreter_state,
-                    &frame,
-                    (func->code)
+                //std::move(
+                    FrameState(
+                        frame.interpreter_state,
+                        &frame,
+                        func->code
                     )
-                )
+                //)
             );
             frame.interpreter_state->callstack.top().initialize_from_pyfunc(func,args);
         }
@@ -582,9 +583,9 @@ inline void FrameState::eval_next() {
             // Create the function object
             // Error here if the wrong types
             try {
-                ValuePyFunction nv = std::make_shared<value::PyFunc>(value::PyFunc(std::get<ValueString>(name), 
-                                                          std::get<ValueCode>(code), 
-                                                          v));
+                ValuePyFunction nv = std::make_shared<value::PyFunc>(
+                    value::PyFunc(std::get<ValueString>(name), std::get<ValueCode>(code), v)
+                );
                 this->value_stack.push_back(nv);
             } catch (std::bad_variant_access&) {
                 pyerror("MAKE_FUNCTION called with bad stack");
