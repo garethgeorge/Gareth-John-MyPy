@@ -444,7 +444,6 @@ inline void FrameState::eval_next() {
 #else 
                 this->ns_local[name] = std::move(this->value_stack.back());
 #endif
-                //fprintf(stderr,)
                 this->value_stack.pop_back();
 
             } catch (std::out_of_range& err) {
@@ -469,6 +468,8 @@ inline void FrameState::eval_next() {
             DEBUG("op::CALL_FUNCTION attempted to call a function with %d arguments", arg);
             this->check_stack_size(1 + arg);
             
+            // Instead of reading out into a vector, can I just pass have 'initialize_from_pyfunc'
+            // read directly off the stack?
             std::vector<Value> args(
                 this->value_stack.end() - arg,
                 this->value_stack.end());
