@@ -13,8 +13,9 @@
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
  - implement extended arguments - John/Jack or Gareth
+ - finish implement continue/break/try/except - John/Jack
+ - implement garbage collection - Gareth
  - implement generators/iterators - Gareth
- - finish implement continue/break/try/except - Gareth
  - primitive types for Lists/Tupples/Map/Set - Gareth
  - kwarg functions - John/Jack
  - implement a ton of builtins for the rest of the quarter

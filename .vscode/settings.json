@@ -45,5 +45,6 @@
         "valarray": "cpp",
         "variant": "cpp",
         "bitset": "cpp"
-    }
+    },
+    "C_Cpp.intelliSenseEngineFallback": "Enabled"
 }

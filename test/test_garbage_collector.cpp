@@ -1,3 +1,3 @@
 #include <catch.hpp>
 
-// #include "../src/pygc.hpp"
+#include "../src/pygc.hpp"
