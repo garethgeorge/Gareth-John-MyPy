@@ -203,22 +203,46 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
 #ifdef JOHN_PRINTS_ON
     fprintf(stderr,"(initialize_from_pyfunc) Assigning the following values to names:\n");
 #endif 
+    // Calculate which argument is the first argument with a default value
+    // This could be stored in PyFunc struct but that is a tiny space tradeoff vs tiny time tradeoff
+    int first_def_arg = this->code->co_argcount - func->def_args->size();
+    
     // put values into the local pool
     // the name is the constant (co_varnames) at the argument number it is
     // the value has been passed in or uses the default
     for(int i = 0;i < this->code->co_argcount;i++){
+        //Error if not given enough arguments
+        //TypeError: simplefunc() missing 2 required positional arguments: 'a' and 'd'
+        if(i < first_def_arg && i >= args.size()){
+            int missing_num = first_def_arg - i;
+            std::string err_str = std::string("TypeError: " + *(func->name)
+                        + " missing " + std::to_string(missing_num)
+                        + " required positional argument" + (missing_num == 1 ? ": " : "s: ")
+            );
+            // List the missing params
+            for(;i < first_def_arg;i++){
+                err_str += "'" + this->code->co_varnames[i] + "'";
+                if(i < first_def_arg - 1) err_str += " and ";
+            }
+            throw pyerror(err_str.c_str());
+            return;
+        }
+
+        // Print some info
         #ifdef JOHN_PRINTS_ON
             fprintf(stderr,"Name: %s\n",this->code->co_varnames[i].c_str());
             fprintf(stderr,"Value: ");
-            Value v2 = i < args.size() ? args[i] : (*(func->def_args))[i]; // Baaaaaaaad copy/paste
+            Value v2 = i < args.size() ? args[i] : (*(func->def_args))[i - first_def_arg]; // Baaaaaaaad copy/paste
             print_value(v2);
             fprintf(stderr,"\n");
         #endif
+
+        // The argument exists, save it
         add_to_ns_local(
             // Read the name to save to from the constants pool
             this->code->co_varnames[i], 
             // read the value from passed in args, or else the default
-            i < args.size() ? std::move(args[i]) : (*(func->def_args))[i] 
+            i < args.size() ? std::move(args[i]) : (*(func->def_args))[i - first_def_arg] 
         );
     }
 }
