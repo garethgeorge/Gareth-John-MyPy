@@ -1,9 +1,9 @@
-#include "../lib/catch.hpp"
+#include <catch.hpp>
 
 #include "include/test_helpers.hpp"
 
-TEST_CASE("while loops should loop", "[control -> while loop]") {
-    SECTION( "adding two values" ) {
+TEST_CASE("while loops should loop", "[control]") {
+    SECTION( "basic while loop" ) {
         auto code = build_string(R"(
 x = 0
 while x < 100:

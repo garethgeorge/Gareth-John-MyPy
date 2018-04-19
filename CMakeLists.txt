@@ -16,6 +16,8 @@ set(CMAKE_BUILD_TYPE Release)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
+include_directories("lib")
+
 # TODO: have a cmake file per directory which adds its own sources
 # see https://stackoverflow.com/questions/7046956/populating-srcs-from-cmakelists-txt-in-subdirectories
 file(GLOB_RECURSE SRCS_LIB
