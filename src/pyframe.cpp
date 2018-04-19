@@ -316,10 +316,10 @@ inline void FrameState::eval_next() {
                 const std::string& name = this->code->co_names.at(arg);
 
                 // Find it
-                auto itr_local = this->interpreter_state->ns_globals.find(name);
+                auto itr_local = this->interpreter_state->ns_globals_ptr->find(name);
 
                 // Push it to the stack if it exists, otherwise try builtins
-                if (itr_local != this->interpreter_state->ns_globals.end()) {
+                if (itr_local != this->interpreter_state->ns_globals_ptr->end()) {
                     DEBUG("op::LOAD_GLOBAL ('%s') loaded a global", name.c_str());
                     this->value_stack.push_back(itr_local->second);
                     break;
@@ -372,7 +372,7 @@ inline void FrameState::eval_next() {
                     break ;
                 } 
 #endif
-                const auto& globals = this->interpreter_state->ns_globals;
+                const auto& globals = *(this->interpreter_state->ns_globals_ptr);
                 const auto& builtins = this->interpreter_state->ns_builtins;
                 auto itr_local = this->ns_local.find(name);
                 if (itr_local != this->ns_local.end()) {
@@ -410,7 +410,7 @@ inline void FrameState::eval_next() {
             try {
                 // Check which name we are storing and store it
                 const std::string& name = this->code->co_names.at(arg);
-                this->interpreter_state->ns_globals[name] = std::move(this->value_stack.back());
+                (*(this->interpreter_state->ns_globals_ptr))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
                 throw pyerror("op::STORE_GLOBAL tried to store name out of range");
@@ -432,7 +432,6 @@ inline void FrameState::eval_next() {
             this->check_stack_size(1);
             try {
                 const std::string& name = this->code->co_names.at(arg);
-
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
                 auto& local_shortcut_entry = 
                     this->ns_local_shortcut[arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *))];
@@ -445,7 +444,9 @@ inline void FrameState::eval_next() {
 #else 
                 this->ns_local[name] = std::move(this->value_stack.back());
 #endif
+                //fprintf(stderr,)
                 this->value_stack.pop_back();
+
             } catch (std::out_of_range& err) {
                 throw pyerror("op::STORE_NAME tried to store name out of range");
             }
