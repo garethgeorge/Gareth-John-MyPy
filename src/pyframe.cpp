@@ -296,8 +296,17 @@ void FrameState::print_stack() const {
 
 inline void FrameState::eval_next() {
     Code::ByteCode bytecode = code->bytecode[this->r_pc];
-    // TODO: figure out how to load extended arguments
-    uint32_t arg = code->bytecode[this->r_pc + 1];
+    
+    // Read the argument
+    uint32_t arg = code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
+    
+    // Extend it if necessary
+    if(bytecode == op::EXTENDED_ARG){
+        this->r_pc += 3;
+        bytecode = code->bytecode[this->r_pc];
+        arg = (arg << 16) | code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
+        this->r_pc += 1;  
+    } 
     
     if (this->r_pc >= this->code->bytecode.size()) {
         DEBUG("overflowed program, popped stack frame, however this indicates a failure so we will exit.");
@@ -705,7 +714,7 @@ inline void FrameState::eval_next() {
     if (bytecode < op::HAVE_ARGUMENT) {
         this->r_pc += 1;
     } else {
-        this->r_pc += 2;
+        this->r_pc += 3;
     }
 }
 
