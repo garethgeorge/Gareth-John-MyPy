@@ -44,7 +44,8 @@
         "utility": "cpp",
         "valarray": "cpp",
         "variant": "cpp",
-        "bitset": "cpp"
+        "bitset": "cpp",
+        "unordered_set": "cpp"
     },
     "C_Cpp.intelliSenseEngineFallback": "Enabled"
 }

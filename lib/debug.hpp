@@ -7,10 +7,10 @@
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define DEBUG(message, ...) { \
-        char buffer[1 << 10]; \
-        sprintf(buffer, message, ##__VA_ARGS__); \
-        fprintf(stderr, "%s %s: %s\n", __FILENAME__, __PRETTY_FUNCTION__, buffer); \
-    }
+    char buffer[1 << 10]; \
+    sprintf(buffer, message, ##__VA_ARGS__); \
+    fprintf(stderr, "%s %s: %s\n", __FILENAME__, __PRETTY_FUNCTION__, buffer); \
+}
 
 #else 
 

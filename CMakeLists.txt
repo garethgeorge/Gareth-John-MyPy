@@ -45,3 +45,5 @@ add_executable(cmake_test
   ${SRCS_LIB}
   ${SRCS_MYPY}
 )
+
+# add_custom_command(TARGET cmake_test POST_BUILD COMMAND ./cmake_test) 
