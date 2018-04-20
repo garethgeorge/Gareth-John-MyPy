@@ -298,14 +298,15 @@ inline void FrameState::eval_next() {
     Code::ByteCode bytecode = code->bytecode[this->r_pc];
     
     // Read the argument
-    uint32_t arg = code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
-    
+    uint64_t arg = code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
+    //uint32_t arg = code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
+
     // Extend it if necessary
-    if(bytecode == op::EXTENDED_ARG){
+    while(bytecode == op::EXTENDED_ARG){
+    //if(bytecode == op::EXTENDED_ARG){
         this->r_pc += 3;
         bytecode = code->bytecode[this->r_pc];
         arg = (arg << 16) | code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
-        this->r_pc += 1;  
     } 
     
     if (this->r_pc >= this->code->bytecode.size()) {
