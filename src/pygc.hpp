@@ -41,20 +41,6 @@ namespace gc {
 template<class T>
 class gc_heap;
 
-
-#ifdef DEBUG_ON 
-#define DEBUG_CHECK_DELETED if (this->heap_obj->flags & FLAG_DELETED) { \
-            fprintf(stderr, "error, attempted to access a garbage collected object " \
-            "which has already been deleted.\n"); \
-            exit(-1); \
-        } 
-#else 
-
-#define DEBUG_CHECK_DELETED 
-
-#endif
-
-
 /*
     a template class representing a garbage collected pointer type,
     note that any object that is not visited on a gc pass will be collected
@@ -76,28 +62,32 @@ private:
 public:
 
     T* operator->() {
-        DEBUG_CHECK_DELETED
-
         return &(heap_obj->real);
     }
 
     T& operator*() {
-        DEBUG_CHECK_DELETED
-        
         return heap_obj->real;
     }
-
+    
+    /*
+        note gc_visit expects the for_each_child method to be implemented
+        for the type T of the pointer, we will then use that method to iterate
+        over the children of the class and check if they are still in
+    */
     template<class VisitorType>
     void gc_visit(VisitorType& visitor) {
         if (!(heap_obj->flags & FLAG_MARKED)) {
             visitor(*this);
-            for_each_child(*this, ([&visitor] (auto&& child) -> void {
-                child.gc_visit(visitor);
-            }));
+            for_each_child(*this, visitor);
         }
     }
 
     friend class gc_heap<T>;
+};
+
+template<class T>
+struct gc_rootset_ptr : public gc_ptr<T> {
+    // NOTE
 };
 
 /*
@@ -135,42 +125,22 @@ public:
     // i.e. O(n)
     // the intention is that this function should be used for debug only
     int heap_size() {
-#ifdef DEBUG_ON 
-        size_t count = 0;
-        for (auto& val : this->heap_objects) {
-            if (!(val.flags & gc_ptr<T>::FLAG_DELETED)) {
-                count++;
-            }
-        }
-        return count;
-#else
         return this->heap_objects.size();
-#endif
     }
 
     void sweep_marked_objects() {
         for (auto itr = this->heap_objects.begin(); itr != this->heap_objects.end();) {
-#ifdef DEBUG_ON
-            if ((*itr).flags & gc_ptr<T>::FLAG_DELETED) {
-                // we want to skip any object that is already marked as deleted
-                continue ;
-            }
-#endif
-
             auto &obj = *itr;
             if (!(obj.flags & gc_ptr<T>::FLAG_MARKED)) {
-#ifdef DEBUG_ON
-                (*itr).flags |= gc_ptr<T>::FLAG_DELETED;
-#endif
                 heap_objects.erase(itr++);
             } else {
-                (*itr).flags &= ~gc_ptr<T>::FLAG_DELETED;
+                (*itr).flags &= ~(gc_ptr<T>::FLAG_MARKED);
                 ++itr;
             }
         }
     }
 
-    auto get_mark_visitor() {
+    const auto get_mark_visitor() const {
         return [] (gc_ptr<T>& val) {
            val.heap_obj->flags |= gc_ptr<T>::FLAG_MARKED;
         };
