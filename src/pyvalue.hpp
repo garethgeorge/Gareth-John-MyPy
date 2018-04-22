@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <variant>
 #include <functional>
+#include <pygc.hpp>
 #include "pyerror.hpp"
 
 namespace py {
@@ -27,7 +28,7 @@ namespace value {
     struct NoneType { };
 
     struct CFunction;
-    struct List;
+    // struct List;
     // struct Map;
     // struct Set;
 }
@@ -37,7 +38,7 @@ namespace value {
 // it also allows sharing string objects between multiple values whenever possible
 using ValueString = shared_ptr<std::string>;
 using ValueCode = shared_ptr<const Code>;
-using ValueList = shared_ptr<value::List>;
+// using ValueList = gc::gc_ptr<value::List>;
 using ValueCFunction = shared_ptr<const value::CFunction>;
 
 
@@ -48,7 +49,7 @@ using Value = std::variant<
     ValueString,
     ValueCode,
     ValueCFunction,
-    ValueList,
+    // ValueList,
     value::NoneType
 >;
 

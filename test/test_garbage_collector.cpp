@@ -6,7 +6,7 @@
 #define DEBUG_ON
 #include <debug.hpp>
 
-#include "../src/pygc.hpp"
+#include <pygc.hpp>
 
 using namespace py::gc;
 using namespace std;
@@ -89,7 +89,6 @@ namespace py {
 
         // for each child for garbage collected 
         void for_each_child(gc_ptr<MyType>& val, auto visitor) {
-            std::cout << "for_each_child visitor was called" << std::endl;
             std::visit(variant_visitor(visitor), *val);
         }
     }
@@ -100,23 +99,31 @@ TEST_CASE("garbage collector, std::variant<int, Vector>", "[lib][gc]") {
     // setup the heap with its initial values, and one cycle
     gc_heap<MyType> heap;
     auto my_obj = heap.make(Vector());
-    std::get<Vector>(*my_obj).values.push_back(heap.make(15)); // add an integer value
+    auto myNumber = heap.make(15);
+    auto myOtherVector = heap.make(Vector());
+    
+    
+    
+    std::get<Vector>(*myOtherVector).values.push_back(myNumber);
+    
     std::get<Vector>(*my_obj).values.push_back(my_obj); // add reference to itself
+    std::get<Vector>(*my_obj).values.push_back(myOtherVector);
+    std::get<Vector>(*my_obj).values.push_back(myNumber);
 
     SECTION( "should clear all objects when sweeping without first marking" ) {
-        REQUIRE(heap.heap_size() == 2);
+        REQUIRE(heap.heap_size() == 3);
         heap.sweep_marked_objects();
         REQUIRE(heap.heap_size() == 0);
     }
 
     SECTION( "should only clear unmarked objects when sweeping after marking" ) {
-        REQUIRE(heap.heap_size() == 2);
+        REQUIRE(heap.heap_size() == 3);
         auto val = heap.get_mark_visitor();
         
         my_obj.gc_visit(val);
         heap.sweep_marked_objects();
         
-        REQUIRE(heap.heap_size() == 2);
+        REQUIRE(heap.heap_size() == 3);
 
         heap.sweep_marked_objects();
 

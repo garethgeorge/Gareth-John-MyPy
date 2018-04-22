@@ -59,7 +59,11 @@ private:
     };
     
     gc_heap_object* heap_obj = nullptr;
+
+    gc_ptr<T>(gc_heap_object* heap_obj) : heap_obj(heap_obj) { };
 public:
+    gc_ptr<T>(const gc_ptr<T>& other) : gc_ptr<T>(other.heap_obj) {
+    }
 
     T* operator->() {
         return &(heap_obj->real);
@@ -68,7 +72,16 @@ public:
     T& operator*() {
         return heap_obj->real;
     }
-    
+
+    bool operator=(const gc_ptr<T>& other) {
+        return this->heap_obj == other.heap_obj;
+    }
+
+    gc_ptr<T>& operator=(gc_ptr<T>& other) {
+        this->heap_obj = other.heap_obj;
+        return *this;
+    }
+
     /*
         note gc_visit expects the for_each_child method to be implemented
         for the type T of the pointer, we will then use that method to iterate
@@ -83,11 +96,6 @@ public:
     }
 
     friend class gc_heap<T>;
-};
-
-template<class T>
-struct gc_rootset_ptr : public gc_ptr<T> {
-    // NOTE
 };
 
 /*
@@ -105,20 +113,16 @@ private:
 
     std::list<heap_object_type> heap_objects;
 public:
-
     template < typename... Args> 
     gc_ptr<T> make (Args&&... args) {
         heap_object_type obj;
         obj.owner = this;
         obj.real = T(std::forward<Args>(args)...);
 
-        heap_objects.push_back(std::move(obj));
+        heap_objects.push_front(std::move(obj));
         obj.gc_heap_itr = heap_objects.begin();
         
-        gc_ptr<T> obj_ptr;
-        obj_ptr.heap_obj = &(this->heap_objects.back());
-        
-        return std::move(obj_ptr);
+        return &(this->heap_objects.front());
     }
 
     // NOTE: in debug mode especially, this function becomes incredibly expensive
@@ -127,7 +131,7 @@ public:
     int heap_size() {
         return this->heap_objects.size();
     }
-
+    
     void sweep_marked_objects() {
         for (auto itr = this->heap_objects.begin(); itr != this->heap_objects.end();) {
             auto &obj = *itr;
@@ -140,12 +144,13 @@ public:
         }
     }
 
+    // a visitor that we use to mark objects for retention (i.e. that they should)
+    // not be deleted!!!
     const auto get_mark_visitor() const {
         return [] (gc_ptr<T>& val) {
            val.heap_obj->flags |= gc_ptr<T>::FLAG_MARKED;
         };
     }
-
 };
 
 }
