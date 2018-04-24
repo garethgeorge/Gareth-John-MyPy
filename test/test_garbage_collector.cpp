@@ -5,7 +5,7 @@
 #include <memory>
 #include <optional>
 
-#include <pygc3.hpp>
+#include <pygc.hpp>
 
 using namespace std;
 using namespace gc;
