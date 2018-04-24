@@ -18,7 +18,7 @@ namespace py {
 FrameState::FrameState(
         InterpreterState *interpreter_state, 
         FrameState *parent_frame, 
-        std::shared_ptr<Code>& code) 
+        const ValueCode& code) 
 {
     DEBUG("constructed a new frame");
     this->interpreter_state = interpreter_state;
@@ -181,12 +181,91 @@ namespace eval_helpers {
             DEBUG("call_visitor dispatching CFunction->action");
             func->action(frame, args);
         }
+
+        void operator()(const ValuePyFunction& func) const {
+            DEBUG("call_visitor dispatching PyFunction->action");
+
+            // Push a new FrameState
+            frame.interpreter_state->callstack.push(
+                std::move( FrameState(frame.interpreter_state, &frame, func->code))
+            );
+            frame.interpreter_state->callstack.top().initialize_from_pyfunc(func,args);
+        }
         
         template<typename T>
         void operator()(T) const {
             throw pyerror(string("can not call object of type ") + typeid(T).name());
         }
     };
+}
+
+void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args){
+#ifdef JOHN_PRINTS_ON
+    fprintf(stderr,"(initialize_from_pyfunc) Assigning the following values to names:\n");
+#endif 
+    // Calculate which argument is the first argument with a default value
+    // This could be stored in PyFunc struct but that is a tiny space tradeoff vs tiny time tradeoff
+    int first_def_arg = this->code->co_argcount - func->def_args->size();
+    
+    // put values into the local pool
+    // the name is the constant (co_varnames) at the argument number it is
+    // the value has been passed in or uses the default
+    for(int i = 0;i < this->code->co_argcount;i++){
+        //Error if not given enough arguments
+        //TypeError: simplefunc() missing 2 required positional arguments: 'a' and 'd'
+        if(i < first_def_arg && i >= args.size()){
+            int missing_num = first_def_arg - i;
+            std::string err_str = std::string("TypeError: " + *(func->name)
+                        + " missing " + std::to_string(missing_num)
+                        + " required positional argument" + (missing_num == 1 ? ": " : "s: ")
+            );
+            // List the missing params
+            for(;i < first_def_arg;i++){
+                err_str += "'" + this->code->co_varnames[i] + "'";
+                if(i < first_def_arg - 1) err_str += " and ";
+            }
+            throw pyerror(err_str.c_str());
+            return;
+        }
+
+        // Print some info
+        #ifdef JOHN_PRINTS_ON
+            fprintf(stderr,"Name: %s\n",this->code->co_varnames[i].c_str());
+            fprintf(stderr,"Value: ");
+            Value v2 = i < args.size() ? args[i] : (*(func->def_args))[i - first_def_arg]; // Baaaaaaaad copy/paste
+            print_value(v2);
+            fprintf(stderr,"\n");
+        #endif
+
+        // The argument exists, save it
+        add_to_ns_local(
+            // Read the name to save to from the constants pool
+            this->code->co_varnames[i], 
+            // read the value from passed in args, or else the default
+            i < args.size() ? std::move(args[i]) : (*(func->def_args))[i - first_def_arg] 
+        );
+    }
+}
+
+// Add a value to the ns local
+void FrameState::add_to_ns_local(const std::string& name,Value&& v){
+    this->ns_local.emplace(name,v);
+}
+
+// Bad ugly copy paste but I got annoted at type errors
+// Will improve later
+void FrameState::print_value(Value& val) const {
+    std::visit(value_helper::overloaded {
+            [](auto&& arg) { throw pyerror("unimplemented stack printer for stack value"); },
+            [](double arg) { std::cerr << "double(" << arg << ")"; },
+            [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
+            [](const ValueString arg) {std::cerr << "ValueString(" << *arg << ")"; },
+            [](const ValueCFunction arg) {std::cerr << "CFunction()"; },
+            [](const ValueCode arg) {std::cerr << "Code()"; },
+            [](const ValuePyFunction arg) {std::cerr << "Python Function()"; },
+            [](value::NoneType) {std::cerr << "None"; },
+            [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
+        }, val);
 }
 
 void FrameState::print_stack() const {
@@ -204,6 +283,7 @@ void FrameState::print_stack() const {
             [](const ValueString& arg) {std::cerr << "ValueString(" << *arg << ")"; },
             [](const ValueCFunction& arg) {std::cerr << "CFunction()"; },
             [](const ValueCode& arg) {std::cerr << "Code()"; },
+            [](const ValuePyFunction& arg) {std::cerr << "Python Code()"; },
             [](value::NoneType) {std::cerr << "None"; },
             [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
         }, val);
@@ -216,8 +296,16 @@ void FrameState::print_stack() const {
 
 inline void FrameState::eval_next() {
     Code::ByteCode bytecode = code->bytecode[this->r_pc];
-    // TODO: figure out how to load extended arguments
-    uint32_t arg = code->bytecode[this->r_pc + 1];
+    
+    // Read the argument
+    uint64_t arg = code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
+
+    // Extend it if necessary
+    while(bytecode == op::EXTENDED_ARG){
+        this->r_pc += 3;
+        bytecode = code->bytecode[this->r_pc];
+        arg = (arg << 16) | code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
+    }
     
     if (this->r_pc >= this->code->bytecode.size()) {
         DEBUG("overflowed program, popped stack frame, however this indicates a failure so we will exit.");
@@ -230,6 +318,53 @@ inline void FrameState::eval_next() {
     switch (bytecode) {
         case 0:
             break;
+        case op::LOAD_GLOBAL:
+            try {
+                // Look for which name we are loading
+                const std::string& name = this->code->co_names.at(arg);
+
+                // Find it
+                auto itr_local = this->interpreter_state->ns_globals_ptr->find(name);
+
+                // Push it to the stack if it exists, otherwise try builtins
+                if (itr_local != this->interpreter_state->ns_globals_ptr->end()) {
+                    DEBUG("op::LOAD_GLOBAL ('%s') loaded a global", name.c_str());
+                    this->value_stack.push_back(itr_local->second);
+                    break;
+                }
+                
+                // Try builtins
+                auto itr_local_b = this->interpreter_state->ns_builtins.find(name);
+                if (itr_local_b != this->interpreter_state->ns_builtins.end()){
+                    DEBUG("op::LOAD_GLOBAL ('%s') loaded a builtin", name.c_str());
+                    this->value_stack.push_back(itr_local_b->second);
+                    break;
+                }
+
+                 throw pyerror(string("op::LOAD_GLOBAL name not found: ") + name);
+            } catch (std::out_of_range& err) {
+                throw pyerror("op::LOAD_FAST tried to load name out of range");
+            }
+            break ;
+        case op::LOAD_FAST:
+            try {
+                // Look for which name we are loading
+                const std::string& name = this->code->co_varnames.at(arg);
+
+                // Find it
+                auto itr_local = this->ns_local.find(name);
+
+                // Push it to the stack if it exists, otherwise error
+                if (itr_local != this->ns_local.end()) {
+                    DEBUG("op::LOAD_FAST ('%s') loaded a local", name.c_str());
+                    this->value_stack.push_back(itr_local->second);
+                } else {
+                    throw pyerror(string("op::LOAD_FAST name not found: ") + name);
+                }
+            } catch (std::out_of_range& err) {
+                throw pyerror("op::LOAD_FAST tried to load name out of range");
+            }
+            break ;
         case op::LOAD_NAME:
         {
             try {
@@ -245,7 +380,7 @@ inline void FrameState::eval_next() {
                     break ;
                 } 
 #endif
-                const auto& globals = this->interpreter_state->ns_globals;
+                const auto& globals = *(this->interpreter_state->ns_globals_ptr);
                 const auto& builtins = this->interpreter_state->ns_builtins;
                 auto itr_local = this->ns_local.find(name);
                 if (itr_local != this->ns_local.end()) {
@@ -278,12 +413,33 @@ inline void FrameState::eval_next() {
             }
             break ;
         }
+        case op::STORE_GLOBAL:
+            this->check_stack_size(1);
+            try {
+                // Check which name we are storing and store it
+                const std::string& name = this->code->co_names.at(arg);
+                (*(this->interpreter_state->ns_globals_ptr))[name] = std::move(this->value_stack.back());
+                this->value_stack.pop_back();
+            } catch (std::out_of_range& err) {
+                throw pyerror("op::STORE_GLOBAL tried to store name out of range");
+            }
+            break;
+        case op::STORE_FAST:
+            this->check_stack_size(1);
+            try {
+                // Check which name we are storing and store it
+                const std::string& name = this->code->co_names.at(arg);
+                this->ns_local[name] = std::move(this->value_stack.back());
+                this->value_stack.pop_back();
+            } catch (std::out_of_range& err) {
+                throw pyerror("op::STORE_FAST tried to store name out of range");
+            }
+            break;
         case op::STORE_NAME:
         {
             this->check_stack_size(1);
             try {
                 const std::string& name = this->code->co_names.at(arg);
-
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
                 auto& local_shortcut_entry = 
                     this->ns_local_shortcut[arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *))];
@@ -297,8 +453,9 @@ inline void FrameState::eval_next() {
                 this->ns_local[name] = std::move(this->value_stack.back());
 #endif
                 this->value_stack.pop_back();
+
             } catch (std::out_of_range& err) {
-                throw pyerror("op::LOAD_NAME tried to store name out of range");
+                throw pyerror("op::STORE_NAME tried to store name out of range");
             }
             break;
         }
@@ -319,6 +476,8 @@ inline void FrameState::eval_next() {
             DEBUG("op::CALL_FUNCTION attempted to call a function with %d arguments", arg);
             this->check_stack_size(1 + arg);
             
+            // Instead of reading out into a vector, can I just pass have 'initialize_from_pyfunc'
+            // read directly off the stack?
             std::vector<Value> args(
                 this->value_stack.end() - arg,
                 this->value_stack.end());
@@ -498,6 +657,45 @@ inline void FrameState::eval_next() {
         case op::JUMP_FORWARD:
             this->r_pc += arg;
             return ;
+        case op::MAKE_FUNCTION:
+        {
+            this->check_stack_size(arg + 2);
+
+            // Pop the name and code
+            Value name = std::move(value_stack.back());
+            this->value_stack.pop_back();
+            Value code = std::move(value_stack.back());
+            this->value_stack.pop_back();
+
+            // Create a shared pointer to a vector from the args
+            std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(
+                std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end())
+            );
+            
+            // Remove the args from the value stack
+            this->value_stack.resize(this->value_stack.size() - arg);
+
+#ifdef JOHN_PRINTS_ON
+            fprintf(stderr,"(MAKE_FUNCTION) Creating a function that accepts %d default args:\n",arg);
+            print_value(name);
+            fprintf(stderr,"\nThose default args are:\n",arg);
+            for(int i = 0;i < v->size();i++){
+                print_value((*v)[i]);
+                fprintf(stderr,"\n",arg);
+            }
+#endif
+            // Create the function object
+            // Error here if the wrong types
+            try {
+                ValuePyFunction nv = std::make_shared<value::PyFunc>(
+                    value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(code), v}
+                );
+                this->value_stack.push_back(nv);
+            } catch (std::bad_variant_access&) {
+                throw pyerror("MAKE_FUNCTION called with bad stack");
+            }
+            break;
+        }
         default:
         {
             DEBUG("UNIMPLEMENTED BYTECODE: %s", op::name[bytecode])
@@ -515,7 +713,7 @@ inline void FrameState::eval_next() {
     if (bytecode < op::HAVE_ARGUMENT) {
         this->r_pc += 1;
     } else {
-        this->r_pc += 2;
+        this->r_pc += 3;
     }
 }
 

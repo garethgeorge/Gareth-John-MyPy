@@ -8,7 +8,9 @@
 
 #define OPT_FRAME_NS_LOCAL_SHORTCUT
 
-// #define DEBUG_ON
-// #define DEBUG_STACK
+//#define DEBUG_ON
+//#define DEBUG_STACK
+
+//#define JOHN_PRINTS_ON
 
 #endif
