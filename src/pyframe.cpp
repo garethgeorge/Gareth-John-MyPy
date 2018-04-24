@@ -185,6 +185,14 @@ namespace eval_helpers {
         void operator()(const ValuePyFunction& func) const {
             DEBUG("call_visitor dispatching PyFunction->action");
 
+            // Throw an error if too many arguments
+            if(args.size() > func->code->co_argcount){
+                throw pyerror(std::string("TypeError: " + *(func->name)
+                            + " takes " + std::to_string(func->code->co_argcount)
+                            + " positional arguments but " + std::to_string(args.size())
+                            + " were given"));
+            }
+
             // Push a new FrameState
             frame.interpreter_state->callstack.push(
                 std::move( FrameState(frame.interpreter_state, &frame, func->code))
