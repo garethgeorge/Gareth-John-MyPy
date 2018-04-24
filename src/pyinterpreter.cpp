@@ -11,6 +11,9 @@ InterpreterState::InterpreterState(
     this->callstack.push(
         std::move(FrameState(this, nullptr, code))
     );
+
+    // make ns_globals refer to the bottom's locals
+    this->ns_globals_ptr = &(this->callstack.top().ns_local);
 }
 
 // InterpreterState::eval can be found in pyframe.cpp to allow inlining

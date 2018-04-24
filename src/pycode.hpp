@@ -18,9 +18,11 @@ struct Code {
 
     uint64_t co_stacksize;
     uint64_t co_nlocals;
+    uint64_t co_argcount;
     std::vector<ByteCode> bytecode;
     std::vector<Value> co_consts;
     std::vector<std::string> co_names;
+    std::vector<std::string> co_varnames;
     
     Code(const json& tree);
     ~Code();

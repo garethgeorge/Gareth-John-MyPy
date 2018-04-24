@@ -32,6 +32,7 @@ Code::Code(const json& tree) {
     
     this->co_stacksize = tree.at("co_stacksize").get<uint64_t>();
     this->co_nlocals = tree.at("co_nlocals").get<uint64_t>();
+    this->co_argcount = tree.at("co_argcount").get<uint64_t>();
 
     // decode the bytecode and push it into the bytecode property :)
     std::string base64bytecode = tree.at("co_code").get<std::string>();
@@ -89,6 +90,14 @@ Code::Code(const json& tree) {
         DEBUG("loaded name %lu) %s", this->co_names.size(), name.get<std::string>().c_str())
         this->co_names.push_back(
             name.get<std::string>()
+        );
+    }
+
+    // load var names
+    for (const json& vname : tree.at("co_varnames")) {
+        DEBUG("loaded var name %lu) %s", this->co_names.size(), vname.get<std::string>().c_str())
+        this->co_varnames.push_back(
+            vname.get<std::string>()
         );
     }
 }   

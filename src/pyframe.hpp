@@ -35,7 +35,7 @@ struct FrameState {
     uint64_t r_pc = 0; // program counter
     FrameState *parent_frame = nullptr;
     InterpreterState *interpreter_state = nullptr;
-    std::shared_ptr<Code> code;
+    ValueCode code;
     std::vector<Value> value_stack;
     std::stack<Block> block_stack; // a stack containing blocks: this should be changed to a standard vector
     Namespace ns_local; // the local value namespace
@@ -56,12 +56,17 @@ struct FrameState {
     FrameState(
         InterpreterState *interpreter_state, 
         FrameState *parent_frame, // null for the top frame on the stack
-        std::shared_ptr<Code>& code);
+        const ValueCode& code);
 
     void eval_next();
     void print_next();
 
+    void print_value(Value& val) const;
     void print_stack() const;
+
+    // Add a value to local namespace (for use when creating the frame state)
+    void add_to_ns_local(const std::string& name,Value&& v);
+    void initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args);
 
     // helper method for checking the stack has enough values for the current
     // operation!

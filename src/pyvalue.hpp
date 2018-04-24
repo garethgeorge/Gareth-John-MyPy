@@ -31,16 +31,17 @@ namespace value {
     // struct List;
     // struct Map;
     // struct Set;
+
+    struct PyFunc;
 }
 
 // larger value types should be wrapped by a shared_ptr,
 // this is because we want to keep the size of our std::variant class small,
 // it also allows sharing string objects between multiple values whenever possible
-using ValueString = shared_ptr<std::string>;
-using ValueCode = shared_ptr<const Code>;
-// using ValueList = gc::gc_ptr<value::List>;
-using ValueCFunction = shared_ptr<const value::CFunction>;
-
+using ValueString = std::shared_ptr<std::string>;
+using ValueCode = std::shared_ptr<const Code>;
+using ValueCFunction = std::shared_ptr<const value::CFunction>;
+using ValuePyFunction = std::shared_ptr<const value::PyFunc>;
 
 using Value = std::variant<
     bool,
@@ -49,8 +50,8 @@ using Value = std::variant<
     ValueString,
     ValueCode,
     ValueCFunction,
-    // ValueList,
-    value::NoneType
+    value::NoneType,
+    ValuePyFunction
 >;
 
 namespace value {
@@ -70,6 +71,20 @@ namespace value {
     // struct Map {
     //     unordered_map<Value, Value> values;
     // }
+}
+
+// A struct that holds a python function
+namespace value {
+    struct PyFunc{
+        // It's name
+        const ValueString name;
+        
+        // It's code
+        const ValueCode code;
+
+        // It's default argument
+        const std::shared_ptr<std::vector<Value>> def_args;
+    };
 }
 
 // the beginning of a prototype for object definitions

@@ -20,7 +20,7 @@ using Namespace = std::unordered_map<std::string, Value>;
 
 struct InterpreterState {
     std::stack<FrameState> callstack;
-    Namespace ns_globals;
+    Namespace* ns_globals_ptr; // ns_globals is just ns_local of the very bottom FrameState
     Namespace ns_builtins;
 
     InterpreterState(std::shared_ptr<Code>& code);
