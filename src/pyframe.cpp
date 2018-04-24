@@ -208,9 +208,7 @@ namespace eval_helpers {
 }
 
 void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args){
-#ifdef JOHN_PRINTS_ON
-    fprintf(stderr,"(initialize_from_pyfunc) Assigning the following values to names:\n");
-#endif 
+    J_DEBUG("(Assigning the following values to names:\n");
     // Calculate which argument is the first argument with a default value
     // This could be stored in PyFunc struct but that is a tiny space tradeoff vs tiny time tradeoff
     int first_def_arg = this->code->co_argcount - func->def_args->size();
@@ -236,13 +234,10 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
             return;
         }
 
-        // Print some info
-        #ifdef JOHN_PRINTS_ON
-            fprintf(stderr,"Name: %s\n",this->code->co_varnames[i].c_str());
-            fprintf(stderr,"Value: ");
-            Value v2 = i < args.size() ? args[i] : (*(func->def_args))[i - first_def_arg]; // Baaaaaaaad copy/paste
-            print_value(v2);
-            fprintf(stderr,"\n");
+        J_DEBUG("Name: %s\n",this->code->co_varnames[i].c_str());
+        J_DEBUG("Value: ");
+        #ifdef JOHN_DEBUG_ON
+        print_value(i < args.size() ? args[i] : (*(func->def_args))[i - first_def_arg]);
         #endif
 
         // The argument exists, save it
@@ -683,15 +678,14 @@ inline void FrameState::eval_next() {
             // Remove the args from the value stack
             this->value_stack.resize(this->value_stack.size() - arg);
 
-#ifdef JOHN_PRINTS_ON
-            fprintf(stderr,"(MAKE_FUNCTION) Creating a function that accepts %d default args:\n",arg);
-            print_value(name);
-            fprintf(stderr,"\nThose default args are:\n",arg);
+            J_DEBUG("Creating a function %s that accepts %d default args:\n",*(std::get<ValueString>(name)),arg);
+            J_DEBUG("Those default args are:\n");
+            #ifdef JOHN_DEBUG_ON
             for(int i = 0;i < v->size();i++){
                 print_value((*v)[i]);
                 fprintf(stderr,"\n",arg);
             }
-#endif
+            #endif
             // Create the function object
             // Error here if the wrong types
             try {

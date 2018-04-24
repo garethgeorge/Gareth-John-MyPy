@@ -94,7 +94,7 @@ func_err(1)
         REQUIRE_THROWS(state.eval());
     }
 
-    SECTION( "passed too many args"){
+    SECTION( "when passed too many args"){
         auto code = build_string(R"(
 def func_err(a,b,c=5):
     return a + b + c
