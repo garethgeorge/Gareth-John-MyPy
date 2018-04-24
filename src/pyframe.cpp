@@ -248,7 +248,7 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
 }
 
 // Add a value to the ns local
-void FrameState::add_to_ns_local(std::string name,Value v){
+void FrameState::add_to_ns_local(const std::string& name,Value&& v){
     this->ns_local.emplace(name,v);
 }
 
@@ -299,15 +299,13 @@ inline void FrameState::eval_next() {
     
     // Read the argument
     uint64_t arg = code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
-    //uint32_t arg = code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
 
     // Extend it if necessary
     while(bytecode == op::EXTENDED_ARG){
-    //if(bytecode == op::EXTENDED_ARG){
         this->r_pc += 3;
         bytecode = code->bytecode[this->r_pc];
         arg = (arg << 16) | code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
-    } 
+    }
     
     if (this->r_pc >= this->code->bytecode.size()) {
         DEBUG("overflowed program, popped stack frame, however this indicates a failure so we will exit.");
