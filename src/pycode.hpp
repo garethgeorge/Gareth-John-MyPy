@@ -28,6 +28,8 @@ struct Code {
     ~Code();
     
     static std::shared_ptr<Code> from_program(const std::string& python, const std::string& compilePyPath);
+
+    void print_bytecode() const;
 };
 
 }

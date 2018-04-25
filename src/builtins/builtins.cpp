@@ -7,6 +7,7 @@
 #include "builtins.hpp"
 #include "../pyvalue_helpers.hpp"
 #include "../pyerror.hpp"
+#include "../pyframe.hpp"
 
 using std::string;
 
@@ -45,6 +46,39 @@ extern void inject_builtins(Namespace& ns) {
         frame.value_stack.push_back(
             std::make_shared<std::string>(std::visit(value_helper::visitor_str(), args[0]))
         );
+    });
+
+    // Build a re[resentation of a class
+    // Python creates classes via:
+    //  LOAD_BUILD_CLASS
+    //  LOAD_CONST (the code object describing the class)
+    //  LOAD_CONST (class name)
+    //  MAKE_FUNCTION
+    //  LOAD_CONST(class name)
+    //  CALL_FUNCTION
+    //  STORE_NAME (class name)
+    // This means that __build_class__ must create something and push it to the stack
+    // that, when called later via CALL_FUNCTION creates and pushes on the stack
+    // and instance of the class it represents
+    ns["__build_class__"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+        fprintf(stderr,"__build_class__ called with arguments:\n");
+        for(int i = 0;i < args.size();i++){
+            frame.print_value(args[i]);
+            fprintf(stderr,"\n");
+        }
+        //(std::get<ValuePyFunction>(args[0]))->code->print_bytecode();
+        
+        // Push the static initializer frame ontop the stack
+        // The static initializer code block is the first argument
+        frame.interpreter_state->callstack.push(
+            std::move(ClassStaticInitializerFrameState(frame.interpreter_state, &frame, std::get<ValuePyFunction>(args[0])->code))
+        );
+        // Add it's name to it's local namespace
+        // Name is passed in as the second argument
+        frame.interpreter_state->callstack.top().add_to_ns_local("__name__",std::get<ValueString>(args[1]).get());
+        // No need to do so, it has no arguments (I think this is always true?)
+        //frame.interpreter_state->callstack.top().initialize_from_pyfunc(std::get<ValuePyFunction>(args[0]),std::vector());
+        
     });
 }
 

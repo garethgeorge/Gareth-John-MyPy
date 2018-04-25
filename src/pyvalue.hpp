@@ -32,7 +32,15 @@ namespace value {
     // struct Map;
     // struct Set;
 
+    // A function of python code
     struct PyFunc;
+
+    // The internal representation of a class
+    // Created by the builtin __build_class__
+    struct PyClass;
+    
+    // A particular instance of a class
+    struct PyObject;
 }
 
 // larger value types should be wrapped by a shared_ptr,

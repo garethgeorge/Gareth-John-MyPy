@@ -11,6 +11,11 @@
 # TODO
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
+    - make initialize_from_pyfunc just a constructor
+    - Does python support mulitple constructors? How do I deal with those
+    - Inheritance
+    - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
+    - Classes can overload operators as well as inplace operators differently
  - implement variadic functions - John Jack
  - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack

@@ -616,10 +616,9 @@ inline void FrameState::eval_next() {
         case op::RETURN_VALUE:
         {
             this->check_stack_size(1);
-            auto val = this->value_stack.back();
-            if (this->parent_frame != nullptr) {
-                this->parent_frame->value_stack.push_back(std::move(val));
-            }
+            // A few different things could happen
+            // See below for the return implementations
+            this->return_value();
             this->interpreter_state->callstack.pop();
             break ;
         }
@@ -698,6 +697,13 @@ inline void FrameState::eval_next() {
             }
             break;
         }
+        case op::LOAD_BUILD_CLASS:
+        {
+            // Push the build class builtin onto the stack
+            J_DEBUG("Preparing to build a class");
+            this->value_stack.push_back(this->interpreter_state->ns_builtins["__build_class__"]);
+            break;
+        }
         default:
         {
             DEBUG("UNIMPLEMENTED BYTECODE: %s", op::name[bytecode])
@@ -739,4 +745,14 @@ void InterpreterState::eval() {
     }
 }
 
+    void FrameState::return_value(){
+        auto val = this->value_stack.back();
+        if (this->parent_frame != nullptr) {
+            this->parent_frame->value_stack.push_back(std::move(val));
+        }
+    }
+
+    void ClassStaticInitializerFrameState::return_value() {
+        throw pyerror("Well we got here!");
+    }
 }

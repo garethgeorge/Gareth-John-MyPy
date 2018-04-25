@@ -8,6 +8,8 @@ namespace py {
 InterpreterState::InterpreterState(
     std::shared_ptr<Code>& code) {
     
+    //code->print_bytecode();
+
     this->callstack.push(
         std::move(FrameState(this, nullptr, code))
     );
