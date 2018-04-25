@@ -10,6 +10,7 @@
 #include "pyvalue.hpp"
 #include "optflags.hpp"
 #include "pyerror.hpp"
+#include "debug.hpp"
 
 namespace py {
 
@@ -32,6 +33,7 @@ struct Block {
 };
 
 struct FrameState {
+    public:
     uint64_t r_pc = 0; // program counter
     FrameState *parent_frame = nullptr;
     InterpreterState *interpreter_state = nullptr;
@@ -39,6 +41,7 @@ struct FrameState {
     std::vector<Value> value_stack;
     std::stack<Block> block_stack; // a stack containing blocks: this should be changed to a standard vector
     Namespace ns_local; // the local value namespace
+    uint8_t flags = 0;
 
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
     // with this #define we are feature flagging the NS_LOCAL_SHORTCUT feature
@@ -68,7 +71,9 @@ struct FrameState {
     void add_to_ns_local(const std::string& name,Value&& v);
     void initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args);
 
-    virtual void return_value();
+    // Set the flag that says that this framestate is initializing the static values of a class
+    void set_class_static_init_flag();
+    bool get_class_static_init_flag();
 
     // helper method for checking the stack has enough values for the current
     // operation!
@@ -77,22 +82,6 @@ struct FrameState {
             throw pyerror("INTERNAL ERROR: not enough values on stack to complete operation");
         }
     }
-};
-
-// Classes are stored in the code file as Code Objects
-// When __build_class__ runs, it needs to run that bit of code inside of it to set all of the static fields
-// This ends up creating an ns_local that we use to store the static class information
-// For this reason, We essentially need to push a stack frame 
-// when it finishes, instead of returning as normal, we call ''
-struct ClassStaticInitializerFrameState : FrameState {
-    ClassStaticInitializerFrameState(InterpreterState *interpreter_state, 
-        FrameState *parent_frame, // null for the top frame on the stack
-        const ValueCode& code) : FrameState(
-                                    interpreter_state, 
-                                    parent_frame, 
-                                    code
-         ) { } // Just call superclass constructor
-    void return_value() override;
 };
 
 }

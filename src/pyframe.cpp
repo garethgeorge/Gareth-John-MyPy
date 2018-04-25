@@ -616,9 +616,18 @@ inline void FrameState::eval_next() {
         case op::RETURN_VALUE:
         {
             this->check_stack_size(1);
-            // A few different things could happen
-            // See below for the return implementations
-            this->return_value();
+            if(get_class_static_init_flag()){
+                // This whole time we have been initalizing the static fields of a class
+                // Finish that initalization
+                throw pyerror("Now to finish class static initialization!");
+            } else {
+                // Normal function return
+                auto val = this->value_stack.back();
+                if (this->parent_frame != nullptr) {
+                    this->parent_frame->value_stack.push_back(std::move(val));
+                }
+            }
+
             this->interpreter_state->callstack.pop();
             break ;
         }
@@ -745,14 +754,13 @@ void InterpreterState::eval() {
     }
 }
 
-    void FrameState::return_value(){
-        auto val = this->value_stack.back();
-        if (this->parent_frame != nullptr) {
-            this->parent_frame->value_stack.push_back(std::move(val));
-        }
+    void FrameState::set_class_static_init_flag(){
+        flags |= 1;
     }
 
-    void ClassStaticInitializerFrameState::return_value() {
-        throw pyerror("Well we got here!");
+    bool FrameState::get_class_static_init_flag(){
+        return flags & 1;
     }
+
+
 }

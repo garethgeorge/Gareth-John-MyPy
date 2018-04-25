@@ -66,16 +66,20 @@ extern void inject_builtins(Namespace& ns) {
             frame.print_value(args[i]);
             fprintf(stderr,"\n");
         }
-        //(std::get<ValuePyFunction>(args[0]))->code->print_bytecode();
+        (std::get<ValuePyFunction>(args[0]))->code->print_bytecode();
         
         // Push the static initializer frame ontop the stack
         // The static initializer code block is the first argument
         frame.interpreter_state->callstack.push(
-            std::move(ClassStaticInitializerFrameState(frame.interpreter_state, &frame, std::get<ValuePyFunction>(args[0])->code))
+            std::move(FrameState(frame.interpreter_state, &frame, std::get<ValuePyFunction>(args[0])->code))
         );
         // Add it's name to it's local namespace
         // Name is passed in as the second argument
         frame.interpreter_state->callstack.top().add_to_ns_local("__name__",std::get<ValueString>(args[1]).get());
+        
+        // This frame state is initializing the statics of a class
+        frame.interpreter_state->callstack.top().set_class_static_init_flag();
+        
         // No need to do so, it has no arguments (I think this is always true?)
         //frame.interpreter_state->callstack.top().initialize_from_pyfunc(std::get<ValuePyFunction>(args[0]),std::vector());
         
