@@ -130,11 +130,17 @@ namespace value {
         PyClass(Namespace ns){
             attrs = ns;
         }
+
+        // Store an attribute into attrs
+        void store_attr(const std::string& str,Value val){
+            attrs[str] = val;
+        }
     };
 
     // A pyobject holds a namespace of it's own as well as a way reference
     // The static namespace for it's class
     // LOAD_ATTR and STORE_ATTR will first search attrs, then static_class
+    // Should I make PyObject just a derived class of PyClass?
     struct PyObject {
         // A pointer back to static stuff
         const ValuePyClass static_attrs;
@@ -148,7 +154,7 @@ namespace value {
 
         // Store an attribute into attrs
         void store_attr(const std::string& str,Value val){
-            attrs.emplace(str,val);
+            attrs[str] = val;
         }
     };
 }

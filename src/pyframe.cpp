@@ -162,7 +162,7 @@ namespace eval_helpers {
             return std::make_shared<std::string>(*v1 + *v2);
         }
     };
-    
+
     // Visitor for accessing class attributes
     struct load_attr_visitor {
         FrameState& frame;
@@ -200,7 +200,7 @@ namespace eval_helpers {
                         // Push a new PyFunc with self set to obj
                         // Store it so that next time it is accessed it will be found in attrs
                         Value npf = (*pf)->get_instance_function(obj);
-                        obj->store_attr(attr,npf);
+                        obj->store_attr(attr,npf); // Does this create a shared_ptr cycle?
                         frame.value_stack.push_back(npf);
                     } else {
                         // All is well, push as normal
@@ -830,6 +830,32 @@ inline void FrameState::eval_next() {
                 eval_helpers::load_attr_visitor(*this,this->code->co_names[arg]),
                 val
             );
+            break;
+        }
+        case op::STORE_ATTR:
+        {
+            DEBUG("Storing Attr %s",this->code->co_names[arg].c_str()) ;
+            
+            Value tos = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+            Value val = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+
+            // This should probably be done with a visitor pattern
+            // But That sounds to like alot more compile time for something thats honestly really simple
+            auto vpo = std::get_if<ValuePyObject>(&tos);
+            if(vpo != NULL){
+                (*vpo)->store_attr(this->code->co_names[arg],val);
+                break;
+            }
+            auto vpc = std::get_if<ValuePyClass>(&tos);
+            if(vpc != NULL){
+                (*vpc)->store_attr(this->code->co_names[arg],val);
+                break;
+            }
+
+            // We should never get here
+            throw pyerror(std::string("STORE_ATTR called with bad stack!"));
             break;
         }
         default:

@@ -12,6 +12,7 @@
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
     - @classmethod &&  @staticmethod???
+    - can i make store_attr function Value a reference?
     - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
     - make initialize_from_pyfunc just a constructor
     - Can you define a class inside a function?
