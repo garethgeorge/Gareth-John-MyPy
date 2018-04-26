@@ -1,8 +1,8 @@
 class simple_class:
     val = 4
     buf = 6
-    def show(self,y):
-        print(self.val + y)    
+    def show(selfa,y):
+        print(selfa.val + y)    
     def __init__(self,r=6):
         self.val = r
 

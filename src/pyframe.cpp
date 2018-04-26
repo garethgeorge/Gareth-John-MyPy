@@ -165,14 +165,12 @@ namespace eval_helpers {
     
     // Visitor for accessing class attributes
     struct load_attr_visitor {
-        // Needed for directly accessing the callstack
-        // This could instead be passed in to the () operator
-        // But this felt more consistent with the rest of the code
         FrameState& frame;
+        const std::string& attr;
 
-        load_attr_visitor(FrameState& frame) : frame(frame) {}
+        load_attr_visitor(FrameState& frame,const std::string& attr) : frame(frame), attr(attr) {}
         
-        void operator()(const ValuePyClass& cls, const std::string& attr){
+        void operator()(const ValuePyClass& cls){
             try {
                 frame.value_stack.push_back(cls->attrs.at(attr));
             } catch (const std::out_of_range& oor) {
@@ -181,6 +179,45 @@ namespace eval_helpers {
                     + " has no attribute " + attr
                 ));
             }
+        }
+
+        // For pyobject, first look in their own namespace, then look in their static namespace
+        // ValuePyObject cannot be const as it might be modified
+        void operator()(ValuePyObject& obj){
+            try {
+                // First look in my own namespace
+                auto itr = obj->attrs.find(attr);
+                if(itr != obj->attrs.end()){
+                    frame.value_stack.push_back(itr->second);
+                } else {
+                    // Default to statics if not found
+                    Value static_val = obj->static_attrs->attrs.at(attr);
+                    
+                    // Check to see if it is a PyFunc, and if so make it's self to obj
+                    // This essentially accomplishes lazy initialization of instance functions
+                    auto pf = std::get_if<ValuePyFunction>(&static_val);
+                    if(pf != NULL){
+                        // Push a new PyFunc with self set to obj
+                        // Store it so that next time it is accessed it will be found in attrs
+                        Value npf = (*pf)->get_instance_function(obj);
+                        obj->store_attr(attr,npf);
+                        frame.value_stack.push_back(npf);
+                    } else {
+                        // All is well, push as normal
+                        frame.value_stack.push_back(static_val);
+                    }
+                }
+            } catch (const std::out_of_range& oor) {
+                throw pyerror(std::string(
+                    *(std::get<ValueString>(obj->attrs["__name__"]))
+                    + " has no attribute " + attr
+                ));
+            }
+        }
+
+        template<typename T>
+        void operator()(T) const {
+            throw pyerror(string("can not get attributed from an object of type ") + typeid(T).name());
         }
 
     };
@@ -244,27 +281,45 @@ namespace eval_helpers {
 }
 
 void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args){
-    J_DEBUG("(Assigning the following values to names:\n");
     // Calculate which argument is the first argument with a default value
+    // Also whether or not the very first argument is self (or class)
     // This could be stored in PyFunc struct but that is a tiny space tradeoff vs tiny time tradeoff
     int first_def_arg = this->code->co_argcount - func->def_args->size();
-    
+    int first_arg_is_self = (func->self ? 1 : 0);
+
+    // First, check if we are in a instance method, if so, make the first arg 'self'
+    if(func->self){
+        DEBUG("This is an instance method!")
+        add_to_ns_local(
+            // First argument is always self in an instance method
+            this->code->co_varnames[0], 
+            func->self
+        );
+    }
+
+    J_DEBUG("(Assigning the following values to names:\n");
+
+
     // put values into the local pool
     // the name is the constant (co_varnames) at the argument number it is
     // the value has been passed in or uses the default
-    for(int i = 0;i < this->code->co_argcount;i++){
+    // If we are an instance method, skip the first arg as it was set above
+    for(int i = (func->self ? 1 : 0); i < this->code->co_argcount; i++){
+        // The arg to consider may not quite align with i
+        int arg_num = i - first_arg_is_self;
+
         //Error if not given enough arguments
         //TypeError: simplefunc() missing 2 required positional arguments: 'a' and 'd'
-        if(i < first_def_arg && i >= args.size()){
-            int missing_num = first_def_arg - i;
+        if(arg_num < first_def_arg && arg_num >= args.size()){
+            int missing_num = first_def_arg - arg_num;
             std::string err_str = std::string("TypeError: " + *(func->name)
                         + " missing " + std::to_string(missing_num)
                         + " required positional argument" + (missing_num == 1 ? ": " : "s: ")
             );
             // List the missing params
-            for(;i < first_def_arg;i++){
-                err_str += "'" + this->code->co_varnames[i] + "'";
-                if(i < first_def_arg - 1) err_str += " and ";
+            for(;arg_num < first_def_arg;arg_num++){
+                err_str += "'" + this->code->co_varnames[i] + "'"; // Note that I use 'i' here, not 'arg_num'
+                if(arg_num < first_def_arg - 1) err_str += " and ";
             }
             throw pyerror(err_str.c_str());
             return;
@@ -273,7 +328,7 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
         J_DEBUG("Name: %s\n",this->code->co_varnames[i].c_str());
         J_DEBUG("Value: ");
         #ifdef JOHN_DEBUG_ON
-        print_value(i < args.size() ? args[i] : (*(func->def_args))[i - first_def_arg]);
+        print_value(arg_num < args.size() ? args[arg_num] : (*(func->def_args))[arg_num - first_def_arg]);
         #endif
 
         // The argument exists, save it
@@ -281,7 +336,7 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
             // Read the name to save to from the constants pool
             this->code->co_varnames[i], 
             // read the value from passed in args, or else the default
-            i < args.size() ? std::move(args[i]) : (*(func->def_args))[i - first_def_arg] 
+            arg_num < args.size() ? std::move(args[arg_num]) : (*(func->def_args))[arg_num - first_def_arg] 
         );
     }
 }
@@ -302,6 +357,10 @@ void FrameState::print_value(Value& val) const {
             [](const ValueCFunction arg) {std::cerr << "CFunction()"; },
             [](const ValueCode arg) {std::cerr << "Code()"; },
             [](const ValuePyFunction arg) {std::cerr << "Python Function()"; },
+            [](const ValuePyClass arg) {std::cerr << "ValuePyClass ("
+                << *(std::get<ValueString>(arg->attrs["__qualname__"])) << ")"; },
+            [](const ValuePyObject arg) {std::cerr << "ValuePyObject of class ("
+                << *(std::get<ValueString>(arg->static_attrs->attrs["__qualname__"])) << ")"; },
             [](value::NoneType) {std::cerr << "None"; },
             [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
         }, val);
@@ -762,7 +821,15 @@ inline void FrameState::eval_next() {
         }
         case op::LOAD_ATTR:
         {
-            
+            DEBUG("Loading Attr %s",this->code->co_names[arg].c_str()) ;
+            Value val = std::move(value_stack.back());
+            this->value_stack.pop_back();
+            // Visit a load_attr_visitor constructed with the frame state and the arg to get
+            // Do it this way because val might turn out to be a PyClass or a PyObject
+            std::visit(
+                eval_helpers::load_attr_visitor(*this,this->code->co_names[arg]),
+                val
+            );
             break;
         }
         default:

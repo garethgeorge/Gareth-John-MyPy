@@ -105,6 +105,21 @@ namespace value {
 
         // It's default argument
         const std::shared_ptr<std::vector<Value>> def_args;
+
+        // A pointer to self for if this is an instance function
+        const ValuePyObject self;
+
+        // A PyFunc needs to remember which particular instance
+        // of a class it came from if it is loaded as an attribute
+        // This returns a new PyFunc with the 'self' field set
+        // leaving the original base PyFunc unchanged
+        // This will happen exactly once for each instance of a class
+        // see LOAD_ATTR for more details
+        auto get_instance_function(const ValuePyObject& self) const {
+            return std::make_shared<PyFunc>( PyFunc {name, code, def_args, self});
+            //npf->self = self;
+            //return npf;
+        }
     };
 
     // The static value of a class
@@ -130,6 +145,11 @@ namespace value {
         // When first creating this, all it needs do is reference it's static class
         // __init__ will be called later if necessary
         PyObject(const ValuePyClass& cls) : static_attrs(cls) {};
+
+        // Store an attribute into attrs
+        void store_attr(const std::string& str,Value val){
+            attrs.emplace(str,val);
+        }
     };
 }
 

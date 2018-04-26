@@ -11,6 +11,6 @@
 #define DEBUG_ON
 //#define DEBUG_STACK
 
-//#define JOHN_DEBUG_ON
+#define JOHN_DEBUG_ON
 
 #endif
