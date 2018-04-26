@@ -60,6 +60,8 @@ extern void inject_builtins(Namespace& ns) {
     // This means that __build_class__ must create something and push it to the stack
     // that, when called later via CALL_FUNCTION creates and pushes on the stack
     // and instance of the class it represents
+    // See the RETURN_VALUE opcode in pyframe.cpp for the final allocation
+    // Actually allocating a new PyObject from a PyClass happens in CALL_FUNCTION later
     ns["__build_class__"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
         fprintf(stderr,"__build_class__ called with arguments:\n");
         for(int i = 0;i < args.size();i++){
@@ -80,7 +82,7 @@ extern void inject_builtins(Namespace& ns) {
         // This frame state is initializing the statics of a class
         frame.interpreter_state->callstack.top().set_class_static_init_flag();
         
-        // No need to do so, it has no arguments (I think this is always true?)
+        // No need to initialize from pyfunc, it has no arguments (I think this is always true?)
         //frame.interpreter_state->callstack.top().initialize_from_pyfunc(std::get<ValuePyFunction>(args[0]),std::vector());
         
     });

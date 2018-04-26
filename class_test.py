@@ -1,18 +1,34 @@
-#class simplest_class:
-#    a = 2
-
 class simple_class:
     val = 4
+    buf = 6
     def show(self,y):
         print(self.val + y)    
     def __init__(self,r=6):
         self.val = r
 
-
-
-#foo = simplest_class()
-#foo.a = 5
-#print(foo.a)
 bar = simple_class(2)
 bar.show(10)
+print(bar.val)
 print(simple_class.val)
+print(bar.buf)
+print(simple_class.buf)
+print("Whoa!")
+simple_class.val = 100
+simple_class.buf = 101
+bar.show(10)
+print(bar.val);
+print(simple_class.val)
+print(bar.buf)
+print(simple_class.buf)
+print("Whoa 2!");
+bar.buf = -100;
+print(bar.val);
+print(simple_class.val)
+print(bar.buf)
+print(simple_class.buf)
+print("Whoa 3!")
+bar.uhoh = 5
+print(bar.uhoh)
+simple_class.wow = 10
+print(simple_class.wow)
+print(bar.wow)

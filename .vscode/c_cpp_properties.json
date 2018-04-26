@@ -3,6 +3,7 @@
         {
             "name": "Mac",
             "includePath": [
+                "/usr/bin",
                 "/usr/include",
                 "/usr/local/include",
                 "/usr/include/c++/4.2.1",
@@ -14,6 +15,7 @@
             "intelliSenseMode": "clang-x64",
             "browse": {
                 "path": [
+                    "/usr/bin",
                     "/usr/include",
                     "/usr/local/include",
                     "/usr/include/c++/4.2.1",
@@ -34,6 +36,7 @@
         {
             "name": "Linux",
             "includePath": [
+                "/usr/bin",
                 "/usr/include",
                 "/usr/local/include",
                 "${workspaceFolder}"
@@ -42,6 +45,7 @@
             "intelliSenseMode": "clang-x64",
             "browse": {
                 "path": [
+                    "/usr/bin",
                     "/usr/include",
                     "/usr/local/include",
                     "${workspaceFolder}"
@@ -64,6 +68,7 @@
             "intelliSenseMode": "msvc-x64",
             "browse": {
                 "path": [
+                    "/usr/bin",
                     "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/include/*",
                     "${workspaceFolder}"
                 ],

@@ -22,6 +22,7 @@ using std::shared_ptr;
 // forward declarations
 struct Code;
 struct FrameState;
+struct PyClass;
 
 // the value namespace for C value types
 namespace value {
@@ -50,6 +51,13 @@ using ValueString = std::shared_ptr<std::string>;
 using ValueCode = std::shared_ptr<const Code>;
 using ValueCFunction = std::shared_ptr<const value::CFunction>;
 using ValuePyFunction = std::shared_ptr<const value::PyFunc>;
+using ValuePyObject = std::shared_ptr<value::PyObject>;
+
+// I think PyClasses (the thing that holds the statics of a class) can be deallocated.
+// Need to confirm this tho
+// THIS NEEDS TO CHANGE TO A GC_PTR (or do i?)
+using ValuePyClass = std::shared_ptr<value::PyClass>;
+
 
 using Value = std::variant<
     bool,
@@ -59,8 +67,13 @@ using Value = std::variant<
     ValueCode,
     ValueCFunction,
     value::NoneType,
-    ValuePyFunction
+    ValuePyFunction,
+    ValuePyClass,
+    ValuePyObject
 >;
+
+// Bad copy/paste from pyinterpreter.hpp
+using Namespace = std::unordered_map<std::string, Value>;
 
 namespace value {
     struct CFunction {
@@ -92,6 +105,31 @@ namespace value {
 
         // It's default argument
         const std::shared_ptr<std::vector<Value>> def_args;
+    };
+
+    // The static value of a class
+    struct PyClass {
+        // Static Attributes
+        Namespace attrs;
+
+        PyClass(Namespace ns){
+            attrs = ns;
+        }
+    };
+
+    // A pyobject holds a namespace of it's own as well as a way reference
+    // The static namespace for it's class
+    // LOAD_ATTR and STORE_ATTR will first search attrs, then static_class
+    struct PyObject {
+        // A pointer back to static stuff
+        const ValuePyClass static_attrs;
+        
+        // My attributes
+        Namespace attrs;
+
+        // When first creating this, all it needs do is reference it's static class
+        // __init__ will be called later if necessary
+        PyObject(const ValuePyClass& cls) : static_attrs(cls) {};
     };
 }
 

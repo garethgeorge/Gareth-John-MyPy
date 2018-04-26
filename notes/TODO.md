@@ -12,6 +12,8 @@
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
     - make initialize_from_pyfunc just a constructor
+    - Can you define a class inside a function?
+    - dont forget calling __init__
     - Does python support mulitple constructors? How do I deal with those
     - Inheritance
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)

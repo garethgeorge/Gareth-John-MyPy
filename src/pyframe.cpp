@@ -17,7 +17,7 @@ namespace py {
 
 FrameState::FrameState(
         InterpreterState *interpreter_state, 
-        FrameState *parent_frame, 
+        FrameState *parent_frame,
         const ValueCode& code) 
 {
     DEBUG("constructed a new frame");
@@ -163,6 +163,28 @@ namespace eval_helpers {
         }
     };
     
+    // Visitor for accessing class attributes
+    struct load_attr_visitor {
+        // Needed for directly accessing the callstack
+        // This could instead be passed in to the () operator
+        // But this felt more consistent with the rest of the code
+        FrameState& frame;
+
+        load_attr_visitor(FrameState& frame) : frame(frame) {}
+        
+        void operator()(const ValuePyClass& cls, const std::string& attr){
+            try {
+                frame.value_stack.push_back(cls->attrs.at(attr));
+            } catch (const std::out_of_range& oor) {
+                throw pyerror(std::string(
+                    *(std::get<ValueString>( cls->attrs["__qualname__"]))
+                    + " has no attribute " + attr
+                ));
+            }
+        }
+
+    };
+
     struct call_visitor {
         /*
             the call visitor is a helpful visitor class that actually includes 
@@ -182,8 +204,22 @@ namespace eval_helpers {
             func->action(frame, args);
         }
 
+        // A PyClass was called like a function, therein creating a PyObject
+        void operator()(const ValuePyClass& cls) const {
+            DEBUG("Constructing a '%s' Object",std::get<ValueString>(cls->attrs["__qualname__"])->c_str());
+            /*for(auto it = cls->attrs.begin();it != cls->attrs.end();++it){
+                printf("%s = ",it->first.c_str());
+                frame.print_value(it->second);
+                printf("\n");
+            }*/
+            ValuePyObject npo = std::make_shared<value::PyObject>(
+                value::PyObject(cls)
+            );
+            frame.value_stack.push_back(std::move(npo));
+        }
+
         void operator()(const ValuePyFunction& func) const {
-            DEBUG("call_visitor dispatching PyFunction->action");
+            DEBUG("call_visitor dispatching on a PyFunction");
 
             // Throw an error if too many arguments
             if(args.size() > func->code->co_argcount){
@@ -619,7 +655,18 @@ inline void FrameState::eval_next() {
             if(get_class_static_init_flag()){
                 // This whole time we have been initalizing the static fields of a class
                 // Finish that initalization
-                throw pyerror("Now to finish class static initialization!");
+                if (this->parent_frame != nullptr) {
+                    try {
+                        ValuePyClass npc = std::make_shared<value::PyClass>(
+                                value::PyClass(this->ns_local)
+                            );
+                        this->parent_frame->value_stack.push_back(
+                            std::move(npc)
+                        );
+                    } catch (const std::bad_alloc& e) {
+                        throw pyerror(std::string("Need to call garbage collector!\n"));
+                    }
+                }
             } else {
                 // Normal function return
                 auto val = this->value_stack.back();
@@ -711,6 +758,11 @@ inline void FrameState::eval_next() {
             // Push the build class builtin onto the stack
             J_DEBUG("Preparing to build a class");
             this->value_stack.push_back(this->interpreter_state->ns_builtins["__build_class__"]);
+            break;
+        }
+        case op::LOAD_ATTR:
+        {
+            
             break;
         }
         default:
