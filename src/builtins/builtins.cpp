@@ -108,12 +108,18 @@ extern void inject_builtins(Namespace& ns) {
         // Is that better?
         // This class if fully defined below
         // The 1 below sets the 'class_method' flag
-        ValuePyFunction& vpf = std::get<ValuePyFunction>(args[0]);
         
         try {
+            ValuePyFunction& vpf = std::get<ValuePyFunction>(args[0]);
+            
+            // Check that this an instance method
+            if(std::get_if<ValuePyClass>(&(vpf->self)) != NULL){
+                throw pyerror("classmethod builtin called on a function that is not an instance method");
+            }
+
             // Get the object self refers to
-            const ValuePyObject& vpo = std::get<ValuePyObject>(vpf->self);
-            if(vpo){
+            auto vpo = std::get_if<ValuePyObject>(&(vpf->self));
+            if(vpo != NULL){
                 // Create a function with self one level deeper
                 frame.value_stack.push_back(
                     std::move(
@@ -122,7 +128,7 @@ extern void inject_builtins(Namespace& ns) {
                                 vpf->name, 
                                 vpf->code, 
                                 vpf->def_args, 
-                                vpo->static_attrs,
+                                (*vpo)->static_attrs,
                                 1 | 8 // Class method flag, know class
                             }
                         )
@@ -134,13 +140,34 @@ extern void inject_builtins(Namespace& ns) {
                 frame.value_stack.push_back(
                     std::move(
                         std::make_shared<value::PyFunc>( 
-                            value::PyFunc {vpf->name, vpf->code, vpf->def_args, vpf->self, 1}
+                            value::PyFunc {vpf->name, vpf->code, vpf->def_args, vpf->self, 1} // unknown class
                         )
                     )
                 );
             }
-        } catch(const std::bad_variant_access& e) {
+        } catch (const std::bad_variant_access& e) {
             throw pyerror("classmethod builtin called on a function that is not an instance method");
+        }
+    });
+
+    // Makes a method static!
+    ns["staticmethod"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+        if (args.size() != 1) {
+            throw pyerror("staticmethod builtin not passed exactly one argument");
+        }
+
+        try {
+            ValuePyFunction& vpf = std::get<ValuePyFunction>(args[0]);
+            frame.value_stack.push_back(
+                std::move(
+                    std::make_shared<value::PyFunc>( 
+                        // Throw one up on the stack with static flag set
+                        value::PyFunc {vpf->name, vpf->code, vpf->def_args, vpf->self, 2}
+                    )
+                )
+            );
+        } catch (const std::bad_variant_access& e) {
+            throw pyerror("staticmethod called on a non function type");
         }
     });
 }

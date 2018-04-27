@@ -216,6 +216,8 @@ namespace eval_helpers {
                                 obj->static_attrs->store_attr(attr,npf);
                                 frame.value_stack.push_back(npf);
                             }
+                        } else  if ((*pf)->get_am_static_method()) {
+                            frame.value_stack.push_back(*pf);
                         } else {
                             // Create an instance method
                             Value npf = std::make_shared<value::PyFunc>(
@@ -223,7 +225,7 @@ namespace eval_helpers {
                                     (*pf)->name,
                                     (*pf)->code,
                                     (*pf)->def_args,
-                                    obj, // Instance emthod
+                                    obj, // Instance method
                                     4}
                             );
                             obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
