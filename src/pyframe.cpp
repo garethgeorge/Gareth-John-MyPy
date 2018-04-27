@@ -197,11 +197,38 @@ namespace eval_helpers {
                     // This essentially accomplishes lazy initialization of instance functions
                     auto pf = std::get_if<ValuePyFunction>(&static_val);
                     if(pf != NULL){
-                        // Push a new PyFunc with self set to obj
+                        // Push a new PyFunc with self set to obj or obj's class
                         // Store it so that next time it is accessed it will be found in attrs
-                        Value npf = (*pf)->get_instance_function(obj);
-                        obj->store_attr(attr,npf); // Does this create a shared_ptr cycle?
-                        frame.value_stack.push_back(npf);
+                        if((*pf)->get_am_class_method()){
+                            if((*pf)->get_know_which_class()){
+                                // All good, the class method already knows everythin
+                                frame.value_stack.push_back(*pf);
+                            } else {
+                                // Tell the class method which class
+                                Value npf = std::make_shared<value::PyFunc>(
+                                    value::PyFunc {
+                                        (*pf)->name,
+                                        (*pf)->code,
+                                        (*pf)->def_args,
+                                        obj->static_attrs,
+                                        1 | 8} // clasmethod that knows which class
+                                );
+                                obj->static_attrs->store_attr(attr,npf);
+                                frame.value_stack.push_back(npf);
+                            }
+                        } else {
+                            // Create an instance method
+                            Value npf = std::make_shared<value::PyFunc>(
+                                value::PyFunc {
+                                    (*pf)->name,
+                                    (*pf)->code,
+                                    (*pf)->def_args,
+                                    obj, // Instance emthod
+                                    4}
+                            );
+                            obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
+                            frame.value_stack.push_back(npf);
+                        }
                     } else {
                         // All is well, push as normal
                         frame.value_stack.push_back(static_val);

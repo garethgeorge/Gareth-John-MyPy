@@ -105,23 +105,11 @@ namespace value {
         // It's default argument
         const std::shared_ptr<std::vector<Value>> def_args;
 
-        // A pointer to self for if this is an instance function
+        // A pointer to self for if this is an instance function or class function
         const Value self;
 
         // Flags as needed
         const uint8_t flags;
-
-        // A PyFunc needs to remember which particular instance
-        // of a class it came from if it is loaded as an attribute
-        // This returns a new PyFunc with the 'self' field set
-        // leaving the original base PyFunc unchanged
-        // This will happen exactly once for each instance of a class
-        // see LOAD_ATTR for more details
-        auto get_instance_function(const ValuePyObject& self) const {
-            return std::make_shared<PyFunc>( PyFunc {name, code, def_args, self, 4});
-            //npf->self = self;
-            //return npf;
-        }
 
         bool get_am_class_method() const {
             return flags & 1;
@@ -133,6 +121,10 @@ namespace value {
 
         bool get_am_instance_method() const {
             return flags & 4;
+        }
+
+        bool get_know_which_class() const {
+            return flags & 8;
         }
     };
 

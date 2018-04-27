@@ -123,7 +123,7 @@ extern void inject_builtins(Namespace& ns) {
                                 vpf->code, 
                                 vpf->def_args, 
                                 vpo->static_attrs,
-                                1 // Class method flag
+                                1 | 8 // Class method flag, know class
                             }
                         )
                     )
