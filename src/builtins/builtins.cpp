@@ -63,12 +63,12 @@ extern void inject_builtins(Namespace& ns) {
     // See the RETURN_VALUE opcode in pyframe.cpp for the final allocation
     // Actually allocating a new PyObject from a PyClass happens in CALL_FUNCTION later
     ns["__build_class__"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
-        fprintf(stderr,"__build_class__ called with arguments:\n");
+        /*fprintf(stderr,"__build_class__ called with arguments:\n");
         for(int i = 0;i < args.size();i++){
             frame.print_value(args[i]);
             fprintf(stderr,"\n");
         }
-        (std::get<ValuePyFunction>(args[0]))->code->print_bytecode();
+        (std::get<ValuePyFunction>(args[0]))->code->print_bytecode();*/
         
         // Push the static initializer frame ontop the stack
         // The static initializer code block is the first argument

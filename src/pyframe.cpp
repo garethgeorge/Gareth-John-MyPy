@@ -252,6 +252,20 @@ namespace eval_helpers {
             ValuePyObject npo = std::make_shared<value::PyObject>(
                 value::PyObject(cls)
             );
+
+
+            // Check the class if it has an init function
+            auto itr = cls->attrs.find("__init__");
+            if(itr != cls->attrs.end()){
+                // call the init function, pushing the new object as the first argument 'self'
+                args.insert(args.begin(),npo);
+                std::visit(call_visitor(frame,args),itr->second);
+                
+                // Now that a new frame is on the stack, set a flag in it that it's an initializer frame
+                frame.interpreter_state->callstack.top().set_class_dynamic_init_flag();
+            }
+
+            // Push the new object on the value stack
             frame.value_stack.push_back(std::move(npo));
         }
 
@@ -711,29 +725,51 @@ inline void FrameState::eval_next() {
         case op::RETURN_VALUE:
         {
             this->check_stack_size(1);
-            if(get_class_static_init_flag()){
-                // This whole time we have been initalizing the static fields of a class
-                // Finish that initalization
-                if (this->parent_frame != nullptr) {
-                    try {
-                        ValuePyClass npc = std::make_shared<value::PyClass>(
-                                value::PyClass(this->ns_local)
-                            );
-                        this->parent_frame->value_stack.push_back(
-                            std::move(npc)
-                        );
-                    } catch (const std::bad_alloc& e) {
-                        throw pyerror(std::string("Need to call garbage collector!\n"));
+            switch(flags){
+                case 0:
+                    {
+                        // Normal function return
+                        auto val = this->value_stack.back();
+                        if (this->parent_frame != nullptr) {
+                            this->parent_frame->value_stack.push_back(std::move(val));
+                        }
+                        break;
                     }
-                }
-            } else {
-                // Normal function return
-                auto val = this->value_stack.back();
-                if (this->parent_frame != nullptr) {
-                    this->parent_frame->value_stack.push_back(std::move(val));
-                }
+                case 1:
+                    {
+                        // Static init
+                        // This whole time we have been initalizing the static fields of a class
+                        // Finish that initalization
+                        if (this->parent_frame != nullptr) {
+                            try {
+                                ValuePyClass npc = std::make_shared<value::PyClass>(
+                                        value::PyClass(this->ns_local)
+                                    );
+                                this->parent_frame->value_stack.push_back(
+                                    std::move(npc)
+                                );
+                            } catch (const std::bad_alloc& e) {
+                                throw pyerror(std::string("Need to call garbage collector!\n"));
+                            }
+                        }
+                    }
+                    break;
+                case 2:
+                    // Dynamic init
+                    // This whole time we have been initializing a newly allocated object
+                    // Annoyingly, init functions return None, not the class that was just initialized
+                    // so we need special handling
+
+                    // The new object has already been put on the top of the right stack
+                    // during CALL_FUNCTION
+                    // so fo this we do nothing
+                    break;
+                default:
+                    throw pyerror("Invalid FrameState flags");
+                    break;
             }
 
+            // Pop the call stack
             this->interpreter_state->callstack.pop();
             break ;
         }
@@ -905,6 +941,14 @@ void InterpreterState::eval() {
 
     bool FrameState::get_class_static_init_flag(){
         return flags & 1;
+    }
+
+    void FrameState::set_class_dynamic_init_flag(){
+        flags |= 2;
+    }
+
+    bool FrameState::get_class_dynamic_init_flag(){
+        return flags & 2;
     }
 
 

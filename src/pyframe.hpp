@@ -75,6 +75,10 @@ struct FrameState {
     void set_class_static_init_flag();
     bool get_class_static_init_flag();
 
+    // Im very sorry but it appears we do need two different flags
+    void set_class_dynamic_init_flag();
+    bool get_class_dynamic_init_flag();
+
     // helper method for checking the stack has enough values for the current
     // operation!
     inline const void check_stack_size(size_t expected) {

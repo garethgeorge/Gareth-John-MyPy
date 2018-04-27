@@ -13,17 +13,18 @@
  - implement Objects/Classes - John/Jack
     - @classmethod &&  @staticmethod???
     - can i make store_attr function Value a reference?
+    - TypeError: __init__() should return None, not 'int' is a runtime error!
     - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
     - make initialize_from_pyfunc just a constructor
     - Can you define a class inside a function?
-    - dont forget calling __init__
     - Does python support mulitple constructors? How do I deal with those
     - Inheritance
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
     - Classes can overload operators as well as inplace operators differently
-    - Make test!
+    - Make tests!
         - Both correct functioning and errors
         - make sure member functions with default args work
+        - test everything in classes_test.py for sure
  - implement variadic functions - John Jack
  - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack
