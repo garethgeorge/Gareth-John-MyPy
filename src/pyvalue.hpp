@@ -22,7 +22,6 @@ using std::shared_ptr;
 // forward declarations
 struct Code;
 struct FrameState;
-struct PyClass;
 
 // the value namespace for C value types
 namespace value {
@@ -107,7 +106,10 @@ namespace value {
         const std::shared_ptr<std::vector<Value>> def_args;
 
         // A pointer to self for if this is an instance function
-        const ValuePyObject self;
+        const Value self;
+
+        // Flags as needed
+        const uint8_t flags;
 
         // A PyFunc needs to remember which particular instance
         // of a class it came from if it is loaded as an attribute
@@ -116,9 +118,21 @@ namespace value {
         // This will happen exactly once for each instance of a class
         // see LOAD_ATTR for more details
         auto get_instance_function(const ValuePyObject& self) const {
-            return std::make_shared<PyFunc>( PyFunc {name, code, def_args, self});
+            return std::make_shared<PyFunc>( PyFunc {name, code, def_args, self, 4});
             //npf->self = self;
             //return npf;
+        }
+
+        bool get_am_class_method() const {
+            return flags & 1;
+        }
+
+        bool get_am_static_method() const {
+            return flags & 2;
+        }
+
+        bool get_am_instance_method() const {
+            return flags & 4;
         }
     };
 
@@ -132,7 +146,7 @@ namespace value {
         }
 
         // Store an attribute into attrs
-        void store_attr(const std::string& str,Value val){
+        void store_attr(const std::string& str,Value& val){
             attrs[str] = val;
         }
     };
@@ -153,7 +167,7 @@ namespace value {
         PyObject(const ValuePyClass& cls) : static_attrs(cls) {};
 
         // Store an attribute into attrs
-        void store_attr(const std::string& str,Value val){
+        void store_attr(const std::string& str,Value& val){
             attrs[str] = val;
         }
     };

@@ -8,6 +8,7 @@
 #include "../pyvalue_helpers.hpp"
 #include "../pyerror.hpp"
 #include "../pyframe.hpp"
+#include "../pyvalue.hpp"
 
 using std::string;
 
@@ -81,10 +82,66 @@ extern void inject_builtins(Namespace& ns) {
         
         // This frame state is initializing the statics of a class
         frame.interpreter_state->callstack.top().set_class_static_init_flag();
-        
+
         // No need to initialize from pyfunc, it has no arguments (I think this is always true?)
         //frame.interpreter_state->callstack.top().initialize_from_pyfunc(std::get<ValuePyFunction>(args[0]),std::vector());
         
+    });
+
+    // Used to create a class method from an instance method
+    // For class methods, 'self' refers to the PyClass a PyObject is an instance of
+    // Returns a class method from an instance method
+    // Call be called from within a static intinializing frame which, currently, does not 
+    // have a reference to the class (it doesnt exist yet)
+    // This means flags need to be involved
+    // Is there a better way to do this without addng a field to FrameState?
+    ns["classmethod"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+        if (args.size() != 1) {
+            throw pyerror("classmethod builtin not passed exactly one argument");
+        }
+        
+       // Get a version of this function that is a class function
+        // If I already know self, set it to self's base class in the new one
+        // Otherwise merely set the flag and defer self until we know it (MEEEEH)
+        // A different solution to the above line would be to have a static initializer
+        // frame state be able to refer to the class it is creating while creating it
+        // Is that better?
+        // This class if fully defined below
+        // The 1 below sets the 'class_method' flag
+        ValuePyFunction& vpf = std::get<ValuePyFunction>(args[0]);
+        
+        try {
+            // Get the object self refers to
+            const ValuePyObject& vpo = std::get<ValuePyObject>(vpf->self);
+            if(vpo){
+                // Create a function with self one level deeper
+                frame.value_stack.push_back(
+                    std::move(
+                        std::make_shared<value::PyFunc>( 
+                            value::PyFunc {
+                                vpf->name, 
+                                vpf->code, 
+                                vpf->def_args, 
+                                vpo->static_attrs,
+                                1 // Class method flag
+                            }
+                        )
+                    )
+                );
+            } else {
+                // Create a function with the same empty self but that knows its a class emthod
+                // MEEEEH
+                frame.value_stack.push_back(
+                    std::move(
+                        std::make_shared<value::PyFunc>( 
+                            value::PyFunc {vpf->name, vpf->code, vpf->def_args, vpf->self, 1}
+                        )
+                    )
+                );
+            }
+        } catch(const std::bad_variant_access& e) {
+            throw pyerror("classmethod builtin called on a function that is not an instance method");
+        }
     });
 }
 

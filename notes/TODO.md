@@ -12,7 +12,10 @@
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
     - @classmethod &&  @staticmethod???
-    - can i make store_attr function Value a reference?
+    - class A(object): <- this 'object' causes it to fail! ????
+      def foo(self,x):
+          print ("executing foo " + str(self) + " " + str(x))
+
     - TypeError: __init__() should return None, not 'int' is a runtime error!
     - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
     - make initialize_from_pyfunc just a constructor

@@ -294,22 +294,48 @@ namespace eval_helpers {
     };
 }
 
+// Used in initialize_from_pyfunc to set the first argument of 
+struct set_implicit_arg_visitor {
+    FrameState& frame;
+    
+    set_implicit_arg_visitor(FrameState& frame) : frame(frame) {}
+
+    void operator()(const ValuePyClass& cls) const {
+        if(cls){
+            frame.add_to_ns_local(
+                frame.code->co_varnames[0],
+                cls
+            );
+        }
+    }
+
+    void operator()(const ValuePyObject& obj) const {
+        if(obj){
+            frame.add_to_ns_local(
+                frame.code->co_varnames[0],
+                obj
+            );
+        }
+    }
+    
+    template<typename T>
+    void operator()(T) const {
+        // Do nothing
+        return;
+    }
+};
+
 void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args){
     // Calculate which argument is the first argument with a default value
     // Also whether or not the very first argument is self (or class)
     // This could be stored in PyFunc struct but that is a tiny space tradeoff vs tiny time tradeoff
     int first_def_arg = this->code->co_argcount - func->def_args->size();
-    int first_arg_is_self = (func->self ? 1 : 0);
+   
+    // Set the implicit argument
+    std::visit(set_implicit_arg_visitor(*this),func->self);
+    bool has_implicit_arg = func->get_am_instance_method() || func->get_am_class_method();
 
-    // First, check if we are in a instance method, if so, make the first arg 'self'
-    if(func->self){
-        DEBUG("This is an instance method!")
-        add_to_ns_local(
-            // First argument is always self in an instance method
-            this->code->co_varnames[0], 
-            func->self
-        );
-    }
+    int first_arg_is_self = (has_implicit_arg ? 1 : 0);
 
     J_DEBUG("(Assigning the following values to names:\n");
 
@@ -318,7 +344,7 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
     // the name is the constant (co_varnames) at the argument number it is
     // the value has been passed in or uses the default
     // If we are an instance method, skip the first arg as it was set above
-    for(int i = (func->self ? 1 : 0); i < this->code->co_argcount; i++){
+    for(int i = (has_implicit_arg ? 1 : 0); i < this->code->co_argcount; i++){
         // The arg to consider may not quite align with i
         int arg_num = i - first_arg_is_self;
 
