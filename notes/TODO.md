@@ -18,6 +18,7 @@
     - make initialize_from_pyfunc just a constructor
     - Can you define a class inside a function?
     - Does python support mulitple constructors? How do I deal with those
+    - make the 'str' builtin work correctly for PyFuncs, PyObjects, and PyClasses
     - Make tests!
         - Both correct functioning and errors
         - make sure member functions with default args work
