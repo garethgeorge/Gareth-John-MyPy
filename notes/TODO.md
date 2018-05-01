@@ -12,6 +12,7 @@
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
     - Inheritance and Multiple Inheritence
+    - classtest2 has begun failing
     - Change classmethod to use init_class
     - super() function
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
@@ -30,6 +31,7 @@
         - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
         - overloading in classes and general function overloading
         - Make sure the 'deadly diamond problem' (https://www.python-course.eu/python3_multiple_inheritance.php) resolves correctly
+        - I searched parents depth-first. is this correct?
  - implement variadic functions - John Jack
  - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack

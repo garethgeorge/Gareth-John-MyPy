@@ -46,6 +46,39 @@ FrameState::FrameState(
     this->set_class_static_init_flag();
 }
 
+    Value find_attr_in_parents(const ValuePyClass& cls,const std::string& attr,bool* success){
+        // Is depth first correct??
+        for(int i = 0;i < cls->parents.size();i++){
+            std::cout << "Parent " << i << std::endl << std::flush;
+            // Check the parent for the attribute
+            auto itr = cls->parents[i]->attrs.find(attr);
+            if(itr != cls->parents[i]->attrs.end()){
+                std::cout << "A" << std::endl << std::flush;
+                (*success) = true;
+                std::cout << "B" << std::endl << std::flush;
+                std::cout << itr->first << std::endl << std::flush;
+                std::cout << "G" << std::endl << std::flush;
+                return itr->second;
+            } else {
+                // Check the parent's parents
+                bool out;
+                std::cout << "C" << std::endl << std::flush;
+                Value v = find_attr_in_parents(cls->parents[i],attr,&out);
+                std::cout << "D" << std::endl << std::flush;
+                if (out){
+                    std::cout << "E" << std::endl << std::flush;
+                    (*success) = true;
+                    std::cout << "F" << std::endl << std::flush;
+                    return v;
+                }
+            }
+        }
+        std::cout << "G" << std::endl << std::flush;
+        (*success) = false;
+        std::cout << "H" << std::endl << std::flush;
+        return cls;
+    }
+
 void FrameState::print_next() {
     Code::ByteCode bytecode = code->bytecode[this->r_pc];
     if (this->r_pc >= this->code->bytecode.size()) {
@@ -202,63 +235,74 @@ namespace eval_helpers {
         // For pyobject, first look in their own namespace, then look in their static namespace
         // ValuePyObject cannot be const as it might be modified
         void operator()(ValuePyObject& obj){
-            try {
-                // First look in my own namespace
-                auto itr = obj->attrs.find(attr);
-                if(itr != obj->attrs.end()){
-                    frame.value_stack.push_back(itr->second);
+            // First look in my own namespace
+            auto itr = obj->attrs.find(attr);
+            if(itr != obj->attrs.end()){
+                frame.value_stack.push_back(itr->second);
+            } else {
+                // Default to statics if not found
+                auto itr_2 = obj->static_attrs->attrs.find(attr);
+                Value static_val;
+                if(itr_2 == obj->static_attrs->attrs.end()){
+                    // Not found in statics, search parents
+                    bool out = false;
+                    static_val = find_attr_in_parents(obj->static_attrs,attr,&out);
+                    // Check if we indeed found a value
+                    if(!out){
+                        // Nothing, it was NoneType. Error!
+                        throw pyerror(std::string(
+                            // Should this be __name__??
+                            *(std::get<ValueString>(obj->static_attrs->attrs["__qualname__"]))
+                            + " has no attribute " + attr
+                        ));
+                    }
                 } else {
-                    // Default to statics if not found
-                    Value static_val = obj->static_attrs->attrs.at(attr);
-                    
-                    // Check to see if it is a PyFunc, and if so make it's self to obj
-                    // This essentially accomplishes lazy initialization of instance functions
-                    auto pf = std::get_if<ValuePyFunction>(&static_val);
-                    if(pf != NULL){
-                        // Push a new PyFunc with self set to obj or obj's class
-                        // Store it so that next time it is accessed it will be found in attrs
-                        if((*pf)->get_am_class_method()){
-                            if((*pf)->get_know_which_class()){
-                                // All good, the class method already knows everythin
-                                frame.value_stack.push_back(*pf);
-                            } else {
-                                // Tell the class method which class
-                                Value npf = std::make_shared<value::PyFunc>(
-                                    value::PyFunc {
-                                        (*pf)->name,
-                                        (*pf)->code,
-                                        (*pf)->def_args,
-                                        obj->static_attrs,
-                                        1 | 8} // clasmethod that knows which class
-                                );
-                                obj->static_attrs->store_attr(attr,npf);
-                                frame.value_stack.push_back(npf);
-                            }
-                        } else  if ((*pf)->get_am_static_method()) {
+                    static_val = itr_2->second;
+                }
+                
+                // Check to see if it is a PyFunc, and if so make it's self to obj
+                // This essentially accomplishes lazy initialization of instance functions
+                auto pf = std::get_if<ValuePyFunction>(&static_val);
+                if(pf != NULL){
+                    // Push a new PyFunc with self set to obj or obj's class
+                    // Store it so that next time it is accessed it will be found in attrs
+                    if((*pf)->get_am_class_method()){
+                        if((*pf)->get_know_which_class()){
+                            // All good, the class method already knows everythin
                             frame.value_stack.push_back(*pf);
                         } else {
-                            // Create an instance method
+                            // Tell the class method which class
                             Value npf = std::make_shared<value::PyFunc>(
                                 value::PyFunc {
                                     (*pf)->name,
                                     (*pf)->code,
                                     (*pf)->def_args,
-                                    obj, // Instance method
-                                    4}
+                                    obj->static_attrs,
+                                    1 | 8} // clasmethod that knows which class
                             );
-                            obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
+                            obj->static_attrs->store_attr(attr,npf);
                             frame.value_stack.push_back(npf);
                         }
+                    } else  if ((*pf)->get_am_static_method()) {
+                        frame.value_stack.push_back(*pf);
                     } else {
-                        // All is well, push as normal
-                        frame.value_stack.push_back(static_val);
+                        DEBUG("Instantiating instance method");
+                        // Create an instance method
+                        Value npf = std::make_shared<value::PyFunc>(
+                            value::PyFunc {
+                                (*pf)->name,
+                                (*pf)->code,
+                                (*pf)->def_args,
+                                obj, // Instance method
+                                4}
+                        );
+                        obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
+                        frame.value_stack.push_back(npf);
                     }
+                } else {
+                    // All is well, push as normal
+                    frame.value_stack.push_back(static_val);
                 }
-            } catch (const std::out_of_range& oor) {
-                throw pyerror(std::string(
-                    *(std::get<ValueString>(obj->attrs["__name__"]))
-                    + " has no attribute " + attr
-                ));
             }
         }
 
@@ -303,14 +347,22 @@ namespace eval_helpers {
 
             // Check the class if it has an init function
             auto itr = cls->attrs.find("__init__");
-            if(itr != cls->attrs.end()){
+            Value vv;
+            bool has_init = true;
+            if(itr == cls->attrs.end()){
+                vv = find_attr_in_parents(cls,std::string("__init__"),&has_init);
+            } else {
+                vv = itr->second;
+            }
+
+            if(has_init){
                 // call the init function, pushing the new object as the first argument 'self'
                 args.insert(args.begin(),npo);
-                std::visit(call_visitor(frame,args),itr->second);
+                std::visit(call_visitor(frame,args),vv);
                 
                 // Now that a new frame is on the stack, set a flag in it that it's an initializer frame
                 frame.interpreter_state->callstack.top().set_class_dynamic_init_flag();
-            }
+            } 
 
             // Push the new object on the value stack
             frame.value_stack.push_back(std::move(npo));
