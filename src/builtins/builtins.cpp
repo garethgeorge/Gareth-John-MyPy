@@ -70,18 +70,49 @@ extern void inject_builtins(Namespace& ns) {
             fprintf(stderr,"\n");
         }
         (std::get<ValuePyFunction>(args[0]))->code->print_bytecode();*/
-        
+
+        // Store code
+        ValueCode init_code = std::get<ValuePyFunction>(args[0])->code;
+        args.erase(args.begin());
+
+        // Store name
+        ValueString class_name = std::get<ValueString>(args[0]);
+        args.erase(args.begin());
+
+        // There is some unhealthy copying going on here
+        // This needs to be fixed and made better
+        std::vector<ValuePyClass> tmp_vect;
+        tmp_vect.reserve(args.size());
+
+        // Check for type errors
+        try{
+            for(int i = 0;i < args.size();i++){
+                tmp_vect.push_back(std::get<ValuePyClass>(args[i]));
+            }
+        } catch (const std::bad_variant_access& e) {
+            throw pyerror("classes can only inherit from classes");
+        }
+
+        // Allocate the class
+        ValuePyClass new_class = std::make_shared<value::PyClass>(value::PyClass(
+            tmp_vect
+        ));
+
+        // Allocate the class and push it to the top of the stack
+        // Args now holds the list of parents
+        frame.value_stack.push_back(
+            new_class
+        );
+
         // Push the static initializer frame ontop the stack
         // The static initializer code block is the first argument
         frame.interpreter_state->callstack.push(
-            std::move(FrameState(frame.interpreter_state, &frame, std::get<ValuePyFunction>(args[0])->code))
+            std::move(FrameState(frame.interpreter_state, &frame, init_code, new_class))
         );
+
         // Add it's name to it's local namespace
-        // Name is passed in as the second argument
-        frame.interpreter_state->callstack.top().add_to_ns_local("__name__",std::get<ValueString>(args[1]).get());
-        
-        // This frame state is initializing the statics of a class
-        frame.interpreter_state->callstack.top().set_class_static_init_flag();
+        // Remember that this actually adds it to the class
+        frame.interpreter_state->callstack.top().add_to_ns_local("__name__",class_name);
 
         // No need to initialize from pyfunc, it has no arguments (I think this is always true?)
         //frame.interpreter_state->callstack.top().initialize_from_pyfunc(std::get<ValuePyFunction>(args[0]),std::vector());

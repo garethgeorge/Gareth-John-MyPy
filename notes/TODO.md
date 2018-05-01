@@ -12,6 +12,8 @@
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
     - Inheritance and Multiple Inheritence
+    - Change classmethod to use init_class
+    - super() function
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
     - Classes can overload operators as well as inplace operators differently
     - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
@@ -25,6 +27,9 @@
         - test everything in classes_test.py for sure
         - test @classmethod &&  @staticmethod!!!!!
         - TypeError: __init__() should return None, not 'int' is a runtime error!
+        - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
+        - overloading in classes and general function overloading
+        - Make sure the 'deadly diamond problem' (https://www.python-course.eu/python3_multiple_inheritance.php) resolves correctly
  - implement variadic functions - John Jack
  - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack
@@ -35,3 +40,4 @@
  - implement a ton of builtins for the rest of the quarter
     - print 
     - range
+    - https://docs.python.org/3/library/stdtypes.html

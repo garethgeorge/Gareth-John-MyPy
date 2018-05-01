@@ -6,6 +6,7 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <cassert>
 
 #include "pyvalue.hpp"
 #include "optflags.hpp"
@@ -43,6 +44,21 @@ struct FrameState {
     Namespace ns_local; // the local value namespace
     uint8_t flags = 0;
 
+    // It has become abundantly clear that the frame state which initializes the static fields
+    // of a class must be able to access the class it is initializing
+    // For this reason, I am adding a field that unfortunately is rarely used
+    // Hopefully this can be factored out later, and as such it will only be accessed via helper functions
+    ValuePyClass init_class;
+
+    ValuePyClass& get_init_class(){
+
+        #ifdef DEBUG_ON
+        assert(init_class);
+        #endif
+
+        return init_class;
+    }
+
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
     // with this #define we are feature flagging the NS_LOCAL_SHORTCUT feature
     // this is an optimization that bypasses the ns_local namespace string lookup
@@ -61,6 +77,13 @@ struct FrameState {
         FrameState *parent_frame, // null for the top frame on the stack
         const ValueCode& code);
 
+    // Initialize for as class static initializer
+    FrameState(
+        InterpreterState *interpreter_state, 
+        FrameState *parent_frame,
+        const ValueCode& code,
+        ValuePyClass& init_class);
+
     void eval_next();
     void print_next();
 
@@ -78,6 +101,7 @@ struct FrameState {
     // Im very sorry but it appears we do need two different flags
     void set_class_dynamic_init_flag();
     bool get_class_dynamic_init_flag();
+
 
     // helper method for checking the stack has enough values for the current
     // operation!

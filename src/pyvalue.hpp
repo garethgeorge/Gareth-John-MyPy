@@ -133,8 +133,16 @@ namespace value {
         // Static Attributes
         Namespace attrs;
 
+        // Things I inherit from
+        std::vector<ValuePyClass> parents;
+
         PyClass(Namespace ns){
             attrs = ns;
+        }
+
+        PyClass(std::vector<ValuePyClass>& ps){
+            // Copying... meh
+            parents = ps;
         }
 
         // Store an attribute into attrs

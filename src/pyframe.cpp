@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <variant>
 #include <cmath>
+#include <cassert>
 #include "pyvalue_helpers.hpp"
 #include "pyframe.hpp"
 #include "pyinterpreter.hpp"
@@ -26,6 +27,23 @@ FrameState::FrameState(
     this->code = code;
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
     this->value_stack.reserve(code->co_stacksize);
+}
+
+// Construct a framestate meant to initialize everything static about a class
+FrameState::FrameState(
+        InterpreterState *interpreter_state, 
+        FrameState *parent_frame,
+        const ValueCode& code,
+        ValuePyClass& init_class)
+{
+    DEBUG("constructed a new frame for statically initializing a class");
+    this->interpreter_state = interpreter_state;
+    this->parent_frame = parent_frame;
+    this->code = code;
+    DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
+    this->value_stack.reserve(code->co_stacksize);
+    this->init_class = init_class;
+    this->set_class_static_init_flag();
 }
 
 void FrameState::print_next() {
@@ -412,7 +430,11 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
 
 // Add a value to the ns local
 void FrameState::add_to_ns_local(const std::string& name,Value&& v){
-    this->ns_local.emplace(name,v);
+    if(this->get_class_static_init_flag()){
+        this->get_init_class()->attrs.emplace(name,v);
+    } else {
+        this->ns_local.emplace(name,v);
+    }
 }
 
 // Bad ugly copy paste but I got annoted at type errors
@@ -536,6 +558,31 @@ inline void FrameState::eval_next() {
         {
             try {
                 const std::string& name = this->code->co_names.at(arg);
+                
+                // If we are statically initializing a class
+                // Instead of loading from namespace, we access our class's attributes
+                if(this->get_class_static_init_flag()){
+                    // No no no no no
+                    // However, since how this whole thing works is gana change,
+                    // This is prob fine for now
+
+                    // This is mostly here so that when I remove init_class
+                    // This fails to compile and we know to change here
+                    assert(this->init_class);
+
+                    Value cv = this->get_init_class();
+
+                    try {
+                        std::visit(
+                            eval_helpers::load_attr_visitor(*this,name),
+                            cv
+                        );
+                        break;
+                    } catch (int err) {
+                        printf("\nCaught!!\n");
+                        // Ignore
+                    }
+                }
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
                 // if NS_LOCAL_SHORTCUT optimization is turned on, see if we can
                 // find the variable in the cache
@@ -603,10 +650,19 @@ inline void FrameState::eval_next() {
             }
             break;
         case op::STORE_NAME:
-        {
+        {   
             this->check_stack_size(1);
             try {
                 const std::string& name = this->code->co_names.at(arg);
+
+                // If we are statically initializing a class, store as an attribute instead
+                if(this->get_class_static_init_flag()){
+                    Value vv = std::move(this->value_stack.back());
+                    this->value_stack.pop_back();
+                    this->get_init_class()->store_attr(name,vv);
+                    break;
+                }
+
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
                 auto& local_shortcut_entry = 
                     this->ns_local_shortcut[arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *))];
@@ -791,7 +847,7 @@ inline void FrameState::eval_next() {
                         break;
                     }
                 case 1:
-                    {
+                    /*{
                         // Static init
                         // This whole time we have been initalizing the static fields of a class
                         // Finish that initalization
@@ -808,7 +864,7 @@ inline void FrameState::eval_next() {
                             }
                         }
                     }
-                    break;
+                    break;*/
                 case 2:
                     // Dynamic init
                     // This whole time we have been initializing a newly allocated object
