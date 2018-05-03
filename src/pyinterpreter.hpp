@@ -11,6 +11,7 @@
 #include "pycode.hpp"
 #include "pyframe.hpp"
 #include "pyvalue.hpp"
+#include "pyallocator.hpp"
 
 namespace py {
 
@@ -22,9 +23,8 @@ struct InterpreterState {
     std::stack<FrameState> callstack;
     Namespace* ns_globals_ptr; // ns_globals is just ns_local of the very bottom FrameState
     Namespace ns_builtins;
-
-    // heaps
-    gc_heap<value::List> heap_lists;
+    
+    Allocator alloc;
 
     InterpreterState(std::shared_ptr<Code>& code);
 

@@ -725,7 +725,7 @@ inline void FrameState::eval_next() {
             this->check_stack_size(arg);
 
             // Pop the arguments to turn into a list.
-            ValueList newList = this->interpreter_state->heap_lists.make();
+            ValueList newList = this->interpreter_state->alloc.heap_lists.make();
 
             newList->values.assign(this->value_stack.end() - arg, this->value_stack.end());
             this->value_stack.resize(this->value_stack.size() - arg);
