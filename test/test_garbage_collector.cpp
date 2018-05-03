@@ -13,11 +13,19 @@ using namespace gc;
 struct MyClass {
     int a;
     std::string b;
-    optional<gc_ptr<MyClass>> pointer;
+    gc_ptr<MyClass> pointer;
 
     MyClass(int c, string b) 
         : a(c), b(b) {
     }
+};
+
+struct Baz;
+
+using MyType = std::variant<int, gc_ptr<Baz>>;
+
+struct Baz {
+    std::vector<MyType> values;
 };
 
 namespace gc{
@@ -26,8 +34,8 @@ namespace gc{
     }
 
     void mark_children(gc_ptr<MyClass>& object) {
-        if (object->pointer) {
-            (*(object->pointer)).mark();
+        if (object->pointer != nullptr) {
+            object->pointer.mark();
         }
     }
 }
@@ -47,10 +55,13 @@ TEST_CASE("should be able to do garbage collection", "[arithmetic]") {
         REQUIRE(myHeap.size() == 0);
     }
 
-    SECTION("complex case -- variant") {
+    SECTION("complex case, no variant yet") {
         gc_heap<MyClass> myHeap;
         gc_ptr<MyClass> a = myHeap.make(1, "a");
         gc_ptr<MyClass> b = myHeap.make(2, "b");
+        gc_ptr<MyClass> c(std::move(b));
+        b = std::move(c);
+
         a->pointer = b;
 
         REQUIRE(myHeap.size() == 2);
@@ -68,5 +79,11 @@ TEST_CASE("should be able to do garbage collection", "[arithmetic]") {
         myHeap.sweep();
 
         REQUIRE(myHeap.size() == 0);
+    }
+
+    SECTION("complex case -- variant of just ints") {
+        
+        gc_heap<Baz> bazzes;
+        MyType foo = bazzes.make();
     }
 }

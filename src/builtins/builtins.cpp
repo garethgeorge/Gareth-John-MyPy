@@ -201,6 +201,19 @@ extern void inject_builtins(Namespace& ns) {
             throw pyerror("staticmethod called on a non function type");
         }
     });
+
+    ns["len"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+        if (args.size() != 1) {
+            throw pyerror("len() only takes one argument");
+        }
+
+        try {
+            ValueList value = std::get<ValueList>(args[0]);
+            frame.value_stack.push_back((int64_t)(value->values.size()));
+        } catch (std::bad_variant_access& err) {
+            pyerror("expected a list, got bad datatype");
+        }
+    });
 }
 
 }

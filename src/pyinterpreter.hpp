@@ -11,6 +11,7 @@
 #include "pycode.hpp"
 #include "pyframe.hpp"
 #include "pyvalue.hpp"
+#include "pyallocator.hpp"
 
 namespace py {
 
@@ -23,6 +24,8 @@ struct InterpreterState {
     Namespace* ns_globals_ptr; // ns_globals is just ns_local of the very bottom FrameState
     Namespace ns_builtins;
     ValueCode main_code;
+    
+    Allocator alloc;
 
     InterpreterState(std::shared_ptr<Code>& code);
 

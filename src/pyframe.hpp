@@ -87,7 +87,7 @@ struct FrameState {
     void eval_next();
     void print_next();
 
-    void print_value(Value& val) const;
+    static void print_value(Value& val);
     void print_stack() const;
 
     // Add a value to local namespace (for use when creating the frame state)
@@ -101,7 +101,6 @@ struct FrameState {
     // Im very sorry but it appears we do need two different flags
     void set_class_dynamic_init_flag();
     bool get_class_dynamic_init_flag();
-
 
     // helper method for checking the stack has enough values for the current
     // operation!

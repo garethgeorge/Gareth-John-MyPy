@@ -13,6 +13,8 @@
 
 namespace py {
 
+using namespace gc;
+
 using std::vector;
 using std::unordered_set;
 using std::unordered_map;
@@ -28,7 +30,8 @@ namespace value {
     struct NoneType { };
 
     struct CFunction;
-    // struct List;
+    struct List;
+    struct Tuple;
     // struct Map;
     // struct Set;
 
@@ -56,6 +59,7 @@ using ValuePyObject = std::shared_ptr<value::PyObject>;
 // Need to confirm this tho
 // THIS NEEDS TO CHANGE TO A GC_PTR (or do i?)
 using ValuePyClass = std::shared_ptr<value::PyClass>;
+using ValueList = gc_ptr<value::List>;
 
 
 using Value = std::variant<
@@ -68,7 +72,8 @@ using Value = std::variant<
     value::NoneType,
     ValuePyFunction,
     ValuePyClass,
-    ValuePyObject
+    ValuePyObject,
+    ValueList
 >;
 
 // Bad copy/paste from pyinterpreter.hpp
@@ -80,13 +85,16 @@ namespace value {
         CFunction(const std::function<void(FrameState&, std::vector<Value>&)>& _action) : action(_action) { };
     };
     
-    // struct List { 
-    //     vector<Value> list;
-    // };
+    struct List { 
+        // we must wrap the vector in a forward declared struct, because otherwise the type information
+        // and more importantly the size of py::Value, is not available at the time of its creation
+        // (before it needs to be included in the std::variant)
+        std::vector<Value> values;
+    };
     
     // struct Set {
     //     unordered_set<Value> values;
-    // }
+    // };
 
     // struct Map {
     //     unordered_map<Value, Value> values;
