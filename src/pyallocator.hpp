@@ -3,9 +3,13 @@
 
 #include <pygc.hpp>
 
+#include "pyvalue.hpp"
+
 namespace py {
 
     using namespace gc;
+
+    struct InterpreterState;
 
     struct Allocator {
         gc_heap<value::List> heap_lists;
