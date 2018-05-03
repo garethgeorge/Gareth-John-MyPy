@@ -49,33 +49,33 @@ FrameState::FrameState(
     Value find_attr_in_parents(const ValuePyClass& cls,const std::string& attr,bool* success){
         // Is depth first correct??
         for(int i = 0;i < cls->parents.size();i++){
-            std::cout << "Parent " << i << std::endl << std::flush;
+            //std::cout << "Parent " << i << std::endl << std::flush;
             // Check the parent for the attribute
             auto itr = cls->parents[i]->attrs.find(attr);
             if(itr != cls->parents[i]->attrs.end()){
-                std::cout << "A" << std::endl << std::flush;
+                //std::cout << "A" << std::endl << std::flush;
                 (*success) = true;
-                std::cout << "B" << std::endl << std::flush;
+                //std::cout << "B" << std::endl << std::flush;
                 std::cout << itr->first << std::endl << std::flush;
-                std::cout << "G" << std::endl << std::flush;
+                //std::cout << "G" << std::endl << std::flush;
                 return itr->second;
             } else {
                 // Check the parent's parents
                 bool out;
-                std::cout << "C" << std::endl << std::flush;
+                //std::cout << "C" << std::endl << std::flush;
                 Value v = find_attr_in_parents(cls->parents[i],attr,&out);
-                std::cout << "D" << std::endl << std::flush;
+                //std::cout << "D" << std::endl << std::flush;
                 if (out){
-                    std::cout << "E" << std::endl << std::flush;
+                    //std::cout << "E" << std::endl << std::flush;
                     (*success) = true;
-                    std::cout << "F" << std::endl << std::flush;
+                    //std::cout << "F" << std::endl << std::flush;
                     return v;
                 }
             }
         }
-        std::cout << "G" << std::endl << std::flush;
+        //std::cout << "G" << std::endl << std::flush;
         (*success) = false;
-        std::cout << "H" << std::endl << std::flush;
+        //std::cout << "H" << std::endl << std::flush;
         return cls;
     }
 

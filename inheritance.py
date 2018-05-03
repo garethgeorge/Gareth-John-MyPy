@@ -17,6 +17,8 @@ class B(A):
 
 class C(A):
     arg = 100
+    def func(self):
+        print(str(self.val) + "?")
 
 class D(A):
     def func(self):
@@ -25,7 +27,7 @@ class D(A):
         print("D init called")
         self.val = 10
 
-class E(B,C,D):
+class E(C, D, B):
     def lol(self):
         print(self.arg)
 

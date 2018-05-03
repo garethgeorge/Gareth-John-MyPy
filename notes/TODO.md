@@ -11,8 +11,11 @@
 # TODO
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
-    - Inheritance and Multiple Inheritence
-    - classtest2 has begun failing
+    - Inheritance and Multiple Inheritence (BFS)
+    - Make all namespaces shared_ptrs
+    - use GC
+    - Somehow make it so that the namespace of a static init framestate IS the attrs of the class being created
+    - classtest2 has begun failing -> reimplement classmethod
     - Change classmethod to use init_class
     - super() function
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
@@ -22,6 +25,8 @@
     - Can you define a class inside a function?
     - Does python support mulitple constructors? How do I deal with those
     - make the 'str' builtin work correctly for PyFuncs, PyObjects, and PyClasses
+    - Speed up searching parent attributes
+    - Builtin class 'object'
     - Make tests!
         - Both correct functioning and errors
         - make sure member functions with default args work
