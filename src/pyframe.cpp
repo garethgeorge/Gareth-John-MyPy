@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <variant>
 #include <cmath>
+#include <sstream>
 #include "pyvalue_helpers.hpp"
 #include "pyframe.hpp"
 #include "pyinterpreter.hpp"
@@ -197,6 +198,28 @@ namespace eval_helpers {
             throw pyerror(string("can not call object of type ") + typeid(T).name());
         }
     };
+
+    struct binary_subscr_visitor {
+        /*
+            the binary subscript visitor is used to implement
+            Implements TOS = TOS1[TOS].
+        */
+        Value operator()(ValueList& list, int64_t index) {
+            auto& values = list->values;
+            if (index < 0 || index >= values.size()) {
+                std::stringstream ss;
+                ss << "attempted list access out of range LIST[" << index << "] but list only held " << values.size() << " elements.";
+                throw pyerror(ss.str());
+            } 
+
+            return values[index];
+        }
+
+        template<typename A, typename B>
+        Value operator()(A, B) {
+            throw pyerror("attempted to index invalid types");
+        }
+    };
 }
 
 void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args){
@@ -250,11 +273,9 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
 // Add a value to the ns local
 void FrameState::add_to_ns_local(const std::string& name,Value&& v){
     this->ns_local.emplace(name,v);
-}
+} 
 
-// Bad ugly copy paste but I got annoted at type errors
-// Will improve later
-void FrameState::print_value(Value& val) const {
+void FrameState::print_value(Value& val) {
     std::visit(value_helper::overloaded {
             [](auto&& arg) { throw pyerror("unimplemented stack printer for stack value"); },
             [](double arg) { std::cerr << "double(" << arg << ")"; },
@@ -695,6 +716,38 @@ inline void FrameState::eval_next() {
                 throw pyerror("MAKE_FUNCTION called with bad stack");
             }
             break;
+        }
+        case op::BUILD_LIST:
+        {
+            this->check_stack_size(arg);
+
+            // Pop the arguments to turn into a list.
+            ValueList newList = this->interpreter_state->heap_lists.make();
+
+            for (uint64_t i = 0; i < arg; ++i) {
+                newList->values.push_back(std::move(this->value_stack.back()));
+                this->value_stack.pop_back();
+            }
+
+            this->value_stack.push_back(newList);
+
+            break;
+        }
+        case op::BINARY_SUBSCR:
+        {
+            this->check_stack_size(2);
+            Value index = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+            Value list = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+
+            this->value_stack.push_back(
+                std::move(
+                    std::visit(eval_helpers::binary_subscr_visitor(), list, index)
+                )
+            );
+
+            break ;
         }
         default:
         {

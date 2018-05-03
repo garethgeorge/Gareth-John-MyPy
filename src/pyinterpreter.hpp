@@ -23,6 +23,9 @@ struct InterpreterState {
     Namespace* ns_globals_ptr; // ns_globals is just ns_local of the very bottom FrameState
     Namespace ns_builtins;
 
+    // heaps
+    gc_heap<value::List> heap_lists;
+
     InterpreterState(std::shared_ptr<Code>& code);
 
     void eval();

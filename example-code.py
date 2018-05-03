@@ -1,3 +1,1 @@
-x = 5
-check_int(x * 11)
-check_double(x + 10.5)
+[1, 2, 3, 4, 5][1]

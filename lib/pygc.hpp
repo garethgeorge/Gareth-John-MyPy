@@ -17,6 +17,15 @@ template<typename T>
 struct gc_heap;
 
 template<typename T>
+struct gc_test_ptr {
+    T* object;
+
+    gc_test_ptr(T *object) : object(object) {
+    }
+};
+
+
+template<typename T>
 class gc_ptr {
 private:
     static const uint8_t FLAG_MARKED = 1;
@@ -36,20 +45,35 @@ private:
     }
 
 public:
-    gc_ptr(gc_ptr<T> &other) {
-        *this = other;
+    gc_ptr() : gc_ptr(nullptr) {
+    }
+    
+    gc_ptr(std::nullptr_t) {
+        object = nullptr;
     }
 
-    inline T* operator->() {
+    constexpr inline T* operator->() {
         return &(this->object->object);
     }
 
-    inline T& operator*() {
+    constexpr inline T& operator*() {
         return object->object;
     }
 
-    T& operator = (gc_ptr<T>& other) {
-        this->object = other.object;
+    constexpr bool operator == (const gc_ptr<T>& other) {
+        return object == other.object;
+    }
+    
+    constexpr bool operator == (const std::nullptr_t) {
+        return object == nullptr;
+    }
+
+    constexpr bool operator != (const gc_ptr<T>& other) {
+        return object != other.object;
+    }
+
+    constexpr bool operator != (const std::nullptr_t) {
+        return object != nullptr;
     }
     
     void mark() {
