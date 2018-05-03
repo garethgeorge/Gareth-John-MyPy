@@ -11,11 +11,11 @@
 # TODO
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
-    - Inheritance and Multiple Inheritence (BFS)
     - Make all namespaces shared_ptrs
-    - use GC
+    - Use GC
+    - Inheritance and Multiple Inheritence
+    - Fix @classmethod
     - Somehow make it so that the namespace of a static init framestate IS the attrs of the class being created
-    - classtest2 has begun failing -> reimplement classmethod
     - Change classmethod to use init_class
     - super() function
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
@@ -41,6 +41,7 @@
  - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack
  - find a testing framework that specifically tests python interpreters - John/Jack or Garth
+ - Create a formatted error handling function - Gareth
  - implement garbage collection - Gareth
  - implement generators/iterators - Gareth
  - primitive types for Lists/Tupples/Map/Set - Gareth
