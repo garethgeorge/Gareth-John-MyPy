@@ -61,13 +61,13 @@ struct FrameState {
     void eval_next();
     void print_next();
 
-    void print_value(Value& val) const;
+    static void print_value(Value& val);
     void print_stack() const;
 
     // Add a value to local namespace (for use when creating the frame state)
     void add_to_ns_local(const std::string& name,Value&& v);
     void initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args);
-
+    
     // helper method for checking the stack has enough values for the current
     // operation!
     inline const void check_stack_size(size_t expected) {

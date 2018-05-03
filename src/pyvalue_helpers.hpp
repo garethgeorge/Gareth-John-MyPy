@@ -1,4 +1,5 @@
 #pragma once
+
 #ifndef VALUE_HELPERS_H
 #define VALUE_HELPERS_H
 
