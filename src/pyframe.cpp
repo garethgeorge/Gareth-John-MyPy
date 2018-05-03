@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <variant>
 #include <cmath>
+#include <cassert>
 #include <sstream>
 #include "pyvalue_helpers.hpp"
 #include "pyframe.hpp"
@@ -18,7 +19,7 @@ namespace py {
 
 FrameState::FrameState(
         InterpreterState *interpreter_state, 
-        FrameState *parent_frame, 
+        FrameState *parent_frame,
         const ValueCode& code) 
 {
     DEBUG("constructed a new frame");
@@ -28,6 +29,56 @@ FrameState::FrameState(
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
     this->value_stack.reserve(code->co_stacksize);
 }
+
+// Construct a framestate meant to initialize everything static about a class
+FrameState::FrameState(
+        InterpreterState *interpreter_state, 
+        FrameState *parent_frame,
+        const ValueCode& code,
+        ValuePyClass& init_class)
+{
+    DEBUG("constructed a new frame for statically initializing a class");
+    this->interpreter_state = interpreter_state;
+    this->parent_frame = parent_frame;
+    this->code = code;
+    DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
+    this->value_stack.reserve(code->co_stacksize);
+    this->init_class = init_class;
+    this->set_class_static_init_flag();
+}
+
+    Value find_attr_in_parents(const ValuePyClass& cls,const std::string& attr,bool* success){
+        // Is depth first correct??
+        for(int i = 0;i < cls->parents.size();i++){
+            //std::cout << "Parent " << i << std::endl << std::flush;
+            // Check the parent for the attribute
+            auto itr = cls->parents[i]->attrs.find(attr);
+            if(itr != cls->parents[i]->attrs.end()){
+                //std::cout << "A" << std::endl << std::flush;
+                (*success) = true;
+                //std::cout << "B" << std::endl << std::flush;
+                std::cout << itr->first << std::endl << std::flush;
+                //std::cout << "G" << std::endl << std::flush;
+                return itr->second;
+            } else {
+                // Check the parent's parents
+                bool out;
+                //std::cout << "C" << std::endl << std::flush;
+                Value v = find_attr_in_parents(cls->parents[i],attr,&out);
+                //std::cout << "D" << std::endl << std::flush;
+                if (out){
+                    //std::cout << "E" << std::endl << std::flush;
+                    (*success) = true;
+                    //std::cout << "F" << std::endl << std::flush;
+                    return v;
+                }
+            }
+        }
+        //std::cout << "G" << std::endl << std::flush;
+        (*success) = false;
+        //std::cout << "H" << std::endl << std::flush;
+        return cls;
+    }
 
 void FrameState::print_next() {
     Code::ByteCode bytecode = code->bytecode[this->r_pc];
@@ -163,7 +214,106 @@ namespace eval_helpers {
             return std::make_shared<std::string>(*v1 + *v2);
         }
     };
-    
+
+    // Visitor for accessing class attributes
+    struct load_attr_visitor {
+        FrameState& frame;
+        const std::string& attr;
+
+        load_attr_visitor(FrameState& frame,const std::string& attr) : frame(frame), attr(attr) {}
+        
+        void operator()(const ValuePyClass& cls){
+            try {
+                frame.value_stack.push_back(cls->attrs.at(attr));
+            } catch (const std::out_of_range& oor) {
+                throw pyerror(std::string(
+                    *(std::get<ValueString>( cls->attrs["__qualname__"]))
+                    + " has no attribute " + attr
+                ));
+            }
+        }
+
+        // For pyobject, first look in their own namespace, then look in their static namespace
+        // ValuePyObject cannot be const as it might be modified
+        void operator()(ValuePyObject& obj){
+            // First look in my own namespace
+            auto itr = obj->attrs.find(attr);
+            if(itr != obj->attrs.end()){
+                frame.value_stack.push_back(itr->second);
+            } else {
+                // Default to statics if not found
+                auto itr_2 = obj->static_attrs->attrs.find(attr);
+                Value static_val;
+                if(itr_2 == obj->static_attrs->attrs.end()){
+                    // Not found in statics, search parents
+                    bool out = false;
+                    static_val = find_attr_in_parents(obj->static_attrs,attr,&out);
+                    // Check if we indeed found a value
+                    if(!out){
+                        // Nothing, it was NoneType. Error!
+                        throw pyerror(std::string(
+                            // Should this be __name__??
+                            *(std::get<ValueString>(obj->static_attrs->attrs["__qualname__"]))
+                            + " has no attribute " + attr
+                        ));
+                    }
+                } else {
+                    static_val = itr_2->second;
+                }
+                
+                // Check to see if it is a PyFunc, and if so make it's self to obj
+                // This essentially accomplishes lazy initialization of instance functions
+                auto pf = std::get_if<ValuePyFunction>(&static_val);
+                if(pf != NULL){
+                    // Push a new PyFunc with self set to obj or obj's class
+                    // Store it so that next time it is accessed it will be found in attrs
+                    if((*pf)->get_am_class_method()){
+                        if((*pf)->get_know_which_class()){
+                            // All good, the class method already knows everythin
+                            frame.value_stack.push_back(*pf);
+                        } else {
+                            // Tell the class method which class
+                            Value npf = std::make_shared<value::PyFunc>(
+                                value::PyFunc {
+                                    (*pf)->name,
+                                    (*pf)->code,
+                                    (*pf)->def_args,
+                                    obj->static_attrs,
+                                    1 | 8} // clasmethod that knows which class
+                            );
+                            obj->static_attrs->store_attr(attr,npf);
+                            frame.value_stack.push_back(npf);
+                        }
+                    } else  if ((*pf)->get_am_static_method()) {
+                        frame.value_stack.push_back(*pf);
+                    } else {
+                        DEBUG("Instantiating instance method");
+                        // Create an instance method
+                        Value npf = std::make_shared<value::PyFunc>(
+                            value::PyFunc {
+                                (*pf)->name,
+                                (*pf)->code,
+                                (*pf)->def_args,
+                                obj, // Instance method
+                                4}
+                        );
+                        obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
+                        frame.value_stack.push_back(npf);
+                    }
+                } else {
+                    // All is well, push as normal
+                    frame.value_stack.push_back(static_val);
+                }
+            }
+        }
+
+        template<typename T>
+        void operator()(T) const {
+            throw pyerror(string("can not get attributed from an object of type ") + typeid(T).name());
+        }
+
+    };
+
     struct call_visitor {
         /*
             the call visitor is a helpful visitor class that actually includes 
@@ -183,8 +333,52 @@ namespace eval_helpers {
             func->action(frame, args);
         }
 
+        // A PyClass was called like a function, therein creating a PyObject
+        void operator()(const ValuePyClass& cls) const {
+            DEBUG("Constructing a '%s' Object",std::get<ValueString>(cls->attrs["__qualname__"])->c_str());
+            /*for(auto it = cls->attrs.begin();it != cls->attrs.end();++it){
+                printf("%s = ",it->first.c_str());
+                frame.print_value(it->second);
+                printf("\n");
+            }*/
+            ValuePyObject npo = std::make_shared<value::PyObject>(
+                value::PyObject(cls)
+            );
+
+
+            // Check the class if it has an init function
+            auto itr = cls->attrs.find("__init__");
+            Value vv;
+            bool has_init = true;
+            if(itr == cls->attrs.end()){
+                vv = find_attr_in_parents(cls,std::string("__init__"),&has_init);
+            } else {
+                vv = itr->second;
+            }
+
+            if(has_init){
+                // call the init function, pushing the new object as the first argument 'self'
+                args.insert(args.begin(),npo);
+                std::visit(call_visitor(frame,args),vv);
+                
+                // Now that a new frame is on the stack, set a flag in it that it's an initializer frame
+                frame.interpreter_state->callstack.top().set_class_dynamic_init_flag();
+            } 
+
+            // Push the new object on the value stack
+            frame.value_stack.push_back(std::move(npo));
+        }
+
         void operator()(const ValuePyFunction& func) const {
-            DEBUG("call_visitor dispatching PyFunction->action");
+            DEBUG("call_visitor dispatching on a PyFunction");
+
+            // Throw an error if too many arguments
+            if(args.size() > func->code->co_argcount){
+                throw pyerror(std::string("TypeError: " + *(func->name)
+                            + " takes " + std::to_string(func->code->co_argcount)
+                            + " positional arguments but " + std::to_string(args.size())
+                            + " were given"));
+            }
 
             // Push a new FrameState
             frame.interpreter_state->callstack.push(
@@ -225,42 +419,81 @@ namespace eval_helpers {
     };
 }
 
+// Used in initialize_from_pyfunc to set the first argument of 
+struct set_implicit_arg_visitor {
+    FrameState& frame;
+    
+    set_implicit_arg_visitor(FrameState& frame) : frame(frame) {}
+
+    void operator()(const ValuePyClass& cls) const {
+        if(cls){
+            frame.add_to_ns_local(
+                frame.code->co_varnames[0],
+                cls
+            );
+        }
+    }
+
+    void operator()(const ValuePyObject& obj) const {
+        if(obj){
+            frame.add_to_ns_local(
+                frame.code->co_varnames[0],
+                obj
+            );
+        }
+    }
+    
+    template<typename T>
+    void operator()(T) const {
+        // Do nothing
+        return;
+    }
+};
+
 void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args){
-#ifdef JOHN_PRINTS_ON
-    fprintf(stderr,"(initialize_from_pyfunc) Assigning the following values to names:\n");
-#endif 
     // Calculate which argument is the first argument with a default value
+    // Also whether or not the very first argument is self (or class)
     // This could be stored in PyFunc struct but that is a tiny space tradeoff vs tiny time tradeoff
     int first_def_arg = this->code->co_argcount - func->def_args->size();
-    
+   
+    // Set the implicit argument
+    std::visit(set_implicit_arg_visitor(*this),func->self);
+    bool has_implicit_arg = func->get_am_instance_method() || func->get_am_class_method();
+
+    int first_arg_is_self = (has_implicit_arg ? 1 : 0);
+
+    J_DEBUG("(Assigning the following values to names:\n");
+
+
     // put values into the local pool
     // the name is the constant (co_varnames) at the argument number it is
     // the value has been passed in or uses the default
-    for(int i = 0;i < this->code->co_argcount;i++){
+    // If we are an instance method, skip the first arg as it was set above
+    for(int i = (has_implicit_arg ? 1 : 0); i < this->code->co_argcount; i++){
+        // The arg to consider may not quite align with i
+        int arg_num = i - first_arg_is_self;
+
         //Error if not given enough arguments
         //TypeError: simplefunc() missing 2 required positional arguments: 'a' and 'd'
-        if(i < first_def_arg && i >= args.size()){
-            int missing_num = first_def_arg - i;
+        if(arg_num < first_def_arg && arg_num >= args.size()){
+            int missing_num = first_def_arg - arg_num;
             std::string err_str = std::string("TypeError: " + *(func->name)
                         + " missing " + std::to_string(missing_num)
                         + " required positional argument" + (missing_num == 1 ? ": " : "s: ")
             );
             // List the missing params
-            for(;i < first_def_arg;i++){
-                err_str += "'" + this->code->co_varnames[i] + "'";
-                if(i < first_def_arg - 1) err_str += " and ";
+            for(;arg_num < first_def_arg;arg_num++){
+                err_str += "'" + this->code->co_varnames[i] + "'"; // Note that I use 'i' here, not 'arg_num'
+                if(arg_num < first_def_arg - 1) err_str += " and ";
             }
             throw pyerror(err_str.c_str());
             return;
         }
 
-        // Print some info
-        #ifdef JOHN_PRINTS_ON
-            fprintf(stderr,"Name: %s\n",this->code->co_varnames[i].c_str());
-            fprintf(stderr,"Value: ");
-            Value v2 = i < args.size() ? args[i] : (*(func->def_args))[i - first_def_arg]; // Baaaaaaaad copy/paste
-            print_value(v2);
-            fprintf(stderr,"\n");
+        J_DEBUG("Name: %s\n",this->code->co_varnames[i].c_str());
+        J_DEBUG("Value: ");
+        #ifdef JOHN_DEBUG_ON
+        print_value(arg_num < args.size() ? args[arg_num] : (*(func->def_args))[arg_num - first_def_arg]);
         #endif
 
         // The argument exists, save it
@@ -268,15 +501,19 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
             // Read the name to save to from the constants pool
             this->code->co_varnames[i], 
             // read the value from passed in args, or else the default
-            i < args.size() ? std::move(args[i]) : (*(func->def_args))[i - first_def_arg] 
+            arg_num < args.size() ? std::move(args[arg_num]) : (*(func->def_args))[arg_num - first_def_arg] 
         );
     }
 }
 
 // Add a value to the ns local
 void FrameState::add_to_ns_local(const std::string& name,Value&& v){
-    this->ns_local.emplace(name,v);
-} 
+    if(this->get_class_static_init_flag()){
+        this->get_init_class()->attrs.emplace(name,v);
+    } else {
+        this->ns_local.emplace(name,v);
+    }
+}
 
 void FrameState::print_value(Value& val) {
     std::visit(value_helper::overloaded {
@@ -287,6 +524,10 @@ void FrameState::print_value(Value& val) {
             [](const ValueCFunction arg) {std::cerr << "CFunction()"; },
             [](const ValueCode arg) {std::cerr << "Code()"; },
             [](const ValuePyFunction arg) {std::cerr << "Python Function()"; },
+            [](const ValuePyClass arg) {std::cerr << "ValuePyClass ("
+                << *(std::get<ValueString>(arg->attrs["__qualname__"])) << ")"; },
+            [](const ValuePyObject arg) {std::cerr << "ValuePyObject of class ("
+                << *(std::get<ValueString>(arg->static_attrs->attrs["__qualname__"])) << ")"; },
             [](value::NoneType) {std::cerr << "None"; },
             [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
         }, val);
@@ -393,6 +634,31 @@ inline void FrameState::eval_next() {
         {
             try {
                 const std::string& name = this->code->co_names.at(arg);
+                
+                // If we are statically initializing a class
+                // Instead of loading from namespace, we access our class's attributes
+                if(this->get_class_static_init_flag()){
+                    // No no no no no
+                    // However, since how this whole thing works is gana change,
+                    // This is prob fine for now
+
+                    // This is mostly here so that when I remove init_class
+                    // This fails to compile and we know to change here
+                    assert(this->init_class);
+
+                    Value cv = this->get_init_class();
+
+                    try {
+                        std::visit(
+                            eval_helpers::load_attr_visitor(*this,name),
+                            cv
+                        );
+                        break;
+                    } catch (int err) {
+                        printf("\nCaught!!\n");
+                        // Ignore
+                    }
+                }
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
                 // if NS_LOCAL_SHORTCUT optimization is turned on, see if we can
                 // find the variable in the cache
@@ -460,10 +726,19 @@ inline void FrameState::eval_next() {
             }
             break;
         case op::STORE_NAME:
-        {
+        {   
             this->check_stack_size(1);
             try {
                 const std::string& name = this->code->co_names.at(arg);
+
+                // If we are statically initializing a class, store as an attribute instead
+                if(this->get_class_static_init_flag()){
+                    Value vv = std::move(this->value_stack.back());
+                    this->value_stack.pop_back();
+                    this->get_init_class()->store_attr(name,vv);
+                    break;
+                }
+
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
                 auto& local_shortcut_entry = 
                     this->ns_local_shortcut[arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *))];
@@ -637,10 +912,51 @@ inline void FrameState::eval_next() {
         case op::RETURN_VALUE:
         {
             this->check_stack_size(1);
-            auto val = this->value_stack.back();
-            if (this->parent_frame != nullptr) {
-                this->parent_frame->value_stack.push_back(std::move(val));
+            switch(flags){
+                case 0:
+                    {
+                        // Normal function return
+                        auto val = this->value_stack.back();
+                        if (this->parent_frame != nullptr) {
+                            this->parent_frame->value_stack.push_back(std::move(val));
+                        }
+                        break;
+                    }
+                case 1:
+                    /*{
+                        // Static init
+                        // This whole time we have been initalizing the static fields of a class
+                        // Finish that initalization
+                        if (this->parent_frame != nullptr) {
+                            try {
+                                ValuePyClass npc = std::make_shared<value::PyClass>(
+                                        value::PyClass(this->ns_local)
+                                    );
+                                this->parent_frame->value_stack.push_back(
+                                    std::move(npc)
+                                );
+                            } catch (const std::bad_alloc& e) {
+                                throw pyerror(std::string("Need to call garbage collector!\n"));
+                            }
+                        }
+                    }
+                    break;*/
+                case 2:
+                    // Dynamic init
+                    // This whole time we have been initializing a newly allocated object
+                    // Annoyingly, init functions return None, not the class that was just initialized
+                    // so we need special handling
+
+                    // The new object has already been put on the top of the right stack
+                    // during CALL_FUNCTION
+                    // so fo this we do nothing
+                    break;
+                default:
+                    throw pyerror("Invalid FrameState flags");
+                    break;
             }
+
+            // Pop the call stack
             this->interpreter_state->callstack.pop();
             break ;
         }
@@ -699,15 +1015,14 @@ inline void FrameState::eval_next() {
             // Remove the args from the value stack
             this->value_stack.resize(this->value_stack.size() - arg);
 
-#ifdef JOHN_PRINTS_ON
-            fprintf(stderr,"(MAKE_FUNCTION) Creating a function that accepts %d default args:\n",arg);
-            print_value(name);
-            fprintf(stderr,"\nThose default args are:\n",arg);
+            J_DEBUG("Creating a function %s that accepts %d default args:\n",*(std::get<ValueString>(name)),arg);
+            J_DEBUG("Those default args are:\n");
+            #ifdef JOHN_DEBUG_ON
             for(int i = 0;i < v->size();i++){
                 print_value((*v)[i]);
                 fprintf(stderr,"\n",arg);
             }
-#endif
+            #endif
             // Create the function object
             // Error here if the wrong types
             try {
@@ -718,6 +1033,52 @@ inline void FrameState::eval_next() {
             } catch (std::bad_variant_access&) {
                 throw pyerror("MAKE_FUNCTION called with bad stack");
             }
+            break;
+        }
+        case op::LOAD_BUILD_CLASS:
+        {
+            // Push the build class builtin onto the stack
+            J_DEBUG("Preparing to build a class");
+            this->value_stack.push_back(this->interpreter_state->ns_builtins["__build_class__"]);
+            break;
+        }
+        case op::LOAD_ATTR:
+        {
+            DEBUG("Loading Attr %s",this->code->co_names[arg].c_str()) ;
+            Value val = std::move(value_stack.back());
+            this->value_stack.pop_back();
+            // Visit a load_attr_visitor constructed with the frame state and the arg to get
+            // Do it this way because val might turn out to be a PyClass or a PyObject
+            std::visit(
+                eval_helpers::load_attr_visitor(*this,this->code->co_names[arg]),
+                val
+            );
+            break;
+        }
+        case op::STORE_ATTR:
+        {
+            DEBUG("Storing Attr %s",this->code->co_names[arg].c_str()) ;
+            
+            Value tos = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+            Value val = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+
+            // This should probably be done with a visitor pattern
+            // But That sounds to like alot more compile time for something thats honestly really simple
+            auto vpo = std::get_if<ValuePyObject>(&tos);
+            if(vpo != NULL){
+                (*vpo)->store_attr(this->code->co_names[arg],val);
+                break;
+            }
+            auto vpc = std::get_if<ValuePyClass>(&tos);
+            if(vpc != NULL){
+                (*vpc)->store_attr(this->code->co_names[arg],val);
+                break;
+            }
+
+            // We should never get here
+            throw pyerror(std::string("STORE_ATTR called with bad stack!"));
             break;
         }
         case op::BUILD_LIST:
@@ -790,5 +1151,22 @@ void InterpreterState::eval() {
         throw err;
     }
 }
+
+    void FrameState::set_class_static_init_flag(){
+        flags |= 1;
+    }
+
+    bool FrameState::get_class_static_init_flag(){
+        return flags & 1;
+    }
+
+    void FrameState::set_class_dynamic_init_flag(){
+        flags |= 2;
+    }
+
+    bool FrameState::get_class_dynamic_init_flag(){
+        return flags & 2;
+    }
+
 
 }

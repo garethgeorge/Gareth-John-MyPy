@@ -23,6 +23,7 @@ struct InterpreterState {
     std::stack<FrameState> callstack;
     Namespace* ns_globals_ptr; // ns_globals is just ns_local of the very bottom FrameState
     Namespace ns_builtins;
+    ValueCode main_code;
     
     Allocator alloc;
 

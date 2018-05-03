@@ -93,4 +93,15 @@ func_err(1)
         InterpreterState state(code);
         REQUIRE_THROWS(state.eval());
     }
+
+    SECTION( "when passed too many args"){
+        auto code = build_string(R"(
+def func_err(a,b,c=5):
+    return a + b + c
+
+func_err(1,2,3,4)
+        )");
+        InterpreterState state(code);
+        REQUIRE_THROWS(state.eval());
+    }
 }

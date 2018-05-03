@@ -9,25 +9,43 @@
         - object
 
 # TODO
- - implement functions - John/Jack
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
- - implement extended arguments - John/Jack or Gareth
+    - Make all namespaces shared_ptrs
+    - Use GC
+    - Inheritance and Multiple Inheritence
+    - Fix @classmethod
+    - Somehow make it so that the namespace of a static init framestate IS the attrs of the class being created
+    - Change classmethod to use init_class
+    - super() function
+    - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
+    - Classes can overload operators as well as inplace operators differently
+    - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
+    - make initialize_from_pyfunc just a constructor
+    - Can you define a class inside a function?
+    - Does python support mulitple constructors? How do I deal with those
+    - make the 'str' builtin work correctly for PyFuncs, PyObjects, and PyClasses
+    - Speed up searching parent attributes
+    - Builtin class 'object'
+    - Make tests!
+        - Both correct functioning and errors
+        - make sure member functions with default args work
+        - test everything in classes_test.py for sure
+        - test @classmethod &&  @staticmethod!!!!!
+        - TypeError: __init__() should return None, not 'int' is a runtime error!
+        - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
+        - overloading in classes and general function overloading
+        - Make sure the 'deadly diamond problem' (https://www.python-course.eu/python3_multiple_inheritance.php) resolves correctly
+        - I searched parents depth-first. is this correct?
+ - implement variadic functions - John Jack
  - finish implement continue/break/try/except - John/Jack
+ - kwarg functions - John/Jack
+ - find a testing framework that specifically tests python interpreters - John/Jack or Garth
+ - Create a formatted error handling function - Gareth
  - implement garbage collection - Gareth
  - implement generators/iterators - Gareth
  - primitive types for Lists/Tupples/Map/Set - Gareth
- - kwarg functions - John/Jack
  - implement a ton of builtins for the rest of the quarter
     - print 
     - range
- - get arithmetic working, by this time the following program should work
-```
-print(3)
-```
- - next thing would be nice
-```
-a = 7
-print(a)
-```
- - etc.
+    - https://docs.python.org/3/library/stdtypes.html

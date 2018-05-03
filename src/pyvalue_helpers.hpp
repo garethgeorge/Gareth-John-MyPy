@@ -45,6 +45,12 @@ struct visitor_repr {
     string operator()(const ValueString&) const;
 
     string operator()(value::NoneType) const;
+
+    string operator()(ValuePyFunction) const;
+
+    string operator()(ValuePyClass) const;
+
+    string operator()(ValuePyObject) const;
     
     template<typename T> 
     string operator()(T) const {

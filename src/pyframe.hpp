@@ -6,10 +6,12 @@
 #include <vector>
 #include <memory>
 #include <unordered_map>
+#include <cassert>
 
 #include "pyvalue.hpp"
 #include "optflags.hpp"
 #include "pyerror.hpp"
+#include "debug.hpp"
 
 namespace py {
 
@@ -32,6 +34,7 @@ struct Block {
 };
 
 struct FrameState {
+    public:
     uint64_t r_pc = 0; // program counter
     FrameState *parent_frame = nullptr;
     InterpreterState *interpreter_state = nullptr;
@@ -39,6 +42,22 @@ struct FrameState {
     std::vector<Value> value_stack;
     std::stack<Block> block_stack; // a stack containing blocks: this should be changed to a standard vector
     Namespace ns_local; // the local value namespace
+    uint8_t flags = 0;
+
+    // It has become abundantly clear that the frame state which initializes the static fields
+    // of a class must be able to access the class it is initializing
+    // For this reason, I am adding a field that unfortunately is rarely used
+    // Hopefully this can be factored out later, and as such it will only be accessed via helper functions
+    ValuePyClass init_class;
+
+    ValuePyClass& get_init_class(){
+
+        #ifdef DEBUG_ON
+        assert(init_class);
+        #endif
+
+        return init_class;
+    }
 
 #ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
     // with this #define we are feature flagging the NS_LOCAL_SHORTCUT feature
@@ -58,6 +77,13 @@ struct FrameState {
         FrameState *parent_frame, // null for the top frame on the stack
         const ValueCode& code);
 
+    // Initialize for as class static initializer
+    FrameState(
+        InterpreterState *interpreter_state, 
+        FrameState *parent_frame,
+        const ValueCode& code,
+        ValuePyClass& init_class);
+
     void eval_next();
     void print_next();
 
@@ -67,7 +93,15 @@ struct FrameState {
     // Add a value to local namespace (for use when creating the frame state)
     void add_to_ns_local(const std::string& name,Value&& v);
     void initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args);
-    
+
+    // Set the flag that says that this framestate is initializing the static values of a class
+    void set_class_static_init_flag();
+    bool get_class_static_init_flag();
+
+    // Im very sorry but it appears we do need two different flags
+    void set_class_dynamic_init_flag();
+    bool get_class_dynamic_init_flag();
+
     // helper method for checking the stack has enough values for the current
     // operation!
     inline const void check_stack_size(size_t expected) {

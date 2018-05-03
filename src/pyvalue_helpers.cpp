@@ -50,5 +50,17 @@ string visitor_repr::operator()(value::NoneType) const {
     return "None";
 }
 
+string visitor_repr::operator()(ValuePyFunction) const {
+    return "Function";
+}
+
+string visitor_repr::operator()(ValuePyClass) const {
+    return "Class";
+}
+
+string visitor_repr::operator()(ValuePyObject) const {
+    return "Object";
+}
+
 }
 }
