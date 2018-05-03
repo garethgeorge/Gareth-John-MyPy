@@ -31,6 +31,7 @@ namespace value {
 
     struct CFunction;
     struct List;
+    struct Tuple;
     // struct Map;
     // struct Set;
     
@@ -74,7 +75,7 @@ namespace value {
     
     // struct Set {
     //     unordered_set<Value> values;
-    // }
+    // };
 
     // struct Map {
     //     unordered_map<Value, Value> values;

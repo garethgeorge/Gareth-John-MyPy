@@ -85,9 +85,5 @@ TEST_CASE("should be able to do garbage collection", "[arithmetic]") {
         
         gc_heap<Baz> bazzes;
         MyType foo = bazzes.make();
-
-        std::visit([](auto &&val) {
-            std::cout << "visited!" << std::endl;
-        }, foo);
     }
 }

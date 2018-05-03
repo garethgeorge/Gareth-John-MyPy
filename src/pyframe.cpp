@@ -206,7 +206,10 @@ namespace eval_helpers {
         */
         Value operator()(ValueList& list, int64_t index) {
             auto& values = list->values;
-            if (index < 0 || index >= values.size()) {
+            if (index < 0) {
+                index = values.size() + index;
+            }
+            if (index >= values.size()) {
                 std::stringstream ss;
                 ss << "attempted list access out of range LIST[" << index << "] but list only held " << values.size() << " elements.";
                 throw pyerror(ss.str());
@@ -724,11 +727,9 @@ inline void FrameState::eval_next() {
             // Pop the arguments to turn into a list.
             ValueList newList = this->interpreter_state->heap_lists.make();
 
-            for (uint64_t i = 0; i < arg; ++i) {
-                newList->values.push_back(std::move(this->value_stack.back()));
-                this->value_stack.pop_back();
-            }
-
+            newList->values.assign(this->value_stack.end() - arg, this->value_stack.end());
+            this->value_stack.resize(this->value_stack.size() - arg);
+            
             this->value_stack.push_back(newList);
 
             break;
@@ -752,7 +753,7 @@ inline void FrameState::eval_next() {
         default:
         {
             DEBUG("UNIMPLEMENTED BYTECODE: %s", op::name[bytecode])
-            throw pyerror(string("UNIMPLEMENTED BYTECODE ") + op::name[bytecode])   ;
+            throw pyerror(string("UNIMPLEMENTED BYTECODE ") + op::name[bytecode]);
         }
     }
     
