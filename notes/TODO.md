@@ -12,6 +12,7 @@
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
     - Inheritance and Multiple Inheritence -> Method Resolution Order!
+    - Raise exeception if no possible MRO
     - Use GC
     - super() function
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)

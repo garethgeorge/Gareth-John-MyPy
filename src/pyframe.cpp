@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cassert>
 #include <sstream>
+#include <tuple>
 #include "pyvalue_helpers.hpp"
 #include "pyframe.hpp"
 #include "pyinterpreter.hpp"
@@ -50,38 +51,25 @@ FrameState::FrameState(
     this->set_class_static_init_flag();
 }
 
-    Value find_attr_in_parents(const ValuePyClass& cls,const std::string& attr,bool* success){
-        // Is depth first correct??
-        for(int i = 0;i < cls->parents.size();i++){
-            //std::cout << "Parent " << i << std::endl << std::flush;
-            // Check the parent for the attribute
-            auto itr = cls->parents[i]->attrs->find(attr);
-            if(itr != cls->parents[i]->attrs->end()){
-                //std::cout << "A" << std::endl << std::flush;
-                (*success) = true;
-                //std::cout << "B" << std::endl << std::flush;
-                std::cout << itr->first << std::endl << std::flush;
-                //std::cout << "G" << std::endl << std::flush;
-                return itr->second;
-            } else {
-                // Check the parent's parents
-                bool out;
-                //std::cout << "C" << std::endl << std::flush;
-                Value v = find_attr_in_parents(cls->parents[i],attr,&out);
-                //std::cout << "D" << std::endl << std::flush;
-                if (out){
-                    //std::cout << "E" << std::endl << std::flush;
-                    (*success) = true;
-                    //std::cout << "F" << std::endl << std::flush;
-                    return v;
-                }
-            }
+// Find an attribute in the parents of a class
+std::tuple<Value,bool> find_attr_in_parents(
+                                    const ValuePyClass& cls,
+                                    const std::string& attr
+) {
+    DEBUG("Searching parents of Class '%s' for attr '%s'\n",
+        (*(cls->attrs->at("__qualname__"))).c_str(),
+        attr.c_str();
+    );
+    // Method Resolution Order already stored in the order parents are stored in
+    for(int i = 0;i < cls->parents.size();i++){
+        DEBUG("Checking parent %s\n", (*(cls->parents[i]->attrs->at("__qualname__"))).c_str());
+        auto itr = cls->parents[i]->attrs->find(attr);
+        if(itr != cls->parents[i]->attrs->end()){
+            return std::tuple<Value,bool>(itr->second,true);
         }
-        //std::cout << "G" << std::endl << std::flush;
-        (*success) = false;
-        //std::cout << "H" << std::endl << std::flush;
-        return cls;
     }
+    return std::tuple<Value,bool>(value::NoneType(),false);
+}
 
 void FrameState::print_next() {
     Code::ByteCode bytecode = code->bytecode[this->r_pc];
@@ -248,12 +236,10 @@ namespace eval_helpers {
                 auto itr_2 = obj->static_attrs->attrs->find(attr);
                 Value static_val;
                 if(itr_2 == obj->static_attrs->attrs->end()){
-                    // Not found in statics, search parents
-                    bool out = false;
-                    static_val = find_attr_in_parents(obj->static_attrs,attr,&out);
-                    // Check if we indeed found a value
-                    if(!out){
-                        // Nothing, it was NoneType. Error!
+                    std::tuple<Value,bool> par_val = find_attr_in_parents(obj->static_attrs,attr);
+                    if(std::get<1>(par_val)){
+                        static_val = std::get<0>(par_val);
+                    } else {
                         throw pyerror(std::string(
                             // Should this be __name__??
                             *(std::get<ValueString>( (*(obj->static_attrs->attrs))["__qualname__"]))
@@ -342,7 +328,12 @@ namespace eval_helpers {
             Value vv;
             bool has_init = true;
             if(itr == cls->attrs->end()){
-                vv = find_attr_in_parents(cls,std::string("__init__"),&has_init);
+                std::tuple<Value,bool> par_val = find_attr_in_parents(cls,std::string("__init__"));
+                if(std::get<1>(par_val)){
+                    vv = std::get<0>(par_val);
+                } else {
+                    has_init = false;
+                }
             } else {
                 vv = itr->second;
             }

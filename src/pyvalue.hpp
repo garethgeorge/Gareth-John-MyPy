@@ -135,10 +135,67 @@ namespace value {
         // Things I inherit from
         std::vector<ValuePyClass> parents;
 
+        // Is cls1 in the vector of parents of cls2
+        static bool get_is_class_in_parents_of_class(ValuePyClass& cls1,ValuePyClass cls2){
+            // A class if a parent of itself
+            if(cls1 == cls2) return true;
+
+            // Check them all
+            for(int i = 0;i < cls2->parents.size();i++){
+                if(cls1 == cls2->parents[i]) return true;
+            }
+
+            return false;
+        }
+
+        // Check return the index of the first class in a vector
+        // which is not in the parents list of any of the other classes
+        // If no such head exists, return -1
+        static int get_int_index_of_good_head(std::vector<ValuePyClass>& pars){
+            // For every class
+            for(int i = 0;i < pars.size();i++){
+                // check all other classes
+                bool good_head = true;
+                for(int j = 0;j < pars.size();j++){
+                    if(i != j){
+                        if(get_is_class_in_parents_of_class(pars[i], pars[j])) {
+                            // If class i is parent of class j
+                            // break back to the i loop (find a new head)
+                            good_head = false;
+                            break;
+                        }
+                    }
+                }
+                
+                // If all is well, return
+                if(good_head){
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
         PyClass(std::vector<ValuePyClass>& ps){
+            // Allocate the attributes namespace
             this->attrs = std::make_shared<std::unordered_map<std::string, Value>>();
-            // Copying... meh
-            parents = ps;
+            
+            // Store the list or parents in the correct method resolution order
+            // Python3 uses python 2.3's MRO
+            //https://www.python.org/download/releases/2.3/mro/
+            //L(C(B1...BN)) = C + merge(L(B1)...L(BN),B1..BN)
+            while(ps.size() > 0){
+                int ind = get_int_index_of_good_head(ps);
+                if(ind == -1){
+                    throw pyerror("Could not determine acceptable method resolution order");
+                } else {
+                    // Add the class, followed by it's parents, to the list
+                    parents.push_back(ps[ind]);
+                    parents.insert(parents.end(),ps[ind]->parents.begin(),ps[ind]->parents.end());
+                    ps.erase(ps.begin() + ind);
+                }
+            }
+
         }
 
         // Store an attribute into attrs
