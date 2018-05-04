@@ -161,22 +161,31 @@ extern void inject_builtins(Namespace& ns) {
                                 vpf->name, 
                                 vpf->code, 
                                 vpf->def_args, 
-                                (*vpo)->static_attrs,
-                                1 | 8 // Class method flag, know class
+                                (*vpo)->static_attrs, // self
+                                value::CLASS_METHOD
                             }
                         )
                     )
                 );
             } else {
-                // Create a function with the same empty self but that knows its a class emthod
-                // MEEEEH
-                frame.value_stack.push_back(
-                    std::move(
-                        std::make_shared<value::PyFunc>( 
-                            value::PyFunc {vpf->name, vpf->code, vpf->def_args, vpf->self, 1} // unknown class
+                if(frame.init_class){
+                    // Read the class from the framestate
+                    frame.value_stack.push_back(
+                        std::move(
+                            std::make_shared<value::PyFunc>( 
+                                value::PyFunc {
+                                    vpf->name,
+                                    vpf->code,
+                                    vpf->def_args,
+                                    frame.init_class, //self
+                                    value::CLASS_METHOD
+                                } 
+                            )
                         )
-                    )
-                );
+                    );
+                } else {
+                    throw pyerror("classmethod builtin called with bad args");
+                }
             }
         } catch (const std::bad_variant_access& e) {
             throw pyerror("classmethod builtin called on a function that is not an instance method");
@@ -193,9 +202,15 @@ extern void inject_builtins(Namespace& ns) {
             ValuePyFunction& vpf = std::get<ValuePyFunction>(args[0]);
             frame.value_stack.push_back(
                 std::move(
-                    std::make_shared<value::PyFunc>( 
+                    std::make_shared<value::PyFunc> ( 
                         // Throw one up on the stack with static flag set
-                        value::PyFunc {vpf->name, vpf->code, vpf->def_args, vpf->self, 2}
+                        value::PyFunc {
+                            vpf->name,
+                            vpf->code,
+                            vpf->def_args,
+                            vpf->self,
+                            value::STATIC_METHOD
+                        }
                     )
                 )
             );

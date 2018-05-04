@@ -11,9 +11,7 @@
 # TODO
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
-    - Make all namespaces shared_ptrs
     - Inheritance and Multiple Inheritence
-    - Fix @classmethod and make it use init_class
     - Use GC
     - super() function
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)

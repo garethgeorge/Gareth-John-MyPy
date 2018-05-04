@@ -27,6 +27,12 @@ struct FrameState;
 
 // the value namespace for C value types
 namespace value {
+
+    // Constants for flags
+    const uint8_t INSTANCE_METHOD = 1;
+    const uint8_t CLASS_METHOD = 2;
+    const uint8_t STATIC_METHOD = 4;
+
     struct NoneType { };
 
     struct CFunction;
@@ -119,21 +125,6 @@ namespace value {
         // Flags as needed
         const uint8_t flags;
 
-        bool get_am_class_method() const {
-            return flags & 1;
-        }
-
-        bool get_am_static_method() const {
-            return flags & 2;
-        }
-
-        bool get_am_instance_method() const {
-            return flags & 4;
-        }
-
-        bool get_know_which_class() const {
-            return flags & 8;
-        }
     };
 
     // The static value of a class
