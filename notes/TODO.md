@@ -11,7 +11,6 @@
 # TODO
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
-    - Make tests for MRO consistent with https://www.python.org/download/releases/2.3/mro/
     - Use GC
     - super() function
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
@@ -33,6 +32,7 @@
         - overloading in classes and general function overloading
         - Make sure the 'deadly diamond problem' (https://www.python-course.eu/python3_multiple_inheritance.php) resolves correctly
         - Make sure to test for the error where MRO could not be determined
+        - Make tests for MRO consistent with complicated examples lower down in https://www.python.org/download/releases/2.3/mro/
  - implement variadic functions - John Jack
  - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack
