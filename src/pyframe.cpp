@@ -57,12 +57,16 @@ std::tuple<Value,bool> find_attr_in_parents(
                                     const std::string& attr
 ) {
     DEBUG("Searching parents of Class '%s' for attr '%s'\n",
-        (*(cls->attrs->at("__qualname__"))).c_str(),
-        attr.c_str();
+        // The below line tis a thing of beauty and terror
+        (*(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))).c_str(),
+        attr.c_str()
     );
     // Method Resolution Order already stored in the order parents are stored in
     for(int i = 0;i < cls->parents.size();i++){
-        DEBUG("Checking parent %s\n", (*(cls->parents[i]->attrs->at("__qualname__"))).c_str());
+        DEBUG("Checking parent %s\n", 
+            // Here there be dragons
+            std::get<ValueString>((cls->parents[i]->attrs->at("__qualname__")))->c_str()
+        );
         auto itr = cls->parents[i]->attrs->find(attr);
         if(itr != cls->parents[i]->attrs->end()){
             return std::tuple<Value,bool>(itr->second,true);

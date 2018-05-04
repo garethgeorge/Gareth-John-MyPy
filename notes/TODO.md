@@ -11,8 +11,7 @@
 # TODO
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
-    - Inheritance and Multiple Inheritence -> Method Resolution Order!
-    - Raise exeception if no possible MRO
+    - Make tests for MRO consistent with https://www.python.org/download/releases/2.3/mro/
     - Use GC
     - super() function
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
@@ -22,7 +21,7 @@
     - Can you define a class inside a function?
     - Does python support mulitple constructors? How do I deal with those
     - make the 'str' builtin work correctly for PyFuncs, PyObjects, and PyClasses
-    - Speed up searching parent attributes
+    - Speed up searching parent attributes and way improve the code for determining method resolution order
     - Builtin class 'object'
     - Make tests!
         - Both correct functioning and errors
@@ -33,7 +32,7 @@
         - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
         - overloading in classes and general function overloading
         - Make sure the 'deadly diamond problem' (https://www.python-course.eu/python3_multiple_inheritance.php) resolves correctly
-        - I searched parents depth-first. is this correct?
+        - Make sure to test for the error where MRO could not be determined
  - implement variadic functions - John Jack
  - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack
