@@ -11,14 +11,20 @@
 # TODO
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
+    - Make classes able to overload binary operators
+    - Make classes able to overload inplace operators
+    - Allow __call__ to be defined
+    - PyClasses are callable but not PyObjects unless __call__ is defined
+    - make the parents attribute of a pyclass just __mro__! ???
+    - super() function (https://docs.python.org/3/library/functions.html#super)
+        - In order to implement super, I need to make it a builtin PyClass with __call__ defined
+    - __mro__ attribute. (I also need to get all attributes right!)
+    - __bases__ attribute
+    - DYNAMIC INHERITANCE???
     - Use GC
-    - super() function
-    - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
-    - Classes can overload operators as well as inplace operators differently
     - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
     - make initialize_from_pyfunc just a constructor
     - Can you define a class inside a function?
-    - Does python support mulitple constructors? How do I deal with those
     - make the 'str' builtin work correctly for PyFuncs, PyObjects, and PyClasses
     - Speed up searching parent attributes and way improve the code for determining method resolution order
     - Builtin class 'object'
@@ -45,3 +51,4 @@
     - print 
     - range
     - https://docs.python.org/3/library/stdtypes.html
+    - https://docs.python.org/3/library/functions.html (these are the python builtin functions)
