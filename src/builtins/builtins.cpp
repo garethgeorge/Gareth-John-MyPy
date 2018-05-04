@@ -19,7 +19,7 @@ extern void inject_builtins(Namespace& ns) {
     
     // inject the global print builtin
     // TODO: add argument count support
-    ns["print"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+    (*ns)["print"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
         try {
             for (auto it = args.rbegin(); it != args.rend(); ++it) {
                 const std::string str = std::visit(value_helper::visitor_str(), *it);
@@ -39,7 +39,7 @@ extern void inject_builtins(Namespace& ns) {
         return ;
     });
 
-    ns["str"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+    (*ns)["str"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
         if (args.size() != 1) {
             throw pyerror("str in mypy does not support unicode string decoding at the moment.");
         }
@@ -63,13 +63,15 @@ extern void inject_builtins(Namespace& ns) {
     // and instance of the class it represents
     // See the RETURN_VALUE opcode in pyframe.cpp for the final allocation
     // Actually allocating a new PyObject from a PyClass happens in CALL_FUNCTION later
-    ns["__build_class__"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
-        /*fprintf(stderr,"__build_class__ called with arguments:\n");
+    (*ns)["__build_class__"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+        #ifdef JOHN_DEBUG_ON
+        fprintf(stderr,"__build_class__ called with arguments:\n");
         for(int i = 0;i < args.size();i++){
             frame.print_value(args[i]);
             fprintf(stderr,"\n");
         }
-        (std::get<ValuePyFunction>(args[0]))->code->print_bytecode();*/
+        (std::get<ValuePyFunction>(args[0]))->code->print_bytecode();
+        #endif
 
         // Store code
         ValueCode init_code = std::get<ValuePyFunction>(args[0])->code;
@@ -126,7 +128,7 @@ extern void inject_builtins(Namespace& ns) {
     // have a reference to the class (it doesnt exist yet)
     // This means flags need to be involved
     // Is there a better way to do this without addng a field to FrameState?
-    ns["classmethod"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+    (*ns)["classmethod"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
         if (args.size() != 1) {
             throw pyerror("classmethod builtin not passed exactly one argument");
         }
@@ -159,22 +161,31 @@ extern void inject_builtins(Namespace& ns) {
                                 vpf->name, 
                                 vpf->code, 
                                 vpf->def_args, 
-                                (*vpo)->static_attrs,
-                                1 | 8 // Class method flag, know class
+                                (*vpo)->static_attrs, // self
+                                value::CLASS_METHOD
                             }
                         )
                     )
                 );
             } else {
-                // Create a function with the same empty self but that knows its a class emthod
-                // MEEEEH
-                frame.value_stack.push_back(
-                    std::move(
-                        std::make_shared<value::PyFunc>( 
-                            value::PyFunc {vpf->name, vpf->code, vpf->def_args, vpf->self, 1} // unknown class
+                if(frame.init_class){
+                    // Read the class from the framestate
+                    frame.value_stack.push_back(
+                        std::move(
+                            std::make_shared<value::PyFunc>( 
+                                value::PyFunc {
+                                    vpf->name,
+                                    vpf->code,
+                                    vpf->def_args,
+                                    frame.init_class, //self
+                                    value::CLASS_METHOD
+                                } 
+                            )
                         )
-                    )
-                );
+                    );
+                } else {
+                    throw pyerror("classmethod builtin called with bad args");
+                }
             }
         } catch (const std::bad_variant_access& e) {
             throw pyerror("classmethod builtin called on a function that is not an instance method");
@@ -182,7 +193,7 @@ extern void inject_builtins(Namespace& ns) {
     });
 
     // Makes a method static!
-    ns["staticmethod"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+    (*ns)["staticmethod"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
         if (args.size() != 1) {
             throw pyerror("staticmethod builtin not passed exactly one argument");
         }
@@ -191,9 +202,15 @@ extern void inject_builtins(Namespace& ns) {
             ValuePyFunction& vpf = std::get<ValuePyFunction>(args[0]);
             frame.value_stack.push_back(
                 std::move(
-                    std::make_shared<value::PyFunc>( 
+                    std::make_shared<value::PyFunc> ( 
                         // Throw one up on the stack with static flag set
-                        value::PyFunc {vpf->name, vpf->code, vpf->def_args, vpf->self, 2}
+                        value::PyFunc {
+                            vpf->name,
+                            vpf->code,
+                            vpf->def_args,
+                            vpf->self,
+                            value::STATIC_METHOD
+                        }
                     )
                 )
             );
@@ -202,7 +219,7 @@ extern void inject_builtins(Namespace& ns) {
         }
     });
 
-    ns["len"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+    (*ns)["len"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
         if (args.size() != 1) {
             throw pyerror("len() only takes one argument");
         }

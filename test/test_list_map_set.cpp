@@ -18,7 +18,7 @@ TEST_CASE("lists should work", "[lists]") {
 check_val([1,2,3,4,5][4])
         )");
         InterpreterState state(code);
-        state.ns_builtins["check_val"] = make_builtin_check_value((int64_t)5);
+        (*(state.ns_builtins))["check_val"] = make_builtin_check_value((int64_t)5);
         state.eval();
     }
 
@@ -27,7 +27,7 @@ check_val([1,2,3,4,5][4])
 check_val([1,2,3,4,5][-1])
         )");
         InterpreterState state(code);
-        state.ns_builtins["check_val"] = make_builtin_check_value((int64_t)5);
+        (*(state.ns_builtins))["check_val"] = make_builtin_check_value((int64_t)5);
         state.eval();
     }
 
@@ -41,7 +41,7 @@ while x < len(myList):
         )");
         InterpreterState state(code);
         builtins::inject_builtins(state.ns_builtins);
-        state.ns_builtins["check_val"] = make_builtin_check_value((bool)true);
+        (*(state.ns_builtins))["check_val"] = make_builtin_check_value((bool)true);
         state.eval();
     }
 

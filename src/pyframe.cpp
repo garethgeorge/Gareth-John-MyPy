@@ -23,6 +23,7 @@ FrameState::FrameState(
         const ValueCode& code) 
 {
     DEBUG("constructed a new frame");
+    this->ns_local = std::make_shared<std::unordered_map<std::string, Value>>();
     this->interpreter_state = interpreter_state;
     this->parent_frame = parent_frame;
     this->code = code;
@@ -38,12 +39,14 @@ FrameState::FrameState(
         ValuePyClass& init_class)
 {
     DEBUG("constructed a new frame for statically initializing a class");
+    // Everything is mostly the same, but our local namespace is also the class's
     this->interpreter_state = interpreter_state;
     this->parent_frame = parent_frame;
     this->code = code;
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
     this->value_stack.reserve(code->co_stacksize);
     this->init_class = init_class;
+    this->ns_local = this->init_class->attrs;
     this->set_class_static_init_flag();
 }
 
@@ -52,8 +55,8 @@ FrameState::FrameState(
         for(int i = 0;i < cls->parents.size();i++){
             //std::cout << "Parent " << i << std::endl << std::flush;
             // Check the parent for the attribute
-            auto itr = cls->parents[i]->attrs.find(attr);
-            if(itr != cls->parents[i]->attrs.end()){
+            auto itr = cls->parents[i]->attrs->find(attr);
+            if(itr != cls->parents[i]->attrs->end()){
                 //std::cout << "A" << std::endl << std::flush;
                 (*success) = true;
                 //std::cout << "B" << std::endl << std::flush;
@@ -224,10 +227,10 @@ namespace eval_helpers {
         
         void operator()(const ValuePyClass& cls){
             try {
-                frame.value_stack.push_back(cls->attrs.at(attr));
+                frame.value_stack.push_back(cls->attrs->at(attr));
             } catch (const std::out_of_range& oor) {
                 throw pyerror(std::string(
-                    *(std::get<ValueString>( cls->attrs["__qualname__"]))
+                    *(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))
                     + " has no attribute " + attr
                 ));
             }
@@ -237,14 +240,14 @@ namespace eval_helpers {
         // ValuePyObject cannot be const as it might be modified
         void operator()(ValuePyObject& obj){
             // First look in my own namespace
-            auto itr = obj->attrs.find(attr);
-            if(itr != obj->attrs.end()){
+            auto itr = obj->attrs->find(attr);
+            if(itr != obj->attrs->end()){
                 frame.value_stack.push_back(itr->second);
             } else {
                 // Default to statics if not found
-                auto itr_2 = obj->static_attrs->attrs.find(attr);
+                auto itr_2 = obj->static_attrs->attrs->find(attr);
                 Value static_val;
-                if(itr_2 == obj->static_attrs->attrs.end()){
+                if(itr_2 == obj->static_attrs->attrs->end()){
                     // Not found in statics, search parents
                     bool out = false;
                     static_val = find_attr_in_parents(obj->static_attrs,attr,&out);
@@ -253,7 +256,7 @@ namespace eval_helpers {
                         // Nothing, it was NoneType. Error!
                         throw pyerror(std::string(
                             // Should this be __name__??
-                            *(std::get<ValueString>(obj->static_attrs->attrs["__qualname__"]))
+                            *(std::get<ValueString>( (*(obj->static_attrs->attrs))["__qualname__"]))
                             + " has no attribute " + attr
                         ));
                     }
@@ -267,24 +270,10 @@ namespace eval_helpers {
                 if(pf != NULL){
                     // Push a new PyFunc with self set to obj or obj's class
                     // Store it so that next time it is accessed it will be found in attrs
-                    if((*pf)->get_am_class_method()){
-                        if((*pf)->get_know_which_class()){
-                            // All good, the class method already knows everythin
-                            frame.value_stack.push_back(*pf);
-                        } else {
-                            // Tell the class method which class
-                            Value npf = std::make_shared<value::PyFunc>(
-                                value::PyFunc {
-                                    (*pf)->name,
-                                    (*pf)->code,
-                                    (*pf)->def_args,
-                                    obj->static_attrs,
-                                    1 | 8} // clasmethod that knows which class
-                            );
-                            obj->static_attrs->store_attr(attr,npf);
-                            frame.value_stack.push_back(npf);
-                        }
-                    } else  if ((*pf)->get_am_static_method()) {
+                    //if(((*pf)->flags & value::CLASS_METHOD)
+                    //|| ((*pf)->flags & value::STATIC_METHOD) ){
+                    if((*pf)->flags & (value::CLASS_METHOD | value::STATIC_METHOD)){
+                        // All good, just push it
                         frame.value_stack.push_back(*pf);
                     } else {
                         DEBUG("Instantiating instance method");
@@ -294,8 +283,8 @@ namespace eval_helpers {
                                 (*pf)->name,
                                 (*pf)->code,
                                 (*pf)->def_args,
-                                obj, // Instance method
-                                4}
+                                obj, // Instance method's self
+                                value::INSTANCE_METHOD}
                         );
                         obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
                         frame.value_stack.push_back(npf);
@@ -335,7 +324,9 @@ namespace eval_helpers {
 
         // A PyClass was called like a function, therein creating a PyObject
         void operator()(const ValuePyClass& cls) const {
-            DEBUG("Constructing a '%s' Object",std::get<ValueString>(cls->attrs["__qualname__"])->c_str());
+            DEBUG("Constructing a '%s' Object",std::get<ValueString>(
+                (*(cls->attrs))["__qualname__"]
+            )->c_str());
             /*for(auto it = cls->attrs.begin();it != cls->attrs.end();++it){
                 printf("%s = ",it->first.c_str());
                 frame.print_value(it->second);
@@ -347,10 +338,10 @@ namespace eval_helpers {
 
 
             // Check the class if it has an init function
-            auto itr = cls->attrs.find("__init__");
+            auto itr = cls->attrs->find("__init__");
             Value vv;
             bool has_init = true;
-            if(itr == cls->attrs.end()){
+            if(itr == cls->attrs->end()){
                 vv = find_attr_in_parents(cls,std::string("__init__"),&has_init);
             } else {
                 vv = itr->second;
@@ -457,8 +448,8 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
     int first_def_arg = this->code->co_argcount - func->def_args->size();
    
     // Set the implicit argument
-    std::visit(set_implicit_arg_visitor(*this),func->self);
-    bool has_implicit_arg = func->get_am_instance_method() || func->get_am_class_method();
+    bool has_implicit_arg = func->flags & (value::CLASS_METHOD | value::INSTANCE_METHOD);
+    if(has_implicit_arg) std::visit(set_implicit_arg_visitor(*this),func->self);
 
     int first_arg_is_self = (has_implicit_arg ? 1 : 0);
 
@@ -508,11 +499,7 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
 
 // Add a value to the ns local
 void FrameState::add_to_ns_local(const std::string& name,Value&& v){
-    if(this->get_class_static_init_flag()){
-        this->get_init_class()->attrs.emplace(name,v);
-    } else {
-        this->ns_local.emplace(name,v);
-    }
+    this->ns_local->emplace(name,v);
 }
 
 void FrameState::print_value(Value& val) {
@@ -525,9 +512,9 @@ void FrameState::print_value(Value& val) {
             [](const ValueCode arg) {std::cerr << "Code()"; },
             [](const ValuePyFunction arg) {std::cerr << "Python Function()"; },
             [](const ValuePyClass arg) {std::cerr << "ValuePyClass ("
-                << *(std::get<ValueString>(arg->attrs["__qualname__"])) << ")"; },
+                << *(std::get<ValueString>((*(arg->attrs))["__qualname__"])) << ")"; },
             [](const ValuePyObject arg) {std::cerr << "ValuePyObject of class ("
-                << *(std::get<ValueString>(arg->static_attrs->attrs["__qualname__"])) << ")"; },
+                << *(std::get<ValueString>((*(arg->static_attrs->attrs))["__qualname__"])) << ")"; },
             [](value::NoneType) {std::cerr << "None"; },
             [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
         }, val);
@@ -599,8 +586,8 @@ inline void FrameState::eval_next() {
                 }
                 
                 // Try builtins
-                auto itr_local_b = this->interpreter_state->ns_builtins.find(name);
-                if (itr_local_b != this->interpreter_state->ns_builtins.end()){
+                auto itr_local_b = this->interpreter_state->ns_builtins->find(name);
+                if (itr_local_b != this->interpreter_state->ns_builtins->end()){
                     DEBUG("op::LOAD_GLOBAL ('%s') loaded a builtin", name.c_str());
                     this->value_stack.push_back(itr_local_b->second);
                     break;
@@ -617,10 +604,10 @@ inline void FrameState::eval_next() {
                 const std::string& name = this->code->co_varnames.at(arg);
 
                 // Find it
-                auto itr_local = this->ns_local.find(name);
+                auto itr_local = this->ns_local->find(name);
 
                 // Push it to the stack if it exists, otherwise error
-                if (itr_local != this->ns_local.end()) {
+                if (itr_local != this->ns_local->end()) {
                     DEBUG("op::LOAD_FAST ('%s') loaded a local", name.c_str());
                     this->value_stack.push_back(itr_local->second);
                 } else {
@@ -634,64 +621,22 @@ inline void FrameState::eval_next() {
         {
             try {
                 const std::string& name = this->code->co_names.at(arg);
-                
-                // If we are statically initializing a class
-                // Instead of loading from namespace, we access our class's attributes
-                if(this->get_class_static_init_flag()){
-                    // No no no no no
-                    // However, since how this whole thing works is gana change,
-                    // This is prob fine for now
-
-                    // This is mostly here so that when I remove init_class
-                    // This fails to compile and we know to change here
-                    assert(this->init_class);
-
-                    Value cv = this->get_init_class();
-
-                    try {
-                        std::visit(
-                            eval_helpers::load_attr_visitor(*this,name),
-                            cv
-                        );
-                        break;
-                    } catch (int err) {
-                        printf("\nCaught!!\n");
-                        // Ignore
-                    }
-                }
-#ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
-                // if NS_LOCAL_SHORTCUT optimization is turned on, see if we can
-                // find the variable in the cache
-                auto& local_shortcut_entry = this->ns_local_shortcut[arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *))];
-                if (local_shortcut_entry.value != nullptr &&
-                    local_shortcut_entry.key == &name) {
-                    DEBUG("op::LOAD_NAME ('%s') loaded a local from ns_local_shortcut", name.c_str());
-                    this->value_stack.push_back(*(local_shortcut_entry.value));
-                    break ;
-                } 
-#endif
-                const auto& globals = *(this->interpreter_state->ns_globals_ptr);
+                const auto& globals = this->interpreter_state->ns_globals_ptr;
                 const auto& builtins = this->interpreter_state->ns_builtins;
-                auto itr_local = this->ns_local.find(name);
-                if (itr_local != this->ns_local.end()) {
+                auto itr_local = this->ns_local->find(name);
+                if (itr_local != this->ns_local->end()) {
                     DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());
                     this->value_stack.push_back(itr_local->second);
-#ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
-                    // if NS_LOCAL_SHORTCUT optimization is turned on,
-                    // turn on this optimization in the cache
-                    local_shortcut_entry.key = &name;
-                    local_shortcut_entry.value = &(itr_local->second);
-#endif
                     break ;
                 } 
-                auto itr_global = globals.find(name);
-                if (itr_global != globals.end()) {
+                auto itr_global = globals->find(name);
+                if (itr_global != globals->end()) {
                     DEBUG("op::LOAD_NAME ('%s') loaded a global", name.c_str());
                     this->value_stack.push_back(itr_global->second);
                     break ;
                 } 
-                auto itr_builtin = builtins.find(name);
-                if (itr_builtin != builtins.end()) {
+                auto itr_builtin = builtins->find(name);
+                if (itr_builtin != builtins->end()) {
                     DEBUG("op::LOAD_NAME ('%s') loaded a builtin", name.c_str());
                     this->value_stack.push_back(itr_builtin->second);
                     break ;
@@ -719,7 +664,7 @@ inline void FrameState::eval_next() {
             try {
                 // Check which name we are storing and store it
                 const std::string& name = this->code->co_names.at(arg);
-                this->ns_local[name] = std::move(this->value_stack.back());
+                (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
                 throw pyerror("op::STORE_FAST tried to store name out of range");
@@ -730,29 +675,8 @@ inline void FrameState::eval_next() {
             this->check_stack_size(1);
             try {
                 const std::string& name = this->code->co_names.at(arg);
-
-                // If we are statically initializing a class, store as an attribute instead
-                if(this->get_class_static_init_flag()){
-                    Value vv = std::move(this->value_stack.back());
-                    this->value_stack.pop_back();
-                    this->get_init_class()->store_attr(name,vv);
-                    break;
-                }
-
-#ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
-                auto& local_shortcut_entry = 
-                    this->ns_local_shortcut[arg % (sizeof(this->ns_local_shortcut) / sizeof(Value *))];
-                if (local_shortcut_entry.value != nullptr &&
-                    local_shortcut_entry.key == &name) {
-                    *(local_shortcut_entry.value) = std::move(this->value_stack.back());
-                } else {
-                    this->ns_local[name] = std::move(this->value_stack.back());
-                }
-#else 
-                this->ns_local[name] = std::move(this->value_stack.back());
-#endif
+                (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
-
             } catch (std::out_of_range& err) {
                 throw pyerror("op::STORE_NAME tried to store name out of range");
             }
@@ -1039,7 +963,7 @@ inline void FrameState::eval_next() {
         {
             // Push the build class builtin onto the stack
             J_DEBUG("Preparing to build a class");
-            this->value_stack.push_back(this->interpreter_state->ns_builtins["__build_class__"]);
+            this->value_stack.push_back((*(this->interpreter_state->ns_builtins))["__build_class__"]);
             break;
         }
         case op::LOAD_ATTR:

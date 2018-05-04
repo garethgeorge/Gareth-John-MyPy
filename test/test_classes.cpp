@@ -19,7 +19,7 @@ check_int(boo.show(bar.show(3)))
 )");
         InterpreterState state(code);
         builtins::inject_builtins(state.ns_builtins);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)14);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)14);
         state.eval();
     }
 
@@ -42,10 +42,10 @@ check_int4(simple_class.buf)
 )");
         InterpreterState state(code);
         builtins::inject_builtins(state.ns_builtins);
-        state.ns_builtins["check_int1"] = make_builtin_check_value((int64_t)2);
-        state.ns_builtins["check_int2"] = make_builtin_check_value((int64_t)4);
-        state.ns_builtins["check_int3"] = make_builtin_check_value((int64_t)6);
-        state.ns_builtins["check_int4"] = make_builtin_check_value((int64_t)6);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)4);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)6);
+        (*(state.ns_builtins))["check_int4"] = make_builtin_check_value((int64_t)6);
         state.eval();
     }
 
@@ -71,11 +71,11 @@ check_int5(simple_class.buf)
 )");
         InterpreterState state(code);
         builtins::inject_builtins(state.ns_builtins);
-        state.ns_builtins["check_int1"] = make_builtin_check_value((int64_t)12);
-        state.ns_builtins["check_int2"] = make_builtin_check_value((int64_t)2);
-        state.ns_builtins["check_int3"] = make_builtin_check_value((int64_t)100);
-        state.ns_builtins["check_int4"] = make_builtin_check_value((int64_t)101);
-        state.ns_builtins["check_int5"] = make_builtin_check_value((int64_t)101);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)12);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)100);
+        (*(state.ns_builtins))["check_int4"] = make_builtin_check_value((int64_t)101);
+        (*(state.ns_builtins))["check_int5"] = make_builtin_check_value((int64_t)101);
         state.eval();
     }
 
@@ -101,10 +101,10 @@ check_int4(simple_class.buf)
 )");
         InterpreterState state(code);
         builtins::inject_builtins(state.ns_builtins);
-        state.ns_builtins["check_int1"] = make_builtin_check_value((int64_t)2);
-        state.ns_builtins["check_int2"] = make_builtin_check_value((int64_t)100);
-        state.ns_builtins["check_int3"] = make_builtin_check_value((int64_t)-100);
-        state.ns_builtins["check_int4"] = make_builtin_check_value((int64_t)101);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)100);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)-100);
+        (*(state.ns_builtins))["check_int4"] = make_builtin_check_value((int64_t)101);
         state.eval();
     }
 
@@ -128,9 +128,42 @@ check_int3(bar.wow)
 )");
         InterpreterState state(code);
         builtins::inject_builtins(state.ns_builtins);
-        state.ns_builtins["check_int1"] = make_builtin_check_value((int64_t)5);
-        state.ns_builtins["check_int2"] = make_builtin_check_value((int64_t)10);
-        state.ns_builtins["check_int3"] = make_builtin_check_value((int64_t)10);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)5);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)10);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)10);
+        state.eval();
+    }
+
+        SECTION( "and use method type decoratiors" ){
+        auto code = build_string(R"(
+class A:
+    val = 5
+
+    def im(self):
+        return(self.val)
+
+    @classmethod
+    def cm(self):
+        return(self.val)
+
+    @staticmethod
+    def sm(self):
+        return(self.val)
+
+foo = A()
+bar = A()
+foo.val = 20
+bar.val = 21
+
+check_int1(foo.im())
+check_int2(foo.cm())
+check_int3(foo.sm(bar))
+)");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)20);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)5);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)21);
         state.eval();
     }
 }
