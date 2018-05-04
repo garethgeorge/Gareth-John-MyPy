@@ -10,8 +10,8 @@ check_int(x + 10)
 check_double(x + 10.5)
         )");
         InterpreterState state(code);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)15);
-        state.ns_builtins["check_double"] = make_builtin_check_value((double)15.5);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)15);
+        (*(state.ns_builtins))["check_double"] = make_builtin_check_value((double)15.5);
         state.eval();
     }
 
@@ -24,8 +24,8 @@ check_double(5.5 * x)
 )";
         auto code = build_string(theCode);
         InterpreterState state(code);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)25);
-        state.ns_builtins["check_double"] = make_builtin_check_value((double)27.5);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)25);
+        (*(state.ns_builtins))["check_double"] = make_builtin_check_value((double)27.5);
         state.eval();
     }
 
@@ -36,7 +36,7 @@ check_int(x - 5)
 )";
         auto code = build_string(theCode);
         InterpreterState state(code);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)0);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)0);
         state.eval();
     }
 
@@ -47,7 +47,7 @@ check_string(x + " test")
 )";
         auto code = build_string(theCode);
         InterpreterState state(code);
-        state.ns_builtins["check_string"] = make_builtin_check_value(make_shared<string>("test test"));
+        (*(state.ns_builtins))["check_string"] = make_builtin_check_value(make_shared<string>("test test"));
         state.eval();
     }
 
@@ -58,8 +58,8 @@ x * "test"
 )";
         auto code = build_string(theCode);
         InterpreterState state(code);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)25);
-        state.ns_builtins["check_double"] = make_builtin_check_value((double)27.5);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)25);
+        (*(state.ns_builtins))["check_double"] = make_builtin_check_value((double)27.5);
         REQUIRE_THROWS(state.eval());
     }
 }

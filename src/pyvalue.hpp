@@ -77,7 +77,7 @@ using Value = std::variant<
 >;
 
 // Bad copy/paste from pyinterpreter.hpp
-using Namespace = std::unordered_map<std::string, Value>;
+using Namespace = std::shared_ptr<std::unordered_map<std::string, Value>>;
 
 namespace value {
     struct CFunction {
@@ -144,18 +144,15 @@ namespace value {
         // Things I inherit from
         std::vector<ValuePyClass> parents;
 
-        PyClass(Namespace ns){
-            attrs = ns;
-        }
-
         PyClass(std::vector<ValuePyClass>& ps){
+            this->attrs = std::make_shared<std::unordered_map<std::string, Value>>();
             // Copying... meh
             parents = ps;
         }
 
         // Store an attribute into attrs
         void store_attr(const std::string& str,Value& val){
-            attrs[str] = val;
+            (*attrs)[str] = val;
         }
     };
 
@@ -172,11 +169,13 @@ namespace value {
 
         // When first creating this, all it needs do is reference it's static class
         // __init__ will be called later if necessary
-        PyObject(const ValuePyClass& cls) : static_attrs(cls) {};
+        PyObject(const ValuePyClass& cls) : static_attrs(cls) {
+            this->attrs = std::make_shared<std::unordered_map<std::string, Value>>();
+        };
 
         // Store an attribute into attrs
         void store_attr(const std::string& str,Value& val){
-            attrs[str] = val;
+            (*attrs)[str] = val;
         }
     };
 }

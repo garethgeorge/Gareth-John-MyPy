@@ -13,9 +13,9 @@ check_int2(test_func(5,3))
 check_double(test_func(5.0,3.2))
         )");
         InterpreterState state(code);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)8);
-        state.ns_builtins["check_int2"] = make_builtin_check_value((int64_t)8);
-        state.ns_builtins["check_double"] = make_builtin_check_value((double)8.2);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)8);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)8);
+        (*(state.ns_builtins))["check_double"] = make_builtin_check_value((double)8.2);
         state.eval();
     }
     SECTION( "with default args" ){
@@ -28,9 +28,9 @@ check_int2(test_func(1,2))
 check_double(test_func(5.0))
         )");
         InterpreterState state(code);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)8);
-        state.ns_builtins["check_int2"] = make_builtin_check_value((int64_t)3);
-        state.ns_builtins["check_double"] = make_builtin_check_value((double)10.0);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)8);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_double"] = make_builtin_check_value((double)10.0);
         state.eval();
     }
     SECTION( "with some default args" ){
@@ -43,9 +43,9 @@ check_int2(test_func(1,2))
 check_double(test_func(5.0))
         )");
         InterpreterState state(code);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)12);
-        state.ns_builtins["check_int2"] = make_builtin_check_value((int64_t)3);
-        state.ns_builtins["check_double"] = make_builtin_check_value((double)10.0);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)12);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_double"] = make_builtin_check_value((double)10.0);
         state.eval();        
     }
     SECTION( "from another function" ){
@@ -60,8 +60,8 @@ check_int(func_b(2))
 check_int2(func_b(100))
         )");
         InterpreterState state(code);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)5);
-        state.ns_builtins["check_int2"] = make_builtin_check_value((int64_t)201);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)5);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)201);
         state.eval();       
     }
     SECTION( "recursively" ){
@@ -76,8 +76,8 @@ check_int(func_r(2))
 check_int2(func_r(20))
         )");
         InterpreterState state(code);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)3);
-        state.ns_builtins["check_int2"] = make_builtin_check_value((int64_t)210);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)210);
         state.eval();       
     }
 }

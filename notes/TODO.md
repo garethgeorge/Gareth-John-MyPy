@@ -12,11 +12,9 @@
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
     - Make all namespaces shared_ptrs
-    - Use GC
     - Inheritance and Multiple Inheritence
-    - Fix @classmethod
-    - Somehow make it so that the namespace of a static init framestate IS the attrs of the class being created
-    - Change classmethod to use init_class
+    - Fix @classmethod and make it use init_class
+    - Use GC
     - super() function
     - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
     - Classes can overload operators as well as inplace operators differently

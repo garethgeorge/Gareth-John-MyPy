@@ -11,7 +11,7 @@ while x < 100:
 check_int(x)
         )");
         InterpreterState state(code);
-        state.ns_builtins["check_int"] = make_builtin_check_value((int64_t)100);
+        (*(state.ns_builtins))["check_int"] = make_builtin_check_value((int64_t)100);
         state.eval();
     }
 }
