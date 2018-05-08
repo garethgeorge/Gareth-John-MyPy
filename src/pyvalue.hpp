@@ -104,7 +104,8 @@ namespace value {
 
 // A struct that holds a python function
 namespace value {
-    struct PyFunc{
+    
+    struct PyFunc {
         // It's name
         const ValueString name;
         
