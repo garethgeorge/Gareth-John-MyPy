@@ -353,92 +353,6 @@ namespace eval_helpers {
 
     };
 
-    struct call_visitor {
-        /*
-            the call visitor is a helpful visitor class that actually includes 
-            some amount of state, it takes the argument list as well as the current
-            frame. 
-
-            It may be possible to refactor this into a visitor using the lambda
-            style syntax ideally.
-        */
-
-        FrameState& frame;
-        std::vector<Value>& args;
-        call_visitor(FrameState& frame, std::vector<Value>& args) : frame(frame), args(args) {}
-
-        void operator()(const ValueCFunction& func) const {
-            DEBUG("call_visitor dispatching CFunction->action");
-            func->action(frame, args);
-        }
-
-        // A PyClass was called like a function, therein creating a PyObject
-        void operator()(const ValuePyClass& cls) const {
-            DEBUG("Constructing a '%s' Object",std::get<ValueString>(
-                (*(cls->attrs))["__qualname__"]
-            )->c_str());
-            /*for(auto it = cls->attrs.begin();it != cls->attrs.end();++it){
-                printf("%s = ",it->first.c_str());
-                frame.print_value(it->second);
-                printf("\n");
-            }*/
-            ValuePyObject npo = std::make_shared<value::PyObject>(
-                value::PyObject(cls)
-            );
-
-
-            // Check the class if it has an init function
-            auto itr = cls->attrs->find("__init__");
-            Value vv;
-            bool has_init = true;
-            if(itr == cls->attrs->end()){
-                std::tuple<Value,bool> par_val = value::PyClass::find_attr_in_parents(cls,std::string("__init__"));
-                if(std::get<1>(par_val)){
-                    vv = std::get<0>(par_val);
-                } else {
-                    has_init = false;
-                }
-            } else {
-                vv = itr->second;
-            }
-
-            if(has_init){
-                // call the init function, pushing the new object as the first argument 'self'
-                args.insert(args.begin(),npo);
-                std::visit(call_visitor(frame,args),vv);
-                
-                // Now that a new frame is on the stack, set a flag in it that it's an initializer frame
-                frame.interpreter_state->callstack.top().set_class_dynamic_init_flag();
-            } 
-
-            // Push the new object on the value stack
-            frame.value_stack.push_back(std::move(npo));
-        }
-
-        void operator()(const ValuePyFunction& func) const {
-            DEBUG("call_visitor dispatching on a PyFunction");
-
-            // Throw an error if too many arguments
-            if(args.size() > func->code->co_argcount){
-                throw pyerror(std::string("TypeError: " + *(func->name)
-                            + " takes " + std::to_string(func->code->co_argcount)
-                            + " positional arguments but " + std::to_string(args.size())
-                            + " were given"));
-            }
-
-            // Push a new FrameState
-            frame.interpreter_state->callstack.push(
-                std::move( FrameState(frame.interpreter_state, &frame, func->code))
-            );
-            frame.interpreter_state->callstack.top().initialize_from_pyfunc(func,args);
-        }
-        
-        template<typename T>
-        void operator()(T) const {
-            throw pyerror(string("can not call object of type ") + typeid(T).name());
-        }
-    };
-
     struct binary_subscr_visitor {
         /*
             the binary subscript visitor is used to implement
@@ -768,7 +682,7 @@ inline void FrameState::eval_next() {
             this->value_stack.pop_back();
             
             std::visit(
-                eval_helpers::call_visitor(*this, args),
+                value_helper::call_visitor(*this, args),
                 func
             );
 
