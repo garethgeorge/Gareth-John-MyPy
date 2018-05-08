@@ -175,14 +175,15 @@ struct numeric_visitor {
         frame.value_stack.push_back(T::action(v1, v2));
     }
     
-    void operator()(ValuePyObject& v1, int64_t v2) const {
+    template<typename OT>
+    void operator()(ValuePyObject& v1, OT& v2) const {
         // Get the attribute for it
         std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(v1,std::string(T::l_attr));
         if(std::get<1>(res)){
             // Call it like a function
-            std::vector<Value> args(1,v2);
+            std::vector<Value> args(1, v2);
             std::visit(
-                call_visitor(frame,args),
+                call_visitor(frame, args),
                 std::get<0>(res)
             );
         } else {
