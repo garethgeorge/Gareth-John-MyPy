@@ -6,6 +6,8 @@
 #include <string>
 #include "pyvalue.hpp"
 #include <tuple>
+#include "pyframe.hpp"
+#include <variant>
 
 using std::string;
 
@@ -73,20 +75,20 @@ struct numeric_visitor {
 
     numeric_visitor(FrameState& frame) : frame(frame) {}
 
-    Value operator()(double v1, double v2) const {
-        return T::action(v1, v2);
+    void operator()(double v1, double v2) const {
+        frame.value_stack.push_back(T::action(v1, v2));
     }
-    Value operator()(double v1, int64_t v2) const {
-        return T::action(v1, v2);
+    void operator()(double v1, int64_t v2) const {
+        frame.value_stack.push_back(T::action(v1, v2));
     }
-    Value operator()(int64_t v1, double v2) const {
-        return T::action(v1, v2);
+    void operator()(int64_t v1, double v2) const {
+        frame.value_stack.push_back(T::action(v1, v2));
     } 
-    Value operator()(int64_t v1, int64_t v2) const {
-        return T::action(v1, v2);
+    void operator()(int64_t v1, int64_t v2) const {
+        frame.value_stack.push_back(T::action(v1, v2));
     }
     
-    Value operator()(ValuePyObject& v1, int64_t v2) const {
+    void operator()(ValuePyObject& v1, int64_t v2) const {
         // Get the attribute for it
         std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(v1,std::string(T::l_attr));
         if(std::get<1>(res)){
@@ -100,7 +102,7 @@ struct numeric_visitor {
     }
     
     template<typename T1, typename T2>
-    Value operator()(T1, T2) const {
+    void operator()(T1, T2) const {
         throw pyerror(string("type error in numeric_visitor, can not work on values of types ") + typeid(T1).name() + " and " + typeid(T2).name());
     }
 };

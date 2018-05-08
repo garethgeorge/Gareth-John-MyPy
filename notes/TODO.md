@@ -13,6 +13,8 @@
  - implement Objects/Classes - John/Jack
     - Make classes able to overload binary operators
     - Make classes able to overload inplace operators
+    - For ones that dont have a r_attr, etc, return a special string marking that and throw an error!
+    - Change how framestag flags are set and checked, also make RETURN_VALUE not use a switch
     - Allow __call__ to be defined and the rest of the overloads
     - PyClasses are callable but not PyObjects unless __call__ is defined
     - make the parents attribute of a pyclass just __mro__! ???
@@ -43,7 +45,8 @@
  - implement variadic functions - John Jack
  - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack
- - find a testing framework that specifically tests python interpreters - John/Jack or Garth
+ - find a testing framework that specifically tests python interpreters - John/Jack or Gareth
+ - Implement all opertor overloads fro python strings - John/Jack or Gareth
  - Create a formatted error handling function - Gareth
  - implement garbage collection - Gareth
  - implement generators/iterators - Gareth

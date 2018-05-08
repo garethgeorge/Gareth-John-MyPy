@@ -306,8 +306,8 @@ namespace eval_helpers {
 
         add_visitor(FrameState &frame) : numeric_visitor<op_add>(frame) { };
         
-        Value operator()(const std::shared_ptr<std::string>& v1, const std::shared_ptr<std::string> &v2) const {
-            return std::make_shared<std::string>(*v1 + *v2);
+        void operator()(const std::shared_ptr<std::string>& v1, const std::shared_ptr<std::string> &v2) const {
+            frame.value_stack.push_back(std::make_shared<std::string>(*v1 + *v2));
         }
     };
 
@@ -788,47 +788,46 @@ inline void FrameState::eval_next() {
         case op::COMPARE_OP:
         {
             this->check_stack_size(2);
-            const Value val2 = std::move(this->value_stack.back());
-            this->value_stack.pop_back();
-            const Value val1 = std::move(this->value_stack.back());
-            this->value_stack.pop_back();
-            Value result;
+            Value val2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value val1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            DEBUG("BEFORE COMPARISON STACK SIZE: %d",this->value_stack.size());
             DEBUG("\tCOMPARISON OPERATOR: %s", op::cmp::name[arg]);
             switch (arg) {
                 case op::cmp::LT:
-                    result = std::visit(
+                    std::visit(
                         eval_helpers::numeric_visitor<eval_helpers::op_lt>(*this),
                         val1, val2);
                     break;
                 case op::cmp::LTE:
-                    result = std::visit(
+                    std::visit(
                         eval_helpers::numeric_visitor<eval_helpers::op_lte>(*this),
                         val1, val2);
                     break;
                 case op::cmp::GT:
-                    result = std::visit(
+                    std::visit(
                         eval_helpers::numeric_visitor<eval_helpers::op_gt>(*this),
                         val1, val2);
                     break;
                 case op::cmp::GTE:
-                    result = std::visit(
+                    std::visit(
                         eval_helpers::numeric_visitor<eval_helpers::op_gte>(*this),
                         val1, val2);
                     break;
                 case op::cmp::EQ:
-                    result = std::visit(
+                    std::visit(
                         eval_helpers::numeric_visitor<eval_helpers::op_eq>(*this),
                         val1, val2);
                     break ;
                 case op::cmp::NEQ:
-                    result = std::visit(
+                    std::visit(
                         eval_helpers::numeric_visitor<eval_helpers::op_neq>(*this),
                         val1, val2);
                     break ;
                 default:
                     throw pyerror(string("operator ") + op::cmp::name[arg] + " not implemented.");
             }
-            this->value_stack.push_back(std::move(result));
+            DEBUG("AFTER COMPARISON STACK SIZE: %d",this->value_stack.size());
             break;
         }
         case op::INPLACE_ADD:
@@ -837,55 +836,50 @@ inline void FrameState::eval_next() {
         case op::BINARY_ADD:
         {
             this->check_stack_size(2);
-            this->value_stack[this->value_stack.size() - 2] = 
-                std::move(std::visit(eval_helpers::add_visitor(*this), 
-                    this->value_stack[this->value_stack.size() - 2],
-                    this->value_stack[this->value_stack.size() - 1]));
-            this->value_stack.pop_back();
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::add_visitor(*this),v1,v2);
             break ;
         }
         case op::INPLACE_SUBTRACT:
         case op::BINARY_SUBTRACT:
         {
             this->check_stack_size(2);
-            this->value_stack[this->value_stack.size() - 2] = 
-                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_sub>(*this),
-                    this->value_stack[this->value_stack.size() - 2],
-                    this->value_stack[this->value_stack.size() - 1]));
-            this->value_stack.pop_back();
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_sub>(*this),v1,v2);
             break ;
         }
         case op::INPLACE_FLOOR_DIVIDE:
         case op::BINARY_FLOOR_DIVIDE:
         {
             this->check_stack_size(2);
-            this->value_stack[this->value_stack.size() - 2] = 
-                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_divide>(*this),
-                    this->value_stack[this->value_stack.size() - 2],
-                    this->value_stack[this->value_stack.size() - 1]));
-            this->value_stack.pop_back();
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_divide>(*this),v1,v2);
             break ;
         }
         case op::INPLACE_MULTIPLY:
         case op::BINARY_MULTIPLY:
         {
             this->check_stack_size(2);
-            this->value_stack[this->value_stack.size() - 2] = 
-                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_mult>(*this),
-                    this->value_stack[this->value_stack.size() - 2],
-                    this->value_stack[this->value_stack.size() - 1]));
-            this->value_stack.pop_back();
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_mult>(*this),v1,v2);
             break ;
         }
         case op::INPLACE_MODULO:
         case op::BINARY_MODULO:
         {
             this->check_stack_size(2);
-            this->value_stack[this->value_stack.size() - 2] = 
-                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_modulo>(*this),
-                    this->value_stack[this->value_stack.size() - 2],
-                    this->value_stack[this->value_stack.size() - 1]));
-            this->value_stack.pop_back();
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_modulo>(*this),v1,v2);
             break ;
         }
         case op::RETURN_VALUE:
