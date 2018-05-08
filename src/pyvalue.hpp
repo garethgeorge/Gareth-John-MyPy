@@ -10,6 +10,7 @@
 #include <functional>
 #include <pygc.hpp>
 #include "pyerror.hpp"
+#include <tuple>
 
 namespace py {
 
@@ -240,6 +241,12 @@ namespace value {
             }
         }
 
+        // Defined in FrameState
+        static std::tuple<Value,bool> find_attr_in_parents(
+                                    const ValuePyClass& cls,
+                                    const std::string& attr
+                                );
+
         // Store an attribute into attrs
         void store_attr(const std::string& str,Value& val){
             (*attrs)[str] = val;
@@ -267,6 +274,13 @@ namespace value {
         void store_attr(const std::string& str,Value& val){
             (*attrs)[str] = val;
         }
+
+        // Defined in FrameState
+        // This should REALLY be changed to a not static method but that will happen soon
+        static std::tuple<Value,bool> find_attr_in_obj(
+                            const ValuePyObject& obj,
+                            const std::string& attr
+                        );
     };
 }
 

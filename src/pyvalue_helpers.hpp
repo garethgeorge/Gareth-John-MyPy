@@ -5,6 +5,7 @@
 
 #include <string>
 #include "pyvalue.hpp"
+#include <tuple>
 
 using std::string;
 
@@ -68,6 +69,10 @@ struct visitor_str : public visitor_repr {
 
 template<class T>
 struct numeric_visitor {
+    FrameState& frame;
+
+    numeric_visitor(FrameState& frame) : frame(frame) {}
+
     Value operator()(double v1, double v2) const {
         return T::action(v1, v2);
     }
@@ -76,9 +81,22 @@ struct numeric_visitor {
     }
     Value operator()(int64_t v1, double v2) const {
         return T::action(v1, v2);
-    }
+    } 
     Value operator()(int64_t v1, int64_t v2) const {
         return T::action(v1, v2);
+    }
+    
+    Value operator()(ValuePyObject& v1, int64_t v2) const {
+        // Get the attribute for it
+        std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(v1,std::string(T::l_attr));
+        if(std::get<1>(res)){
+            throw pyerror(string("huh"));
+        } else {
+            throw pyerror(
+                string("TypeError: unsupported operand type(s) for ") + T::op_name + string(": '")
+                + *(std::get<ValueString>((v1->static_attrs->attrs->at("__qualname__")))) + string("' and '") + string("INT'")
+            );
+        }
     }
     
     template<typename T1, typename T2>

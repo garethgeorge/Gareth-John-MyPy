@@ -52,7 +52,7 @@ FrameState::FrameState(
 }
 
 // Find an attribute in the parents of a class
-std::tuple<Value,bool> FrameState::find_attr_in_parents(
+std::tuple<Value,bool> value::PyClass::find_attr_in_parents(
                                     const ValuePyClass& cls,
                                     const std::string& attr
 ) {
@@ -73,6 +73,61 @@ std::tuple<Value,bool> FrameState::find_attr_in_parents(
         }
     }
     return std::tuple<Value,bool>(value::NoneType(),false);
+}
+
+std::tuple<Value,bool> value::PyObject::find_attr_in_obj(
+                                            const ValuePyObject& obj,
+                                            const std::string& attr
+){
+    auto itr = obj->attrs->find(attr);
+    if(itr != obj->attrs->end()){
+        return std::tuple<Value,bool>(itr->second,true);
+    } else {
+        // Default to statics if not found
+        auto itr_2 = obj->static_attrs->attrs->find(attr);
+        Value static_val;
+        if(itr_2 == obj->static_attrs->attrs->end()){
+            std::tuple<Value,bool> par_val = value::PyClass::find_attr_in_parents(obj->static_attrs,attr);
+            if(std::get<1>(par_val)){
+                static_val = std::get<0>(par_val);
+            } else {
+                // Found in no parents. return nothing
+                return std::tuple<Value,bool>(value::NoneType(),false);
+            }
+        } else {
+            static_val = itr_2->second;
+        }
+        
+        // Check to see if it is a PyFunc, and if so make it's self to obj
+        // This essentially accomplishes lazy initialization of instance functions
+        auto pf = std::get_if<ValuePyFunction>(&static_val);
+        if(pf != NULL){
+            // Push a new PyFunc with self set to obj or obj's class
+            // Store it so that next time it is accessed it will be found in attrs
+            //if(((*pf)->flags & value::CLASS_METHOD)
+            //|| ((*pf)->flags & value::STATIC_METHOD) ){
+            if((*pf)->flags & (value::CLASS_METHOD | value::STATIC_METHOD)){
+                // All good, just return
+                return std::tuple<Value,bool>((*pf),true);
+            } else {
+                DEBUG("Instantiating instance method");
+                // Create an instance method
+                Value npf = std::make_shared<value::PyFunc>(
+                    value::PyFunc {
+                        (*pf)->name,
+                        (*pf)->code,
+                        (*pf)->def_args,
+                        obj, // Instance method's self
+                        value::INSTANCE_METHOD}
+                );
+                obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
+                return std::tuple<Value,bool>(npf,true);
+            }
+        } else {
+            // All is well, push as normal
+            return std::tuple<Value,bool>(static_val,true);
+        }
+    }
 }
 
 void FrameState::print_next() {
@@ -118,6 +173,10 @@ namespace eval_helpers {
         static bool action(T1 v1, T2 v2) {
             return v1 < v2;
         }
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
 
     struct op_lte { // a <= b
@@ -125,6 +184,10 @@ namespace eval_helpers {
         static bool action(T1 v1, T2 v2) {
             return v1 <= v2;
         }
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
 
     struct op_gt { // a > b
@@ -132,6 +195,10 @@ namespace eval_helpers {
         static bool action(T1 v1, T2 v2) {
             return v1 > v2;
         }
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
 
     struct op_gte { // a >= b
@@ -139,6 +206,10 @@ namespace eval_helpers {
         static bool action(T1 v1, T2 v2) {
             return v1 >= v2;
         }
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
 
     struct op_eq { // a == b
@@ -146,6 +217,10 @@ namespace eval_helpers {
         static bool action(T1 v1, T2 v2) {
             return v1 == v2;
         }
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
 
     struct op_neq { // a != b
@@ -153,6 +228,10 @@ namespace eval_helpers {
         static bool action(T1 v1, T2 v2) {
             return v1 != v2;
         }
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
 
     struct op_sub { // a - b
@@ -160,6 +239,10 @@ namespace eval_helpers {
         static auto action(T1 v1, T2 v2) {
             return v1 - v2;
         }
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
 
     struct op_add { // a + b
@@ -167,8 +250,10 @@ namespace eval_helpers {
         static auto action(T1 v1, T2 v2) {
             return v1 + v2;
         }
-        const static std::string l_attr = "__add__";
-        const static std::string r_attr = "__add__";
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
 
     struct op_mult { // a * b
@@ -176,6 +261,10 @@ namespace eval_helpers {
         static auto action(T1 v1, T2 v2) {
             return v1 * v2;
         }
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
 
     struct op_divide { // a / b
@@ -183,6 +272,10 @@ namespace eval_helpers {
         static auto action(T1 v1, T2 v2) {
             return v1 / v2;
         }
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
 
     struct op_modulo { // a % b
@@ -198,6 +291,10 @@ namespace eval_helpers {
         static auto action(T1 v1, T2 v2) {
             return std::fmod(v1, v2);
         }
+
+        constexpr const static char* l_attr = "__add__";
+        constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* op_name = "+";
     };
     
     struct add_visitor: public numeric_visitor<op_add> {
@@ -206,6 +303,8 @@ namespace eval_helpers {
             including one additional function for string addition
         */
         using numeric_visitor<op_add>::operator();
+
+        add_visitor(FrameState &frame) : numeric_visitor<op_add>(frame) { };
         
         Value operator()(const std::shared_ptr<std::string>& v1, const std::shared_ptr<std::string> &v2) const {
             return std::make_shared<std::string>(*v1 + *v2);
@@ -234,57 +333,16 @@ namespace eval_helpers {
         // ValuePyObject cannot be const as it might be modified
         void operator()(ValuePyObject& obj){
             // First look in my own namespace
-            auto itr = obj->attrs->find(attr);
-            if(itr != obj->attrs->end()){
-                frame.value_stack.push_back(itr->second);
+            std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(obj, attr);
+            if(std::get<1>(res)){
+                frame.value_stack.push_back(std::get<0>(res));
             } else {
-                // Default to statics if not found
-                auto itr_2 = obj->static_attrs->attrs->find(attr);
-                Value static_val;
-                if(itr_2 == obj->static_attrs->attrs->end()){
-                    std::tuple<Value,bool> par_val = find_attr_in_parents(obj->static_attrs,attr);
-                    if(std::get<1>(par_val)){
-                        static_val = std::get<0>(par_val);
-                    } else {
-                        throw pyerror(std::string(
-                            // Should this be __name__??
-                            *(std::get<ValueString>( (*(obj->static_attrs->attrs))["__qualname__"]))
-                            + " has no attribute " + attr
-                        ));
-                    }
-                } else {
-                    static_val = itr_2->second;
-                }
-                
-                // Check to see if it is a PyFunc, and if so make it's self to obj
-                // This essentially accomplishes lazy initialization of instance functions
-                auto pf = std::get_if<ValuePyFunction>(&static_val);
-                if(pf != NULL){
-                    // Push a new PyFunc with self set to obj or obj's class
-                    // Store it so that next time it is accessed it will be found in attrs
-                    //if(((*pf)->flags & value::CLASS_METHOD)
-                    //|| ((*pf)->flags & value::STATIC_METHOD) ){
-                    if((*pf)->flags & (value::CLASS_METHOD | value::STATIC_METHOD)){
-                        // All good, just push it
-                        frame.value_stack.push_back(*pf);
-                    } else {
-                        DEBUG("Instantiating instance method");
-                        // Create an instance method
-                        Value npf = std::make_shared<value::PyFunc>(
-                            value::PyFunc {
-                                (*pf)->name,
-                                (*pf)->code,
-                                (*pf)->def_args,
-                                obj, // Instance method's self
-                                value::INSTANCE_METHOD}
-                        );
-                        obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
-                        frame.value_stack.push_back(npf);
-                    }
-                } else {
-                    // All is well, push as normal
-                    frame.value_stack.push_back(static_val);
-                }
+                // Nothing found, throw error!
+                throw pyerror(std::string(
+                    // Should this be __name__??
+                    *(std::get<ValueString>( (*(obj->static_attrs->attrs))["__qualname__"]))
+                    + " has no attribute " + attr
+                ));
             }
         }
 
@@ -334,7 +392,7 @@ namespace eval_helpers {
             Value vv;
             bool has_init = true;
             if(itr == cls->attrs->end()){
-                std::tuple<Value,bool> par_val = find_attr_in_parents(cls,std::string("__init__"));
+                std::tuple<Value,bool> par_val = value::PyClass::find_attr_in_parents(cls,std::string("__init__"));
                 if(std::get<1>(par_val)){
                     vv = std::get<0>(par_val);
                 } else {
@@ -501,7 +559,7 @@ void FrameState::add_to_ns_local(const std::string& name,Value&& v){
 
 void FrameState::print_value(Value& val) {
     std::visit(value_helper::overloaded {
-            [](auto&& arg) { throw pyerror("unimplemented stack printer for stack value"); },
+            [](auto&& arg) { std::cerr << "???"; },//throw pyerror("unimplemented stack printer for stack value"); },
             [](double arg) { std::cerr << "double(" << arg << ")"; },
             [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
             [](const ValueString arg) {std::cerr << "ValueString(" << *arg << ")"; },
@@ -526,7 +584,7 @@ void FrameState::print_stack() const {
         const Value& val = this->value_stack[i];
         std::cerr << i << "_";
         std::visit(value_helper::overloaded {
-            [](auto&& arg) { throw pyerror("unimplemented stack printer for stack value"); },
+            [](auto&& arg) { std::cerr << "???"; },//throw pyerror("unimplemented stack printer for stack value"); },
             [](double arg) { std::cerr << "double(" << arg << ")"; },
             [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
             [](const ValueString& arg) {std::cerr << "ValueString(" << *arg << ")"; },
@@ -739,32 +797,32 @@ inline void FrameState::eval_next() {
             switch (arg) {
                 case op::cmp::LT:
                     result = std::visit(
-                        eval_helpers::numeric_visitor<eval_helpers::op_lt>(),
+                        eval_helpers::numeric_visitor<eval_helpers::op_lt>(*this),
                         val1, val2);
                     break;
                 case op::cmp::LTE:
                     result = std::visit(
-                        eval_helpers::numeric_visitor<eval_helpers::op_lte>(),
+                        eval_helpers::numeric_visitor<eval_helpers::op_lte>(*this),
                         val1, val2);
                     break;
                 case op::cmp::GT:
                     result = std::visit(
-                        eval_helpers::numeric_visitor<eval_helpers::op_gt>(),
+                        eval_helpers::numeric_visitor<eval_helpers::op_gt>(*this),
                         val1, val2);
                     break;
                 case op::cmp::GTE:
                     result = std::visit(
-                        eval_helpers::numeric_visitor<eval_helpers::op_gte>(),
+                        eval_helpers::numeric_visitor<eval_helpers::op_gte>(*this),
                         val1, val2);
                     break;
                 case op::cmp::EQ:
                     result = std::visit(
-                        eval_helpers::numeric_visitor<eval_helpers::op_eq>(),
+                        eval_helpers::numeric_visitor<eval_helpers::op_eq>(*this),
                         val1, val2);
                     break ;
                 case op::cmp::NEQ:
                     result = std::visit(
-                        eval_helpers::numeric_visitor<eval_helpers::op_neq>(),
+                        eval_helpers::numeric_visitor<eval_helpers::op_neq>(*this),
                         val1, val2);
                     break ;
                 default:
@@ -780,7 +838,7 @@ inline void FrameState::eval_next() {
         {
             this->check_stack_size(2);
             this->value_stack[this->value_stack.size() - 2] = 
-                std::move(std::visit(eval_helpers::add_visitor(), 
+                std::move(std::visit(eval_helpers::add_visitor(*this), 
                     this->value_stack[this->value_stack.size() - 2],
                     this->value_stack[this->value_stack.size() - 1]));
             this->value_stack.pop_back();
@@ -791,7 +849,7 @@ inline void FrameState::eval_next() {
         {
             this->check_stack_size(2);
             this->value_stack[this->value_stack.size() - 2] = 
-                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_sub>(),
+                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_sub>(*this),
                     this->value_stack[this->value_stack.size() - 2],
                     this->value_stack[this->value_stack.size() - 1]));
             this->value_stack.pop_back();
@@ -802,7 +860,7 @@ inline void FrameState::eval_next() {
         {
             this->check_stack_size(2);
             this->value_stack[this->value_stack.size() - 2] = 
-                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_divide>(),
+                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_divide>(*this),
                     this->value_stack[this->value_stack.size() - 2],
                     this->value_stack[this->value_stack.size() - 1]));
             this->value_stack.pop_back();
@@ -813,7 +871,7 @@ inline void FrameState::eval_next() {
         {
             this->check_stack_size(2);
             this->value_stack[this->value_stack.size() - 2] = 
-                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_mult>(),
+                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_mult>(*this),
                     this->value_stack[this->value_stack.size() - 2],
                     this->value_stack[this->value_stack.size() - 1]));
             this->value_stack.pop_back();
@@ -824,7 +882,7 @@ inline void FrameState::eval_next() {
         {
             this->check_stack_size(2);
             this->value_stack[this->value_stack.size() - 2] = 
-                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_modulo>(),
+                std::move(std::visit(eval_helpers::numeric_visitor<eval_helpers::op_modulo>(*this),
                     this->value_stack[this->value_stack.size() - 2],
                     this->value_stack[this->value_stack.size() - 1]));
             this->value_stack.pop_back();

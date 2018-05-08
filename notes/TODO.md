@@ -13,7 +13,7 @@
  - implement Objects/Classes - John/Jack
     - Make classes able to overload binary operators
     - Make classes able to overload inplace operators
-    - Allow __call__ to be defined
+    - Allow __call__ to be defined and the rest of the overloads
     - PyClasses are callable but not PyObjects unless __call__ is defined
     - make the parents attribute of a pyclass just __mro__! ???
     - super() builtin class (https://docs.python.org/3/library/functions.html#super)
@@ -31,6 +31,7 @@
     - Make tests!
         - Both correct functioning and errors
         - make sure member functions with default args work
+        - test, for example, calling '+' on a class w/out it overload (but for ALL posible overloads)
         - test everything in classes_test.py for sure
         - test @classmethod &&  @staticmethod!!!!!
         - TypeError: __init__() should return None, not 'int' is a runtime error!
