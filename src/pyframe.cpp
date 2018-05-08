@@ -1158,15 +1158,17 @@ void InterpreterState::eval() {
         std::cout << "FRAME TRACE: " << std::endl;
 
         FrameState *frm = &this->callstack.top();
-        std::string indent = "";
+        std::string indent = "\t";
         while (frm != nullptr) {
             const auto& lnotab = frm->code->lnotab;
             for (size_t i = 1; i < lnotab.size(); ++i) {
                 auto mapping = lnotab[i];
                 if (i == lnotab.size() - 1) {
-                    std::cout << indent << "STACK FRAME: " << mapping.line << std::endl;
-                } else if (mapping.pc <= frm->r_pc) {
-                    std::cout << indent << "FRAME START LINE NUMBER: " << lnotab[i - 1].line << std::endl;
+                    std::cout << indent << frm->code->co_name << ":" << mapping.line << std::endl;
+                    break ;
+                } else if (mapping.pc >= frm->r_pc) {
+                    std::cout << indent << frm->code->co_name << ":" << lnotab[i - 1].line << std::endl;
+                    break ;
                 }
             }
             indent += "\t";

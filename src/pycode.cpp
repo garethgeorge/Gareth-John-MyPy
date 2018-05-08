@@ -109,6 +109,9 @@ Code::Code(const json& tree) {
             LineNoMapping {linenumber.at(0).get<uint64_t>(), linenumber.at(1).get<uint64_t>()}
         );
     }
+
+    // load co_name
+    this->co_name = tree.at("co_name").get<std::string>();
 }   
 
 Code::~Code() {

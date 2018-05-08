@@ -66,7 +66,7 @@ struct numeric_visitor {
     Value operator()(int64_t v1, int64_t v2) const {
         return T::action(v1, v2);
     }
-    
+
     template<typename T1, typename T2>
     Value operator()(T1 a, T2 b) const {
         std::stringstream ss;
