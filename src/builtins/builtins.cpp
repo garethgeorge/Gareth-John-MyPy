@@ -62,12 +62,18 @@ extern void inject_builtins(Namespace& ns) {
         return (int64_t) list->values.size();
     }).to_pycfunction();
 
-    // ns["range"] = pycfunction_builder([] (int64_t range) {
-    //     ValueList = 
-    //     for (int64_t i = 0; i < range; ++i) {
+    ns["range"] = pycfunction_builder([] (int64_t range, FrameState& frame) {
+        std::cout << "STARTED MAKING THE LIST" << std::endl;
+        std::cout << "Frame Value STack Size: " << frame.value_stack.size() << std::endl;
 
-    //     }
-    // });
+        ValueList list = frame.interpreter_state->alloc.heap_lists.make();
+        list->values.resize(range);
+        for (int64_t i = 0; i < range; ++i) {
+            list->values.push_back(i);
+        }
+        std::cout << "FINISHED MAKING THE LIST" << std::endl;
+        return list;
+    }).to_pycfunction();
 
     // Build a re[resentation of a class
     // Python creates classes via:

@@ -54,30 +54,30 @@ struct build_indices<0, Is...> : indices<Is...> {};
 template <typename traits>
 struct unpack_caller
 {
-private:
     static constexpr size_t num_args = traits::arity;
-    std::vector<Value> args;
+    std::vector<Value>& args;
+    FrameState *frame;
 
-public:
     // we construct the unpack caller with the args it will attempt to apply
-    unpack_caller(std::vector<Value> args) : args(args) {
+    unpack_caller(std::vector<Value>& args) : args(args) {
         if (args.size() != num_args) {
-            throw pyerror(string("ArgError: CFunction expected ") + std::to_string(args.size()) + 
-                " arguments, but received " + std::to_string(num_args) + " arguments.");
         }
-        assert(args.size() == num_args); // just to be sure we got the right number of arguments
     };
 
-private:
     // transform argument
     template<size_t index>
-    auto transform() {
+    auto&& transform() {
         typedef typename traits::template arg<index>::type argType;
-        if constexpr(std::is_same<typename std::decay<argType>::type, Value>::value) {
+        if constexpr(std::is_same<typename std::decay<argType>::type, FrameState>::value) {
+            return *frame;
+        } else if constexpr(std::is_same<typename std::decay<argType>::type, Value>::value) {
             return args[index];
         } else if constexpr(std::is_same<typename std::decay<argType>::type, typename std::vector<Value>>::value) {
             return args;
         } else {
+            if (args.size() <= index) {
+                throw pyerror("ArgError: CFunction no argument at index " + std::to_string(index));
+            }
             try {
                 return std::get<typename std::decay<argType>::type>(args[index]);
             } catch (std::bad_variant_access& e) {
@@ -95,7 +95,6 @@ private:
         return f(transform<I>()...);
     }
 
-public:
     // the one people should actually use
     template <typename FuncType>
     auto operator () (FuncType &f){
@@ -122,14 +121,14 @@ public:
     Value operator()(FrameState& frame, std::vector<py::Value>& args) const {
         typedef function_traits<decltype(func)> traits;
 
+        auto caller = unpack_caller<traits>(args);
+        caller.frame = &frame;
+        
         if constexpr(std::is_void<typename traits::result_type>::value) {
-            auto caller = unpack_caller<traits>(args);
             caller(func);
             frame.value_stack.push_back(value::NoneType());
         } else {
-            auto caller = unpack_caller<traits>(args);
-            auto retval = std::move(caller(func));
-            frame.value_stack.push_back(std::move(retval));
+            frame.value_stack.push_back(caller(func));
         }
     }
 

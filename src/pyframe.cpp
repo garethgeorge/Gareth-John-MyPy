@@ -520,7 +520,9 @@ void FrameState::add_to_ns_local(const std::string& name,Value&& v){
 
 void FrameState::print_value(Value& val) {
     std::visit(value_helper::overloaded {
-            [](auto&& arg) { throw pyerror("unimplemented stack printer for stack value"); },
+            [](auto&& arg) { 
+                throw pyerror(string("unimplemented stack printer for stack value: ") + typeid(arg).name());
+            },
             [](double arg) { std::cerr << "double(" << arg << ")"; },
             [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
             [](const ValueString arg) {std::cerr << "ValueString(" << *arg << ")"; },
@@ -532,7 +534,15 @@ void FrameState::print_value(Value& val) {
             [](const ValuePyObject arg) {std::cerr << "ValuePyObject of class ("
                 << *(std::get<ValueString>(arg->static_attrs->attrs["__qualname__"])) << ")"; },
             [](value::NoneType) {std::cerr << "None"; },
-            [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
+            [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; },
+            [](ValueList value) {
+                std::cerr << "[";
+                for (Value& value : value->values) {
+                    FrameState::print_value(value);
+                    std::cerr << ",";
+                }
+                std::cerr << "]";
+            }
         }, val);
 }
 
@@ -542,19 +552,9 @@ void FrameState::print_stack() const {
         if (i != 0) {
             std::cerr << ", ";
         }
-        const Value& val = this->value_stack[i];
         std::cerr << i << "_";
-        std::visit(value_helper::overloaded {
-            [](auto&& arg) { throw pyerror("unimplemented stack printer for stack value"); },
-            [](double arg) { std::cerr << "double(" << arg << ")"; },
-            [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
-            [](const ValueString& arg) {std::cerr << "ValueString(" << *arg << ")"; },
-            [](const ValueCFunction& arg) {std::cerr << "CFunction()"; },
-            [](const ValueCode& arg) {std::cerr << "Code()"; },
-            [](const ValuePyFunction& arg) {std::cerr << "Python Code()"; },
-            [](value::NoneType) {std::cerr << "None"; },
-            [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
-        }, val);
+        Value val = this->value_stack[i];
+        FrameState::print_value(val);
     }
     std::cerr << "].len = " << this->value_stack.size();
 

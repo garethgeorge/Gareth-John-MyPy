@@ -59,12 +59,15 @@ struct visitor_debug_repr {
             stream << "anonymous function";
     }
 
-    void operator()(ValuePyClass) {
-        stream << "Class";
+    void operator()(ValuePyClass arg) {
+        stream << "ValuePyClass ("
+               << *(std::get<ValueString>(arg->attrs["__qualname__"])) << ")";
     }
 
-    void operator()(ValuePyObject) {
-        stream << "Object";
+    void operator()(ValuePyObject arg) {
+        stream << "ValuePyObject of class ("
+               << *(std::get<ValueString>(arg->static_attrs->attrs["__qualname__"])) 
+               << ")";
     }
 
     void operator()(ValueList list) {
