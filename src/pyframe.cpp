@@ -52,7 +52,7 @@ FrameState::FrameState(
 }
 
 // Find an attribute in the parents of a class
-std::tuple<Value,bool> find_attr_in_parents(
+std::tuple<Value,bool> FrameState::find_attr_in_parents(
                                     const ValuePyClass& cls,
                                     const std::string& attr
 ) {
@@ -167,6 +167,8 @@ namespace eval_helpers {
         static auto action(T1 v1, T2 v2) {
             return v1 + v2;
         }
+        const static std::string l_attr = "__add__";
+        const static std::string r_attr = "__add__";
     };
 
     struct op_mult { // a * b

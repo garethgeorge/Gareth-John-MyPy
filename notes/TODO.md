@@ -16,8 +16,8 @@
     - Allow __call__ to be defined
     - PyClasses are callable but not PyObjects unless __call__ is defined
     - make the parents attribute of a pyclass just __mro__! ???
-    - super() function (https://docs.python.org/3/library/functions.html#super)
-        - In order to implement super, I need to make it a builtin PyClass with __call__ defined
+    - super() builtin class (https://docs.python.org/3/library/functions.html#super)
+        - In order to implement super, I need to make it a builtin PyClass (PyObject?) with __call__ defined
     - __mro__ attribute. (I also need to get all attributes right!)
     - __bases__ attribute
     - DYNAMIC INHERITANCE???
@@ -52,3 +52,6 @@
     - range
     - https://docs.python.org/3/library/stdtypes.html
     - https://docs.python.org/3/library/functions.html (these are the python builtin functions)
+- POSSIBLE THINGS TO DO EVENTUALLY:
+    - Accomplish Direct Threading by putting the 'next opcode fetch and jump' into a #define and
+      putting it at the end of every opcode handler instead of a huge switch statement
