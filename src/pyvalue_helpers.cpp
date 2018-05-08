@@ -1,4 +1,6 @@
 #include "pyvalue_helpers.hpp"
+#include <iostream>
+#include <sstream>
 #include <stdio.h>
 
 namespace py {
@@ -24,43 +26,68 @@ bool visitor_is_truthy::operator()(const value::NoneType) const {
 
 
 /*
-    visitor_repr
+    visitor_debug_repr
 */
-string visitor_repr::operator()(bool v) const {
-    return v ? "true" : "false";
+struct visitor_debug_repr {
+    std::ostream& stream;
+    visitor_debug_repr(std::ostream& stream) : stream(stream) { };
+
+    void operator()(bool v) {
+        stream << v ? "true" : "false";
+    }
+
+    void operator()(double d) {
+        stream << d;
+    }
+
+    void operator()(int64_t d) {
+        stream << d;
+    }
+
+    void operator()(ValueString d) {
+        stream << *d;
+    }
+
+    void operator()(value::NoneType) {
+        stream << "None";
+    }
+
+    void operator()(ValuePyFunction func) {
+        if (func != nullptr) {
+            stream << *(func->name);
+        } else 
+            stream << "anonymous function";
+    }
+
+    void operator()(ValuePyClass) {
+        stream << "Class";
+    }
+
+    void operator()(ValuePyObject) {
+        stream << "Object";
+    }
+
+    void operator()(ValueList list) {
+        stream << "[";
+        for (auto& value : list->values) {
+            std::visit(value_helper::visitor_debug_repr(stream), value);
+            stream << ", ";
+        }
+        stream << "]";
+    }
+
+    template<typename T> 
+    void operator()(T) const {
+        // TODO: use typetraits to generate this.
+        throw pyerror("unimplemented repr for type");
+    }
+};
+
 }
 
-string visitor_repr::operator()(double d) const {
-    char buff[128];
-    sprintf(buff, "%f", d);
-    return buff;
+std::ostream& operator << (std::ostream& stream, const Value value) {
+    std::visit(value_helper::visitor_debug_repr(stream), value);
+    return stream;
 }
 
-string visitor_repr::operator()(int64_t d) const {
-    char buff[128];
-    sprintf(buff, "%lld", d);
-    return buff;
-}
-
-string visitor_repr::operator()(const ValueString& d) const {
-    return *d;
-}
-
-string visitor_repr::operator()(value::NoneType) const {
-    return "None";
-}
-
-string visitor_repr::operator()(ValuePyFunction) const {
-    return "Function";
-}
-
-string visitor_repr::operator()(ValuePyClass) const {
-    return "Class";
-}
-
-string visitor_repr::operator()(ValuePyObject) const {
-    return "Object";
-}
-
-}
 }

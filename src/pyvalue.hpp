@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <variant>
 #include <functional>
+#include <ostream>
 #include <pygc.hpp>
 #include "pyerror.hpp"
 
@@ -180,27 +181,6 @@ namespace value {
         }
     };
 }
-
-// the beginning of a prototype for object definitions
-// struct PyObjectType;
-
-// struct PyObject {
-//     using PyObjShared = std::shared_ptr<PyObject>;
-//     PyObjectType *type;
-// };
-
-// struct PyObjectType {
-//     using PyObjMethod = std::function<PyObjShared(PyObjShared&,PyObjShared&)>*;
-
-//     PyObjMethod add;
-//     PyObjMethod sub;
-//     PyObjMethod mul;
-//     PyObjMethod div;
-//     PyObjMethod str;
-
-//     Namespace properties;
-// };
-
 
 }
 

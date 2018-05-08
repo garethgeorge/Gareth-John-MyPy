@@ -50,7 +50,6 @@ else:
                     "real_type": str(type(obj)),
                     "value": obj
                 }
-        
         # to deeply understand this object
         # https://late.am/post/2012/03/26/exploring-python-code-objects.html
         return { # TODO: consider converting to some binary format instead of JSON
@@ -68,6 +67,7 @@ else:
             "co_varnames": code.co_varnames or None,
             "co_freevars": code.co_freevars or None,
             "co_cellvars": code.co_cellvars or None, 
+            "lnotab": list([tuple[1], tuple[0]] for tuple in dis.findlinestarts(code)),
         }
     if args.indentJSON:
         json.dump(jsonify_code(code_base), sys.stdout, indent=2, sort_keys=True)

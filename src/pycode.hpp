@@ -23,6 +23,12 @@ struct Code {
     std::vector<Value> co_consts;
     std::vector<std::string> co_names;
     std::vector<std::string> co_varnames;
+
+    struct LineNoMapping {
+        uint64_t line;
+        uint64_t pc;
+    };
+    std::vector<LineNoMapping> lnotab; // lookup the line number that the error happened on
     
     Code(const json& tree);
     ~Code();

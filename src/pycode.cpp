@@ -101,6 +101,14 @@ Code::Code(const json& tree) {
             vname.get<std::string>()
         );
     }
+
+    // load lnotab 
+    for (const json& linenumber : tree.at("lnotab")) {
+        DEBUG("loaded line number %d", linenumber);
+        this->lnotab.push_back(
+            LineNoMapping {linenumber.at(0).get<uint64_t>(), linenumber.at(1).get<uint64_t>()}
+        );
+    }
 }   
 
 Code::~Code() {
