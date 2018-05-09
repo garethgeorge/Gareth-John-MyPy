@@ -15,7 +15,7 @@
 
 namespace py {
 
-using Namespace = std::unordered_map<std::string, Value>;
+using Namespace = std::shared_ptr<std::unordered_map<std::string, Value>>;
 
 struct Code;
 struct InterpreterState;
@@ -43,35 +43,14 @@ struct FrameState {
     std::stack<Block> block_stack; // a stack containing blocks: this should be changed to a standard vector
     Namespace ns_local; // the local value namespace
     uint8_t flags = 0;
-
+    
+    // The class we are initializing
     // It has become abundantly clear that the frame state which initializes the static fields
     // of a class must be able to access the class it is initializing
     // for this reason, I am adding a field that unfortunately is rarely used
     // Hopefully this can be factored out later, and as such it will only be accessed via helper functions
     ValuePyClass init_class;
 
-    ValuePyClass& get_init_class(){
-
-        #ifdef DEBUG_ON
-        assert(init_class);
-        #endif
-
-        return init_class;
-    }
-
-#ifdef OPT_FRAME_NS_LOCAL_SHORTCUT
-    // with this #define we are feature flagging the NS_LOCAL_SHORTCUT feature
-    // this is an optimization that bypasses the ns_local namespace string lookup
-    // by caching the pointer to the value for a given key in an 8 slot lookup table
-    // since keys for variables are expected to be shared string constants,
-    // we can simply check the key by memory address
-    struct NameCacheEntry {
-        const std::string *key = nullptr;
-        Value *value = nullptr;
-    };
-    NameCacheEntry ns_local_shortcut[8] = {};
-#endif
-    
     FrameState(
         InterpreterState *interpreter_state, 
         FrameState *parent_frame, // null for the top frame on the stack

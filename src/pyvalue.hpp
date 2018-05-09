@@ -28,6 +28,12 @@ struct FrameState;
 
 // the value namespace for C value types
 namespace value {
+
+    // Constants for flags
+    const uint8_t INSTANCE_METHOD = 1;
+    const uint8_t CLASS_METHOD = 2;
+    const uint8_t STATIC_METHOD = 4;
+
     struct NoneType { };
 
     struct CFunction;
@@ -78,7 +84,7 @@ using Value = std::variant<
 >;
 
 // Bad copy/paste from pyinterpreter.hpp
-using Namespace = std::unordered_map<std::string, Value>;
+using Namespace = std::shared_ptr<std::unordered_map<std::string, Value>>;
 
 namespace value {
     struct CFunction {
@@ -121,21 +127,6 @@ namespace value {
         // Flags as needed
         const uint8_t flags;
 
-        bool get_am_class_method() const {
-            return flags & 1;
-        }
-
-        bool get_am_static_method() const {
-            return flags & 2;
-        }
-
-        bool get_am_instance_method() const {
-            return flags & 4;
-        }
-
-        bool get_know_which_class() const {
-            return flags & 8;
-        }
     };
 
     // The static value of a class
@@ -146,18 +137,15 @@ namespace value {
         // Things I inherit from
         std::vector<ValuePyClass> parents;
 
-        PyClass(Namespace ns){
-            attrs = ns;
-        }
-
         PyClass(std::vector<ValuePyClass>& ps){
+            this->attrs = std::make_shared<std::unordered_map<std::string, Value>>();
             // Copying... meh
             parents = ps;
         }
 
         // Store an attribute into attrs
         void store_attr(const std::string& str,Value& val){
-            attrs[str] = val;
+            (*attrs)[str] = val;
         }
     };
 
@@ -174,11 +162,13 @@ namespace value {
 
         // When first creating this, all it needs do is reference it's static class
         // __init__ will be called later if necessary
-        PyObject(const ValuePyClass& cls) : static_attrs(cls) {};
+        PyObject(const ValuePyClass& cls) : static_attrs(cls) {
+            this->attrs = std::make_shared<std::unordered_map<std::string, Value>>();
+        };
 
         // Store an attribute into attrs
         void store_attr(const std::string& str,Value& val){
-            attrs[str] = val;
+            (*attrs)[str] = val;
         }
     };
 }
