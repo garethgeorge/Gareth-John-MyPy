@@ -223,7 +223,7 @@ namespace eval_helpers {
         FrameState& frame;
         const std::string& attr;
 
-        load_attr_visitor(FrameState& frame,const std::string& attr) : frame(frame), attr(attr) {}
+        load_attr_visitor(FrameState& frame, const std::string& attr) : frame(frame), attr(attr) {}
         
         void operator()(const ValuePyClass& cls){
             try {
@@ -365,10 +365,10 @@ namespace eval_helpers {
 
             // Throw an error if too many arguments
             if(args.size() > func->code->co_argcount){
-                throw pyerror(std::string("TypeError: " + *(func->name)
-                            + " takes " + std::to_string(func->code->co_argcount)
-                            + " positional arguments but " + std::to_string(args.size())
-                            + " were given"));
+                std::stringstream ss;
+                ss << "TypeError: " << Value(func) << " takes " << func->code->co_argcount
+                   << " positional arguments but " << args.size() << " were given";
+                throw pyerror(ss.str());
             }
 
             // Push a new FrameState
@@ -404,8 +404,11 @@ namespace eval_helpers {
         }
 
         template<typename A, typename B>
-        Value operator()(A, B) {
-            throw pyerror("attempted to index invalid types");
+        Value operator()(A a , B b) {
+            std::stringstream ss;
+            ss << "attempted to subscript " << a << "[" << b << "] - types not valid for subscript operator";
+
+            throw pyerror(ss.str());
         }
     };
 }
@@ -441,7 +444,7 @@ struct set_implicit_arg_visitor {
     }
 };
 
-void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args){
+void FrameState::initialize_from_pyfunc(const ValuePyFunction& func, std::vector<Value>& args){
     // Calculate which argument is the first argument with a default value
     // Also whether or not the very first argument is self (or class)
     // This could be stored in PyFunc struct but that is a tiny space tradeoff vs tiny time tradeoff
@@ -468,16 +471,16 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func,std::vector<
         //TypeError: simplefunc() missing 2 required positional arguments: 'a' and 'd'
         if(arg_num < first_def_arg && arg_num >= args.size()){
             int missing_num = first_def_arg - arg_num;
-            std::string err_str = std::string("TypeError: " + *(func->name)
-                        + " missing " + std::to_string(missing_num)
-                        + " required positional argument" + (missing_num == 1 ? ": " : "s: ")
-            );
-            // List the missing params
-            for(;arg_num < first_def_arg;arg_num++){
-                err_str += "'" + this->code->co_varnames[i] + "'"; // Note that I use 'i' here, not 'arg_num'
-                if(arg_num < first_def_arg - 1) err_str += " and ";
+
+            std::stringstream ss;
+            ss << "TypeError: " << Value(func) << " missing " << (missing_num) << " required positional arguments:";
+            for (; arg_num < first_def_arg; arg_num++) {
+                ss << "'" << this->code->co_varnames[i] << "'";
+                if (arg_num < first_def_arg - 1) ss << ",";
             }
-            throw pyerror(err_str.c_str());
+
+            // List the missing params
+            throw pyerror(ss.str());
             return;
         }
 
@@ -504,7 +507,9 @@ void FrameState::add_to_ns_local(const std::string& name,Value&& v){
 
 void FrameState::print_value(Value& val) {
     std::visit(value_helper::overloaded {
-            [](auto&& arg) { throw pyerror("unimplemented stack printer for stack value"); },
+            [](auto&& arg) { 
+                throw pyerror(string("unimplemented stack printer for stack value: ") + typeid(arg).name());
+            },
             [](double arg) { std::cerr << "double(" << arg << ")"; },
             [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
             [](const ValueString arg) {std::cerr << "ValueString(" << *arg << ")"; },
@@ -516,7 +521,15 @@ void FrameState::print_value(Value& val) {
             [](const ValuePyObject arg) {std::cerr << "ValuePyObject of class ("
                 << *(std::get<ValueString>((*(arg->static_attrs->attrs))["__qualname__"])) << ")"; },
             [](value::NoneType) {std::cerr << "None"; },
-            [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
+            [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; },
+            [](ValueList value) {
+                std::cerr << "[";
+                for (Value& value : value->values) {
+                    FrameState::print_value(value);
+                    std::cerr << ",";
+                }
+                std::cerr << "]";
+            }
         }, val);
 }
 
@@ -526,19 +539,9 @@ void FrameState::print_stack() const {
         if (i != 0) {
             std::cerr << ", ";
         }
-        const Value& val = this->value_stack[i];
         std::cerr << i << "_";
-        std::visit(value_helper::overloaded {
-            [](auto&& arg) { throw pyerror("unimplemented stack printer for stack value"); },
-            [](double arg) { std::cerr << "double(" << arg << ")"; },
-            [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
-            [](const ValueString& arg) {std::cerr << "ValueString(" << *arg << ")"; },
-            [](const ValueCFunction& arg) {std::cerr << "CFunction()"; },
-            [](const ValueCode& arg) {std::cerr << "Code()"; },
-            [](const ValuePyFunction& arg) {std::cerr << "Python Code()"; },
-            [](value::NoneType) {std::cerr << "None"; },
-            [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; }
-        }, val);
+        Value val = this->value_stack[i];
+        FrameState::print_value(val);
     }
     std::cerr << "].len = " << this->value_stack.size();
 
@@ -955,7 +958,10 @@ inline void FrameState::eval_next() {
                 );
                 this->value_stack.push_back(nv);
             } catch (std::bad_variant_access&) {
-                throw pyerror("MAKE_FUNCTION called with bad stack");
+                std::stringstream ss;
+                ss << "MAKE FUNCTION called with name '" << name << "' and code block: " << code;
+                ss << ", but make function expects string and code object";
+                throw pyerror(ss.str());
             }
             break;
         }
@@ -1037,8 +1043,10 @@ inline void FrameState::eval_next() {
         }
         default:
         {
-            DEBUG("UNIMPLEMENTED BYTECODE: %s", op::name[bytecode])
-            throw pyerror(string("UNIMPLEMENTED BYTECODE ") + op::name[bytecode]);
+            std::stringstream ss;
+            ss << "UNIMPLEMENTED BYTECODE" << op::name[bytecode];
+            DEBUG(ss.str().c_str());
+            throw pyerror(ss.str());
         }
     }
     
@@ -1068,9 +1076,29 @@ void InterpreterState::eval() {
         }
     } catch (const pyerror& err) {
         const auto& frame = this->callstack.top();
-        std::cout << "ENCOUNTERED ERROR WHILE EVALUATING OPERATION: " 
-            << op::name[frame.code->bytecode[frame.r_pc]] << std::endl;
-        std::cout << "\tSTACK:";
+        std::cout << err.what() << std::endl;
+        // std::cout << "ENCOUNTERED ERROR WHILE EVALUATING OPERATION: " 
+        //     << op::name[frame.code->bytecode[frame.r_pc]] << std::endl;
+        std::cout << "FRAME TRACE: " << std::endl;
+
+        FrameState *frm = &this->callstack.top();
+        std::string indent = "\t";
+        while (frm != nullptr) {
+            const auto& lnotab = frm->code->lnotab;
+            for (size_t i = 1; i < lnotab.size(); ++i) {
+                auto mapping = lnotab[i];
+                if (i == lnotab.size() - 1) {
+                    std::cout << indent << frm->code->co_name << ":" << mapping.line << std::endl;
+                    break ;
+                } else if (mapping.pc >= frm->r_pc) {
+                    std::cout << indent << frm->code->co_name << ":" << lnotab[i - 1].line << std::endl;
+                    break ;
+                }
+            }
+            indent += "\t";
+            frm = frm->parent_frame;
+        }
+        std::cout << "STACK:";
         frame.print_stack();
         throw err;
     }

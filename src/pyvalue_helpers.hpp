@@ -4,11 +4,16 @@
 #define VALUE_HELPERS_H
 
 #include <string>
+#include <sstream>
 #include "pyvalue.hpp"
 
 using std::string;
 
 namespace py {
+
+struct Code;
+extern std::ostream& operator << (std::ostream& stream, const Value value);
+
 namespace value_helper {
 
 // helper function for creating a class with overloads
@@ -34,36 +39,17 @@ struct visitor_is_truthy {
     }
 };
 
-// this visitor evaluates the python repr(obj) method
-struct visitor_repr {
-    string operator()(bool) const;
-    
-    string operator()(double) const;
-
-    string operator()(int64_t) const;
-
-    string operator()(const ValueString&) const;
-
-    string operator()(value::NoneType) const;
-
-    string operator()(ValuePyFunction) const;
-
-    string operator()(ValuePyClass) const;
-
-    string operator()(ValuePyObject) const;
-    
-    template<typename T> 
-    string operator()(T) const {
-        // TODO: use typetraits to generate this.
-        throw pyerror("unimplemented repr for type");
-    }
-};
-
 // this visitor evaluates the python str(obj) method, only differs from
 // repr in the case of true objects so as you can see it just wraps repr
-struct visitor_str : public visitor_repr {
-    using visitor_repr::operator();
+struct visitor_str {
+    // using visitor_repr::operator();
     // TODO: add specialization for handling additional types
+    template<typename T>
+    string operator()(T& value) {
+        std::stringstream ss;
+        ss << value;
+        return ss.str();
+    }
 };
 
 template<class T>
@@ -80,10 +66,12 @@ struct numeric_visitor {
     Value operator()(int64_t v1, int64_t v2) const {
         return T::action(v1, v2);
     }
-    
+
     template<typename T1, typename T2>
-    Value operator()(T1, T2) const {
-        throw pyerror(string("type error in numeric_visitor, can not work on values of types ") + typeid(T1).name() + " and " + typeid(T2).name());
+    Value operator()(T1 a, T2 b) const {
+        std::stringstream ss;
+        ss << "TypeError: can't add values " << Value(a) << " and " << Value(b);
+        throw pyerror(ss.str());
     }
 };
 
