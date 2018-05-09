@@ -4,6 +4,7 @@
 #ifdef DEBUG_ON
 
 #include <cstring>
+#include <iostream>
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define DEBUG(message, ...) { \
@@ -12,9 +13,14 @@
     fprintf(stderr, "%s %s: %s\n", __FILENAME__, __PRETTY_FUNCTION__, buffer); \
 }
 
+#define DEBUG_ADV(OPS) std::cerr << OPS << std::endl
+
+// usage example: DEBUG_ADV("hello world " << (some python value) << " <- is a python value!");
+
 #else 
 
 #define DEBUG(...)
+#define DEBUG_ADV(OPS)
 
 #endif
 

@@ -56,11 +56,9 @@ std::tuple<Value,bool> value::PyClass::find_attr_in_parents(
                                     const ValuePyClass& cls,
                                     const std::string& attr
 ) {
-    DEBUG("Searching parents of Class '%s' for attr '%s'\n",
-        // The below line tis a thing of beauty and terror
-        (*(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))).c_str(),
-        attr.c_str()
-    );
+    DEBUG_ADV("Searching parents of class '" 
+        << (*(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))).c_str()
+        << "' for attr '" << attr);
     // Method Resolution Order already stored in the order parents are stored in
     for(int i = 0;i < cls->parents.size();i++){
         DEBUG("Checking parent %s\n", 
