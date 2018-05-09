@@ -2,7 +2,7 @@
 #include "../src/builtins/builtins.hpp"
 #include "include/test_helpers.hpp"
 
-TEST_CASE("should be able to use classes", "[classes]") {
+TEST_CASE("Classes should work", "[classes]") {
     SECTION( "and the functions in them" ){
         auto code = build_string(R"(
 class simple_class:
@@ -164,6 +164,135 @@ check_int3(foo.sm(bar))
         (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)20);
         (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)5);
         (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)21);
+        state.eval();
+    }
+}
+
+TEST_CASE("Classes should inherit", "[classes]") {
+    SECTION( "from their parent" ){
+        auto code = build_string(R"(
+class A:
+    foo = 2
+    bar = 5
+
+class B(A):
+    bar = 6
+
+aaz = A()
+baz = B()
+check_int1(aaz.foo)
+check_int2(aaz.bar)
+check_int3(baz.foo)
+check_int4(baz.bar)
+)");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)5);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int4"] = make_builtin_check_value((int64_t)6);
+        state.eval();
+    }
+
+    SECTION( "from their parent's parent" ){
+        auto code = build_string(R"(
+class A:
+    foo = 2
+    bar = 5
+    baz = 9
+
+class B(A):
+    bar = 6
+
+class C(B):
+    baz = 11
+
+tester = C()
+check_int1(tester.foo)
+check_int2(tester.bar)
+check_int3(tester.baz)
+)");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)6);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)11);
+        state.eval();
+    }
+
+    SECTION( "from their multiple parents" ){
+        auto code = build_string(R"(
+class A:
+    foo = 2
+
+class B:
+    bar = 6
+
+class C(A, B):
+    baz = 11
+
+tester = C()
+check_int1(tester.foo)
+check_int2(tester.bar)
+check_int3(tester.baz)
+)");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)6);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)11);
+        state.eval();
+    }
+
+    SECTION( "changes to their parents" ){
+        auto code = build_string(R"(
+class A:
+    foo = 2
+
+class B(A):
+    bar = 6
+
+class C(B):
+    pass
+
+baz = C()
+check_int1(baz.foo)
+A.foo = 10
+check_int2(baz.foo)
+B.foo = 20
+check_int3(baz.foo)
+)");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)10);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)20);
+        state.eval();
+    }
+
+    SECTION( "based on the order parents are listed" ){
+        auto code = build_string(R"(
+class A:
+    foo = 2
+
+class B:
+    foo = 3
+
+class C(A,B):
+    pass
+
+class D(B,A):
+    pass
+
+bar = C()
+baz = D()
+check_int1(bar.foo)
+check_int2(baz.foo)
+)");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)3);
         state.eval();
     }
 }

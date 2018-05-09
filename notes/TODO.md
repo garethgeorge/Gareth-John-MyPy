@@ -11,32 +11,42 @@
 # TODO
  - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
-    - Inheritance and Multiple Inheritence -> Method Resolution Order!
+    - Make classes able to overload binary operators
+    - Make classes able to overload inplace operators
+    - For ones that dont have a r_attr, etc, return a special string marking that and throw an error!
+    - Change how framestag flags are set and checked, also make RETURN_VALUE not use a switch
+    - Allow __call__ to be defined and the rest of the overloads
+    - PyClasses are callable but not PyObjects unless __call__ is defined
+    - make the parents attribute of a pyclass just __mro__! ???
+    - super() builtin class (https://docs.python.org/3/library/functions.html#super)
+        - In order to implement super, I need to make it a builtin PyClass (PyObject?) with __call__ defined
+    - __mro__ attribute. (I also need to get all attributes right!)
+    - __bases__ attribute
+    - DYNAMIC INHERITANCE???
     - Use GC
-    - super() function
-    - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
-    - Classes can overload operators as well as inplace operators differently
     - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
     - make initialize_from_pyfunc just a constructor
     - Can you define a class inside a function?
-    - Does python support mulitple constructors? How do I deal with those
     - make the 'str' builtin work correctly for PyFuncs, PyObjects, and PyClasses
-    - Speed up searching parent attributes
+    - Speed up searching parent attributes and way improve the code for determining method resolution order
     - Builtin class 'object'
     - Make tests!
         - Both correct functioning and errors
         - make sure member functions with default args work
+        - test, for example, calling '+' on a class w/out it overload (but for ALL posible overloads)
         - test everything in classes_test.py for sure
         - test @classmethod &&  @staticmethod!!!!!
         - TypeError: __init__() should return None, not 'int' is a runtime error!
         - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
         - overloading in classes and general function overloading
         - Make sure the 'deadly diamond problem' (https://www.python-course.eu/python3_multiple_inheritance.php) resolves correctly
-        - I searched parents depth-first. is this correct?
+        - Make sure to test for the error where MRO could not be determined
+        - Make tests for MRO consistent with complicated examples lower down in https://www.python.org/download/releases/2.3/mro/
  - implement variadic functions - John Jack
  - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack
- - find a testing framework that specifically tests python interpreters - John/Jack or Garth
+ - find a testing framework that specifically tests python interpreters - John/Jack or Gareth
+ - Implement all opertor overloads fro python strings (make string a builting PyClass) - John/Jack or Gareth
  - Create a formatted error handling function - Gareth
  - implement garbage collection - Gareth
  - implement generators/iterators - Gareth
@@ -45,3 +55,8 @@
     - print 
     - range
     - https://docs.python.org/3/library/stdtypes.html
+    - https://docs.python.org/3/library/functions.html (these are the python builtin functions)
+- POSSIBLE THINGS TO DO EVENTUALLY:
+    - Accomplish Direct Threading by putting the 'next opcode fetch and jump' into a #define and
+      putting it at the end of every opcode handler instead of a huge switch statement
+    - Get import working
