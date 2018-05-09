@@ -9,10 +9,10 @@
         - object
 
 # TODO
- - implement MAKE_CLOSURE - John/Jack
  - implement Objects/Classes - John/Jack
     - Make classes able to overload binary operators
     - Make classes able to overload inplace operators
+    - Really check exactly what happens when both add and radd are implemented and you call obj + obj
     - For ones that dont have a r_attr, etc, return a special string marking that and throw an error!
     - Change how framestag flags are set and checked, also make RETURN_VALUE not use a switch
     - Allow __call__ to be defined and the rest of the overloads
@@ -42,6 +42,7 @@
         - Make sure the 'deadly diamond problem' (https://www.python-course.eu/python3_multiple_inheritance.php) resolves correctly
         - Make sure to test for the error where MRO could not be determined
         - Make tests for MRO consistent with complicated examples lower down in https://www.python.org/download/releases/2.3/mro/
+ - implement MAKE_CLOSURE - John/Jack
  - implement variadic functions - John Jack
  - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack
