@@ -189,10 +189,31 @@ struct numeric_visitor {
         } else {
             throw pyerror(
                 string("TypeError: unsupported operand type(s) for ") + T::op_name + string(": '")
-                + *(std::get<ValueString>((v1->static_attrs->attrs->at("__qualname__")))) + string("' and '") + string("INT'")
+                + *(std::get<ValueString>((v1->static_attrs->attrs->at("__qualname__"))))
+                + string("' and '") + typeid(OT).name()
             );
         }
     }
+
+    /*template<typename OT2>
+    void operator()(OT2& v1, ValuePyObject& v2) const {
+        // Get the attribute for it
+        std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(v2,std::string(T::r_attr));
+        if(std::get<1>(res)){
+            // Call it like a function
+            std::vector<Value> args(1, v1);
+            std::visit(
+                call_visitor(frame, args),
+                std::get<0>(res)
+            );
+        } else {
+            throw pyerror(
+                string("TypeError: unsupported operand type(s) for ") + T::op_name + string(": '")
+                + typeid(OT2).name() + string("' and '") 
+                + *(std::get<ValueString>((v2->static_attrs->attrs->at("__qualname__"))))
+            );
+        }
+    }*/
     
     template<typename T1, typename T2>
     void operator()(T1, T2) const {
