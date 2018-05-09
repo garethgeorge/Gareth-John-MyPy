@@ -51,7 +51,7 @@ struct visitor_str {
     template<typename T>
     string operator()(T& value) {
         std::stringstream ss;
-        ss << value;
+        ss << Value(value);
         return ss.str();
     }
 };
