@@ -56,7 +56,15 @@ public:
         return &(this->object->object);
     }
 
+    constexpr inline const T* operator->() const {
+        return &(this->object->object);
+    }
+
     constexpr inline T& operator*() {
+        return object->object;
+    }
+
+    constexpr inline const T& operator*() const {
         return object->object;
     }
 

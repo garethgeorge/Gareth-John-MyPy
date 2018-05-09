@@ -47,7 +47,7 @@ struct FrameState {
     // The class we are initializing
     // It has become abundantly clear that the frame state which initializes the static fields
     // of a class must be able to access the class it is initializing
-    // For this reason, I am adding a field that unfortunately is rarely used
+    // for this reason, I am adding a field that unfortunately is rarely used
     // Hopefully this can be factored out later, and as such it will only be accessed via helper functions
     ValuePyClass init_class;
 

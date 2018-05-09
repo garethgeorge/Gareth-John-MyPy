@@ -39,15 +39,22 @@ extern void inject_builtins(Namespace& ns) {
         return ;
     });
 
-    (*ns)["str"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
-        if (args.size() != 1) {
-            throw pyerror("str in mypy does not support unicode string decoding at the moment.");
+    (*ns)["str"] = pycfunction_builder([] (Value value) {
+        return std::make_shared<std::string>(std::move(std::visit(value_helper::visitor_str(), value)));
+    }).to_pycfunction();
+
+    (*ns)["len"] = pycfunction_builder([] (ValueList list) {
+        return (int64_t) list->values.size();
+    }).to_pycfunction();
+
+    (*ns)["range"] = pycfunction_builder([] (int64_t range, FrameState& frame) {
+        ValueList list = frame.interpreter_state->alloc.heap_lists.make();
+        list->values.resize(range);
+        for (int64_t i = 0; i < range; ++i) {
+            list->values[i] = i;
         }
-        
-        frame.value_stack.push_back(
-            std::make_shared<std::string>(std::visit(value_helper::visitor_str(), args[0]))
-        );
-    });
+        return list;
+    }).to_pycfunction();
 
     // Build a re[resentation of a class
     // Python creates classes via:
@@ -216,19 +223,6 @@ extern void inject_builtins(Namespace& ns) {
             );
         } catch (const std::bad_variant_access& e) {
             throw pyerror("staticmethod called on a non function type");
-        }
-    });
-
-    (*ns)["len"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
-        if (args.size() != 1) {
-            throw pyerror("len() only takes one argument");
-        }
-
-        try {
-            ValueList value = std::get<ValueList>(args[0]);
-            frame.value_stack.push_back((int64_t)(value->values.size()));
-        } catch (std::bad_variant_access& err) {
-            pyerror("expected a list, got bad datatype");
         }
     });
 }

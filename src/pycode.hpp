@@ -16,6 +16,7 @@ namespace py {
 struct Code {
     using ByteCode = uint8_t;
 
+    std::string co_name;
     uint64_t co_stacksize;
     uint64_t co_nlocals;
     uint64_t co_argcount;
@@ -23,6 +24,12 @@ struct Code {
     std::vector<Value> co_consts;
     std::vector<std::string> co_names;
     std::vector<std::string> co_varnames;
+
+    struct LineNoMapping {
+        uint64_t line;
+        uint64_t pc;
+    };
+    std::vector<LineNoMapping> lnotab; // lookup the line number that the error happened on
     
     Code(const json& tree);
     ~Code();

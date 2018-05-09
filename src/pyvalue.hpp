@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <variant>
 #include <functional>
+#include <ostream>
 #include <pygc.hpp>
 #include "pyerror.hpp"
 #include <tuple>
@@ -110,7 +111,8 @@ namespace value {
 
 // A struct that holds a python function
 namespace value {
-    struct PyFunc{
+    
+    struct PyFunc {
         // It's name
         const ValueString name;
         
@@ -283,27 +285,6 @@ namespace value {
                         );
     };
 }
-
-// the beginning of a prototype for object definitions
-// struct PyObjectType;
-
-// struct PyObject {
-//     using PyObjShared = std::shared_ptr<PyObject>;
-//     PyObjectType *type;
-// };
-
-// struct PyObjectType {
-//     using PyObjMethod = std::function<PyObjShared(PyObjShared&,PyObjShared&)>*;
-
-//     PyObjMethod add;
-//     PyObjMethod sub;
-//     PyObjMethod mul;
-//     PyObjMethod div;
-//     PyObjMethod str;
-
-//     Namespace properties;
-// };
-
 
 }
 
