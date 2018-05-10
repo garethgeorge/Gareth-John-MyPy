@@ -174,7 +174,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__lt__";
         constexpr const static char* r_attr = "X";
-        constexpr const static char* i_attr = "X";
         constexpr const static char* op_name = "<";
     };
 
@@ -186,7 +185,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__le__";
         constexpr const static char* r_attr = "X";
-        constexpr const static char* i_attr = "X";
         constexpr const static char* op_name = "<=";
     };
 
@@ -198,7 +196,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__gt__";
         constexpr const static char* r_attr = "X";
-        constexpr const static char* i_attr = "X";
         constexpr const static char* op_name = ">";
     };
 
@@ -210,7 +207,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__ge__";
         constexpr const static char* r_attr = "X";
-        constexpr const static char* i_attr = "X";
         constexpr const static char* op_name = ">=";
     };
 
@@ -222,7 +218,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__eq__";
         constexpr const static char* r_attr = "X";
-        constexpr const static char* i_attr = "X";
         constexpr const static char* op_name = "==";
     };
 
@@ -234,7 +229,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__ne__";
         constexpr const static char* r_attr = "X";
-        constexpr const static char* i_attr = "X";
         constexpr const static char* op_name = "!=";
     };
 
@@ -246,7 +240,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__sub__";
         constexpr const static char* r_attr = "__rsub__";
-        constexpr const static char* i_attr = "__isub__";
         constexpr const static char* op_name = "-";
     };
 
@@ -258,7 +251,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__add__";
         constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* i_attr = "__iadd__";
         constexpr const static char* op_name = "+";
     };
 
@@ -270,7 +262,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__mul__";
         constexpr const static char* r_attr = "__rmul__";
-        constexpr const static char* i_attr = "__imul__";
         constexpr const static char* op_name = "*";
     };
 
@@ -283,7 +274,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__floordiv__";
         constexpr const static char* r_attr = "__rfloordiv__";
-        constexpr const static char* i_attr = "__ifloordiv__";
         constexpr const static char* op_name = "//";
     };
 
@@ -296,7 +286,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__truediv__";
         constexpr const static char* r_attr = "__rtruediv__";
-        constexpr const static char* i_attr = "__itruediv__";
         constexpr const static char* op_name = "/";
     };
 
@@ -325,7 +314,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__pow__";
         constexpr const static char* r_attr = "__rpow__";
-        constexpr const static char* i_attr = "__ipow__";
         constexpr const static char* op_name = "**";
     };
 
@@ -342,7 +330,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__lshift__";
         constexpr const static char* r_attr = "__rlshift__";
-        constexpr const static char* i_attr = "__ilshift__";
         constexpr const static char* op_name = "<<";
     };
 
@@ -359,7 +346,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__rshift__";
         constexpr const static char* r_attr = "__rrshift__";
-        constexpr const static char* i_attr = "__irshift__";
         constexpr const static char* op_name = ">>";
     };
 
@@ -376,7 +362,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__and__";
         constexpr const static char* r_attr = "__rand__";
-        constexpr const static char* i_attr = "__iand__";
         constexpr const static char* op_name = "&";
     };
 
@@ -393,7 +378,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__or__";
         constexpr const static char* r_attr = "__ror__";
-        constexpr const static char* i_attr = "__ior__";
         constexpr const static char* op_name = "|";
     };
 
@@ -410,7 +394,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__xor__";
         constexpr const static char* r_attr = "__rxor__";
-        constexpr const static char* i_attr = "__ixor__";
         constexpr const static char* op_name = "^";
     };
 
@@ -430,7 +413,6 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__mod__";
         constexpr const static char* r_attr = "__rmod__";
-        constexpr const static char* i_attr = "__imod__";
         constexpr const static char* op_name = "%";
     };
     
@@ -918,7 +900,7 @@ inline void FrameState::eval_next() {
         case op::INPLACE_ADD:
         // see https://stackoverflow.com/questions/15376509/when-is-i-x-different-from-i-i-x-in-python
         // INPLACE_ADD should call __iadd__ method on full objects, falls back to __add__ if not available.
-        //if(attempt_inplace_op<eval_helpers::op_add>(*this)) break;
+            if(attempt_inplace_op(*this,"__iadd__")) break;
         case op::BINARY_ADD:
         {
             this->check_stack_size(2);
@@ -940,6 +922,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_FLOOR_DIVIDE:
+            if(attempt_inplace_op(*this,"__ifloordiv__")) break;
         case op::BINARY_FLOOR_DIVIDE:
         {
             this->check_stack_size(2);
@@ -950,6 +933,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_MULTIPLY:
+            if(attempt_inplace_op(*this,"__imul__")) break;
         case op::BINARY_MULTIPLY:
         {
             this->check_stack_size(2);
@@ -960,6 +944,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_MODULO:
+            if(attempt_inplace_op(*this,"__imod__")) break;
         case op::BINARY_MODULO:
         {
             this->check_stack_size(2);
@@ -970,6 +955,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_POWER:
+            if(attempt_inplace_op(*this,"__ipow__")) break;
         case op::BINARY_POWER:
         {
             this->check_stack_size(2);
@@ -980,6 +966,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_TRUE_DIVIDE:
+            if(attempt_inplace_op(*this,"__itruediv__")) break;
         case op::BINARY_TRUE_DIVIDE:
         {
             this->check_stack_size(2);
@@ -990,6 +977,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_LSHIFT:
+            if(attempt_inplace_op(*this,"__ilshift__")) break;
         case op::BINARY_LSHIFT:
         {
             this->check_stack_size(2);
@@ -1000,6 +988,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_RSHIFT:
+            if(attempt_inplace_op(*this,"__irshift__")) break;
         case op::BINARY_RSHIFT:
         {
             this->check_stack_size(2);
@@ -1010,6 +999,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_AND:
+            if(attempt_inplace_op(*this,"__iand__")) break;
         case op::BINARY_AND:
         {
             this->check_stack_size(2);
@@ -1017,9 +1007,10 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_and>(*this),v1,v2);
-            break ;
+            break;
         }
         case op::INPLACE_XOR:
+            if(attempt_inplace_op(*this,"__ixor__")) break;
         case op::BINARY_XOR:
         {
             this->check_stack_size(2);
@@ -1027,9 +1018,10 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_xor>(*this),v1,v2);
-            break ;
+            break;
         }
         case op::INPLACE_OR:
+            if(attempt_inplace_op(*this,"__ior__")) break;
         case op::BINARY_OR:
         {
             this->check_stack_size(2);
@@ -1037,7 +1029,7 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_or>(*this),v1,v2);
-            break ;
+            break;
         }
         case op::RETURN_VALUE:
         {

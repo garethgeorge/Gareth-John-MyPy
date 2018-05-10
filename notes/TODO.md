@@ -10,22 +10,17 @@
 
 # TODO
  - implement Objects/Classes - John/Jack
-    - Make classes able to overload inplace operators
     - TEST OVERLOADING and new operators
     - Get super() working for single inheritance
     - Test super()
     - Allow __call__ to be defined  and make class calllable
     - super() builtin class (https://docs.python.org/3/library/functions.html#super)
         - In order to implement super, I need to make it a builtin PyClass (PyObject?) with __call__ defined
-    - DYNAMIC INHERITANCE???
     - Use GC
     - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
         - All builtin attributes: __mro__, __bases__, etc
-    - make initialize_from_pyfunc just a constructor
-    - Can you define a class inside a function?
-    - make the 'str' builtin work correctly for PyFuncs, PyObjects, and PyClasses
     - Speed up searching parent attributes and way improve the code for determining method resolution order
-    - Builtin class 'object'
+    - Builtin class 'object' -> just nothing?
     - Make tests!
         - Both correct functioning and errors
         - make sure member functions with default args work
