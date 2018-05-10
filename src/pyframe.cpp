@@ -172,9 +172,10 @@ namespace eval_helpers {
             return v1 < v2;
         }
 
-        constexpr const static char* l_attr = "__add__";
-        constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* op_name = "+";
+        constexpr const static char* l_attr = "__lt__";
+        constexpr const static char* r_attr = "X";
+        constexpr const static char* i_attr = "X";
+        constexpr const static char* op_name = "<";
     };
 
     struct op_lte { // a <= b
@@ -183,9 +184,10 @@ namespace eval_helpers {
             return v1 <= v2;
         }
 
-        constexpr const static char* l_attr = "__add__";
-        constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* op_name = "+";
+        constexpr const static char* l_attr = "__le__";
+        constexpr const static char* r_attr = "X";
+        constexpr const static char* i_attr = "X";
+        constexpr const static char* op_name = "<=";
     };
 
     struct op_gt { // a > b
@@ -194,9 +196,10 @@ namespace eval_helpers {
             return v1 > v2;
         }
 
-        constexpr const static char* l_attr = "__add__";
-        constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* op_name = "+";
+        constexpr const static char* l_attr = "__gt__";
+        constexpr const static char* r_attr = "X";
+        constexpr const static char* i_attr = "X";
+        constexpr const static char* op_name = ">";
     };
 
     struct op_gte { // a >= b
@@ -205,9 +208,10 @@ namespace eval_helpers {
             return v1 >= v2;
         }
 
-        constexpr const static char* l_attr = "__add__";
-        constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* op_name = "+";
+        constexpr const static char* l_attr = "__ge__";
+        constexpr const static char* r_attr = "X";
+        constexpr const static char* i_attr = "X";
+        constexpr const static char* op_name = ">=";
     };
 
     struct op_eq { // a == b
@@ -216,9 +220,10 @@ namespace eval_helpers {
             return v1 == v2;
         }
 
-        constexpr const static char* l_attr = "__add__";
-        constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* op_name = "+";
+        constexpr const static char* l_attr = "__eq__";
+        constexpr const static char* r_attr = "X";
+        constexpr const static char* i_attr = "X";
+        constexpr const static char* op_name = "==";
     };
 
     struct op_neq { // a != b
@@ -227,9 +232,10 @@ namespace eval_helpers {
             return v1 != v2;
         }
 
-        constexpr const static char* l_attr = "__add__";
-        constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* op_name = "+";
+        constexpr const static char* l_attr = "__ne__";
+        constexpr const static char* r_attr = "X";
+        constexpr const static char* i_attr = "X";
+        constexpr const static char* op_name = "!=";
     };
 
     struct op_sub { // a - b
@@ -238,9 +244,10 @@ namespace eval_helpers {
             return v1 - v2;
         }
 
-        constexpr const static char* l_attr = "__add__";
-        constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* op_name = "+";
+        constexpr const static char* l_attr = "__sub__";
+        constexpr const static char* r_attr = "__rsub__";
+        constexpr const static char* i_attr = "__isub__";
+        constexpr const static char* op_name = "-";
     };
 
     struct op_add { // a + b
@@ -251,6 +258,7 @@ namespace eval_helpers {
 
         constexpr const static char* l_attr = "__add__";
         constexpr const static char* r_attr = "__radd__";
+        constexpr const static char* i_attr = "__iadd__";
         constexpr const static char* op_name = "+";
     };
 
@@ -260,9 +268,10 @@ namespace eval_helpers {
             return v1 * v2;
         }
 
-        constexpr const static char* l_attr = "__add__";
-        constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* op_name = "+";
+        constexpr const static char* l_attr = "__mul__";
+        constexpr const static char* r_attr = "__rmul__";
+        constexpr const static char* i_attr = "__imul__";
+        constexpr const static char* op_name = "*";
     };
 
     struct op_divide { // a / b
@@ -271,9 +280,10 @@ namespace eval_helpers {
             return v1 / v2;
         }
 
-        constexpr const static char* l_attr = "__add__";
-        constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* op_name = "+";
+        constexpr const static char* l_attr = "__truediv__";
+        constexpr const static char* r_attr = "__rtruediv__";
+        constexpr const static char* i_attr = "__itruediv__";
+        constexpr const static char* op_name = "/";
     };
 
     struct op_modulo { // a % b
@@ -290,9 +300,10 @@ namespace eval_helpers {
             return std::fmod(v1, v2);
         }
 
-        constexpr const static char* l_attr = "__add__";
-        constexpr const static char* r_attr = "__radd__";
-        constexpr const static char* op_name = "+";
+        constexpr const static char* l_attr = "__mod__";
+        constexpr const static char* r_attr = "__rmod__";
+        constexpr const static char* i_attr = "__imod__";
+        constexpr const static char* op_name = "%";
     };
     
     struct add_visitor: public numeric_visitor<op_add> {

@@ -162,7 +162,23 @@ struct numeric_visitor {
     }
     
     void operator()(ValuePyObject& v1, ValuePyObject& v2) const {
-        throw pyerror("Not Implemented Yet");
+        /// Get the attribute for it
+        std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(v1,std::string(T::l_attr));
+        if(std::get<1>(res)){
+            // Call it like a function
+            std::vector<Value> args(1, v2);
+            std::visit(
+                call_visitor(frame, args),
+                std::get<0>(res)
+            );
+        } else {
+            throw pyerror(
+                string("TypeError: unsupported operand type(s) for ") + T::op_name + string(": '")
+                + *(std::get<ValueString>((v1->static_attrs->attrs->at("__qualname__"))))
+                + string("' and '")
+                + *(std::get<ValueString>((v1->static_attrs->attrs->at("__qualname__")))) + "' "
+            );
+        }
     }
 
     template<typename OT>
@@ -180,7 +196,7 @@ struct numeric_visitor {
             throw pyerror(
                 string("TypeError: unsupported operand type(s) for ") + T::op_name + string(": '")
                 + *(std::get<ValueString>((v1->static_attrs->attrs->at("__qualname__"))))
-                + string("' and '") + typeid(OT).name()
+                + string("' and '") + typeid(OT).name() + "' "
             );
         }
     }

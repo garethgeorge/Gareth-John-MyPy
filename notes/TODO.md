@@ -31,6 +31,9 @@
     - make the 'str' builtin work correctly for PyFuncs, PyObjects, and PyClasses
     - Speed up searching parent attributes and way improve the code for determining method resolution order
     - Builtin class 'object'
+    - __truediv__ v __floordiv__ overload?
+    - __matmult__ overload?
+    - __divmod__ overload?
     - Make tests!
         - Both correct functioning and errors
         - make sure member functions with default args work
