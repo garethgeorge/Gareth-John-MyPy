@@ -45,6 +45,7 @@
  - find a testing framework that specifically tests python interpreters - John/Jack or Gareth
  - Implement all opertor overloads fro python strings (make string a builting PyClass) - John/Jack or Gareth
  - Implmenet BINARY_MATRIX_MULTIPLY - John/Jack or Gareth
+ - Unary arithmetic operations - John/Jack or Gareth
  - Create a formatted error handling function - Gareth
  - implement garbage collection - Gareth
  - implement generators/iterators - Gareth

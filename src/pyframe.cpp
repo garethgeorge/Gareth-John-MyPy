@@ -639,6 +639,37 @@ void FrameState::print_value(Value& val) {
         }, val);
 }
 
+// If TOS supports an inplace operation, do it
+bool attempt_inplace_op(FrameState& frame,const std::string& i_attr){
+        // Get the TOS and check if it's and object
+        frame.check_stack_size(2);
+        Value v1 = frame.value_stack[frame.value_stack.size() - 2];
+        auto obj = std::get_if<ValuePyObject>(&v1);
+        if(obj != NULL){
+
+            // Check if it  overloaded the attr
+            std::tuple<Value,bool> res = (*obj)->find_attr_in_obj((*obj),i_attr);
+            
+            if(std::get<1>(res)) {
+                // It did!
+                // Call the function
+                std::vector<Value> args; 
+                args.push_back(std::move(frame.value_stack[frame.value_stack.size() - 1]));
+                frame.value_stack.resize(frame.value_stack.size() - 2);
+                std::visit(
+                    value_helper::call_visitor(frame,args),
+                    std::get<0>(res)
+                );
+                return true;
+            }
+
+            // Default to non-inplace
+            return false;
+        }
+        return false;
+
+}
+
 void FrameState::print_stack() const {
     std::cerr << "[";
     for (size_t i = 0; i < this->value_stack.size(); ++i) {
@@ -887,6 +918,7 @@ inline void FrameState::eval_next() {
         case op::INPLACE_ADD:
         // see https://stackoverflow.com/questions/15376509/when-is-i-x-different-from-i-i-x-in-python
         // INPLACE_ADD should call __iadd__ method on full objects, falls back to __add__ if not available.
+        //if(attempt_inplace_op<eval_helpers::op_add>(*this)) break;
         case op::BINARY_ADD:
         {
             this->check_stack_size(2);
@@ -897,6 +929,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_SUBTRACT:
+            if(attempt_inplace_op(*this,"__isub__")) break;
         case op::BINARY_SUBTRACT:
         {
             this->check_stack_size(2);
