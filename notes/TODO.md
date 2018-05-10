@@ -10,30 +10,22 @@
 
 # TODO
  - implement Objects/Classes - John/Jack
-    - Make classes able to overload binary operators
     - Make classes able to overload inplace operators
+    - TEST OVERLOADING and new operators
     - Get super() working for single inheritance
-    - Really check exactly what happens when both add and radd are implemented and you call obj + obj
-    - For ones that dont have a r_attr, etc, return a special string marking that and throw an error!
-    - Change how framestag flags are set and checked, also make RETURN_VALUE not use a switch
-    - Allow __call__ to be defined and the rest of the overloads
-    - PyClasses are callable but not PyObjects unless __call__ is defined
-    - make the parents attribute of a pyclass just __mro__! ???
+    - Test super()
+    - Allow __call__ to be defined  and make class calllable
     - super() builtin class (https://docs.python.org/3/library/functions.html#super)
         - In order to implement super, I need to make it a builtin PyClass (PyObject?) with __call__ defined
-    - __mro__ attribute. (I also need to get all attributes right!)
-    - __bases__ attribute
     - DYNAMIC INHERITANCE???
     - Use GC
     - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
+        - All builtin attributes: __mro__, __bases__, etc
     - make initialize_from_pyfunc just a constructor
     - Can you define a class inside a function?
     - make the 'str' builtin work correctly for PyFuncs, PyObjects, and PyClasses
     - Speed up searching parent attributes and way improve the code for determining method resolution order
     - Builtin class 'object'
-    - __truediv__ v __floordiv__ overload?
-    - __matmult__ overload?
-    - __divmod__ overload?
     - Make tests!
         - Both correct functioning and errors
         - make sure member functions with default args work
@@ -52,6 +44,7 @@
  - kwarg functions - John/Jack
  - find a testing framework that specifically tests python interpreters - John/Jack or Gareth
  - Implement all opertor overloads fro python strings (make string a builting PyClass) - John/Jack or Gareth
+ - Implmenet BINARY_MATRIX_MULTIPLY - John/Jack or Gareth
  - Create a formatted error handling function - Gareth
  - implement garbage collection - Gareth
  - implement generators/iterators - Gareth

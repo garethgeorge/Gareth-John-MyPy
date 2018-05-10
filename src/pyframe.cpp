@@ -274,16 +274,144 @@ namespace eval_helpers {
         constexpr const static char* op_name = "*";
     };
 
-    struct op_divide { // a / b
+    struct op_divide { // a // b
+        template<typename T1, typename T2>        
+        static auto action(T1 v1, T2 v2) {
+            return (int64_t)(v1 / v2);
+            //return (int)(v1 / v2);
+        }
+
+        constexpr const static char* l_attr = "__floordiv__";
+        constexpr const static char* r_attr = "__rfloordiv__";
+        constexpr const static char* i_attr = "__ifloordiv__";
+        constexpr const static char* op_name = "//";
+    };
+
+    struct op_true_div { // a / b
         template<typename T1, typename T2>
         static auto action(T1 v1, T2 v2) {
-            return v1 / v2;
+            return value::NoneType();
+            //return (double)v1 / (double)v2;
         }
 
         constexpr const static char* l_attr = "__truediv__";
         constexpr const static char* r_attr = "__rtruediv__";
         constexpr const static char* i_attr = "__itruediv__";
         constexpr const static char* op_name = "/";
+    };
+
+    struct op_pow { // a ** b
+        static auto action(int64_t v1,int64_t v2) {
+            return pow(v1,v2);
+        }
+
+        static auto action(double v1,int64_t v2) {
+            return pow(v1,v2);
+        }
+
+        static auto action(int64_t v1,double v2) {
+            return pow(v1,v2);
+        }
+
+        static auto action(double v1,double v2) {
+            return pow(v1,v2);
+        }
+
+        template<typename T1, typename T2>
+        static auto action(T1 v1, T2 v2) {
+            throw pyerror("Invalid operands for **\n");
+            return value::NoneType();
+        }
+
+        constexpr const static char* l_attr = "__pow__";
+        constexpr const static char* r_attr = "__rpow__";
+        constexpr const static char* i_attr = "__ipow__";
+        constexpr const static char* op_name = "**";
+    };
+
+    struct op_lshift { // a << b
+        static auto action(int64_t v1,int64_t v2) {
+            return v1 << v2;
+        }
+
+        template<typename T1, typename T2>
+        static auto action(T1 v1, T2 v2) {
+            throw pyerror("Invalid operands for <<\n");
+            return value::NoneType();
+        }
+
+        constexpr const static char* l_attr = "__lshift__";
+        constexpr const static char* r_attr = "__rlshift__";
+        constexpr const static char* i_attr = "__ilshift__";
+        constexpr const static char* op_name = "<<";
+    };
+
+    struct op_rshift { // a >> b
+        static auto action(int64_t v1,int64_t v2) {
+            return v1 >> v2;
+        }
+
+        template<typename T1, typename T2>
+        static auto action(T1 v1, T2 v2) {
+            throw pyerror("Invalid operands for >>\n");
+            return value::NoneType();
+        }
+
+        constexpr const static char* l_attr = "__rshift__";
+        constexpr const static char* r_attr = "__rrshift__";
+        constexpr const static char* i_attr = "__irshift__";
+        constexpr const static char* op_name = ">>";
+    };
+
+    struct op_and { // a & b
+        static auto action(int64_t v1,int64_t v2) {
+            return v1 & v2;
+        }
+
+        template<typename T1, typename T2>
+        static auto action(T1 v1, T2 v2) {
+            throw pyerror("Invalid operands for &\n");
+            return value::NoneType();
+        }
+
+        constexpr const static char* l_attr = "__and__";
+        constexpr const static char* r_attr = "__rand__";
+        constexpr const static char* i_attr = "__iand__";
+        constexpr const static char* op_name = "&";
+    };
+
+    struct op_or { // a | b
+        static auto action(int64_t v1,int64_t v2) {
+            return v1 | v2;
+        }
+
+        template<typename T1, typename T2>
+        static auto action(T1 v1, T2 v2) {
+            throw pyerror("Invalid operands for |\n");
+            return value::NoneType();
+        }
+
+        constexpr const static char* l_attr = "__or__";
+        constexpr const static char* r_attr = "__ror__";
+        constexpr const static char* i_attr = "__ior__";
+        constexpr const static char* op_name = "|";
+    };
+
+    struct op_xor { // a ^ b
+        static auto action(int64_t v1,int64_t v2) {
+            return v1 ^ v2;
+        }
+
+        template<typename T1, typename T2>
+        static auto action(T1 v1, T2 v2) {
+            throw pyerror("Invalid operands for ^\n");
+            return value::NoneType();
+        }
+
+        constexpr const static char* l_attr = "__xor__";
+        constexpr const static char* r_attr = "__rxor__";
+        constexpr const static char* i_attr = "__ixor__";
+        constexpr const static char* op_name = "^";
     };
 
     struct op_modulo { // a % b
@@ -806,6 +934,76 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_modulo>(*this),v1,v2);
+            break ;
+        }
+        case op::INPLACE_POWER:
+        case op::BINARY_POWER:
+        {
+            this->check_stack_size(2);
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_pow>(*this),v1,v2);
+            break ;
+        }
+        case op::INPLACE_TRUE_DIVIDE:
+        case op::BINARY_TRUE_DIVIDE:
+        {
+            this->check_stack_size(2);
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_true_div>(*this),v1,v2);
+            break ;
+        }
+        case op::INPLACE_LSHIFT:
+        case op::BINARY_LSHIFT:
+        {
+            this->check_stack_size(2);
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_lshift>(*this),v1,v2);
+            break ;
+        }
+        case op::INPLACE_RSHIFT:
+        case op::BINARY_RSHIFT:
+        {
+            this->check_stack_size(2);
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_rshift>(*this),v1,v2);
+            break ;
+        }
+        case op::INPLACE_AND:
+        case op::BINARY_AND:
+        {
+            this->check_stack_size(2);
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_and>(*this),v1,v2);
+            break ;
+        }
+        case op::INPLACE_XOR:
+        case op::BINARY_XOR:
+        {
+            this->check_stack_size(2);
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_xor>(*this),v1,v2);
+            break ;
+        }
+        case op::INPLACE_OR:
+        case op::BINARY_OR:
+        {
+            this->check_stack_size(2);
+            Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
+            Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
+            this->value_stack.resize(this->value_stack.size() - 2);
+            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_or>(*this),v1,v2);
             break ;
         }
         case op::RETURN_VALUE:
