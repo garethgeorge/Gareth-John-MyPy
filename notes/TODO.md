@@ -12,6 +12,7 @@
  - implement Objects/Classes - John/Jack
     - Make classes able to overload binary operators
     - Make classes able to overload inplace operators
+    - Get super() working for single inheritance
     - Really check exactly what happens when both add and radd are implemented and you call obj + obj
     - For ones that dont have a r_attr, etc, return a special string marking that and throw an error!
     - Change how framestag flags are set and checked, also make RETURN_VALUE not use a switch

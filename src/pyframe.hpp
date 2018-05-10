@@ -33,6 +33,10 @@ struct Block {
     size_t level = 0; // value level to pop up to
 };
 
+const uint8_t CLASS_INIT_FRAME = 1;
+const uint8_t OBJECT_INIT_FRAME = 2;
+const uint8_t DONT_RETURN_FRAME = 4;
+
 struct FrameState {
     public:
     uint64_t r_pc = 0; // program counter
@@ -72,14 +76,6 @@ struct FrameState {
     // Add a value to local namespace (for use when creating the frame state)
     void add_to_ns_local(const std::string& name,Value&& v);
     void initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args);
-
-    // Set the flag that says that this framestate is initializing the static values of a class
-    void set_class_static_init_flag();
-    bool get_class_static_init_flag();
-
-    // Im very sorry but it appears we do need two different flags
-    void set_class_dynamic_init_flag();
-    bool get_class_dynamic_init_flag();
 
     // helper method for checking the stack has enough values for the current
     // operation!

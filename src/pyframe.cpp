@@ -48,7 +48,7 @@ FrameState::FrameState(
     this->value_stack.reserve(code->co_stacksize);
     this->init_class = init_class;
     this->ns_local = this->init_class->attrs;
-    this->set_class_static_init_flag();
+    this->flags |= CLASS_INIT_FRAME;
 }
 
 // Find an attribute in the parents of a class
@@ -800,50 +800,14 @@ inline void FrameState::eval_next() {
         case op::RETURN_VALUE:
         {
             this->check_stack_size(1);
-            switch(flags){
-                case 0:
-                    {
-                        // Normal function return
-                        auto val = this->value_stack.back();
-                        if (this->parent_frame != nullptr) {
-                            this->parent_frame->value_stack.push_back(std::move(val));
-                        }
-                        break;
-                    }
-                case 1:
-                    /*{
-                        // Static init
-                        // This whole time we have been initalizing the static fields of a class
-                        // Finish that initalization
-                        if (this->parent_frame != nullptr) {
-                            try {
-                                ValuePyClass npc = std::make_shared<value::PyClass>(
-                                        value::PyClass(this->ns_local)
-                                    );
-                                this->parent_frame->value_stack.push_back(
-                                    std::move(npc)
-                                );
-                            } catch (const std::bad_alloc& e) {
-                                throw pyerror(std::string("Need to call garbage collector!\n"));
-                            }
-                        }
-                    }
-                    break;*/
-                case 2:
-                    // Dynamic init
-                    // This whole time we have been initializing a newly allocated object
-                    // Annoyingly, init functions return None, not the class that was just initialized
-                    // so we need special handling
-
-                    // The new object has already been put on the top of the right stack
-                    // during CALL_FUNCTION
-                    // so fo this we do nothing
-                    break;
-                default:
-                    throw pyerror("Invalid FrameState flags");
-                    break;
+            if((this->flags & (CLASS_INIT_FRAME | OBJECT_INIT_FRAME | DONT_RETURN_FRAME)) == 0){
+                // Normal function return
+                auto val = this->value_stack.back();
+                if (this->parent_frame != nullptr) {
+                    this->parent_frame->value_stack.push_back(std::move(val));
+                }
             }
-
+                
             // Pop the call stack
             this->interpreter_state->callstack.pop();
             break ;
@@ -1064,22 +1028,5 @@ void InterpreterState::eval() {
         throw err;
     }
 }
-
-    void FrameState::set_class_static_init_flag(){
-        flags |= 1;
-    }
-
-    bool FrameState::get_class_static_init_flag(){
-        return flags & 1;
-    }
-
-    void FrameState::set_class_dynamic_init_flag(){
-        flags |= 2;
-    }
-
-    bool FrameState::get_class_dynamic_init_flag(){
-        return flags & 2;
-    }
-
 
 }
