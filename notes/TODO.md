@@ -12,8 +12,8 @@
  - implement Objects/Classes - John/Jack
     - TEST OVERLOADING and new operators
     - Get super() working for single inheritance
+    - test __call__ overloading and when trying to calk without __call__ defined
     - Test super()
-    - Allow __call__ to be defined  and make class calllable
     - super() builtin class (https://docs.python.org/3/library/functions.html#super)
         - In order to implement super, I need to make it a builtin PyClass (PyObject?) with __call__ defined
     - Use GC
@@ -35,13 +35,13 @@
         - Make tests for MRO consistent with complicated examples lower down in https://www.python.org/download/releases/2.3/mro/
  - implement MAKE_CLOSURE - John/Jack
  - implement variadic functions - John Jack
- - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack
  - find a testing framework that specifically tests python interpreters - John/Jack or Gareth
  - Implement all opertor overloads fro python strings (make string a builting PyClass) - John/Jack or Gareth
  - Implmenet BINARY_MATRIX_MULTIPLY - John/Jack or Gareth
  - Unary arithmetic operations - John/Jack or Gareth
  - Create a formatted error handling function - Gareth
+- finish implement continue/break/try/except - Gareth
  - implement garbage collection - Gareth
  - implement generators/iterators - Gareth
  - primitive types for Lists/Tupples/Map/Set - Gareth

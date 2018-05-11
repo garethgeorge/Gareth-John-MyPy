@@ -135,6 +135,26 @@ struct call_visitor {
         );
         frame.interpreter_state->callstack.top().initialize_from_pyfunc(func,args);
     }
+
+    // An object was called like a function
+    // Look for it'a __call__ overload and run that
+    void operator()(const ValuePyObject& obj) const {
+        DEBUG("call_visitor dispatching on a PyObject");
+
+        std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(obj,"__call__");
+        if(std::get<1>(res)){
+            // Visit again with the newly found thing
+            std::visit(
+                call_visitor(frame,args),
+                std::get<0>(res)
+            );
+        } else {
+            throw pyerror(std::string(
+                "'" + *(std::get<ValueString>((obj->static_attrs->attrs->at("__qualname__"))))
+                + "' object is not callable"
+            ));
+        }
+    }
     
     template<typename T>
     void operator()(T) const {
