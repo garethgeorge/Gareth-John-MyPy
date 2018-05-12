@@ -667,4 +667,188 @@ check_int9(bar)
         state.eval();
     }
 
+    SECTION( "of the & operator"){
+        auto code = build_string(R"(
+class A:
+    val = 3
+    def __and__(self, other):
+        self.val = self.val & other
+        return self.val
+    def __iand__(self,other):
+        self.val = self.val & other
+        return self
+
+class B:
+    val = 2
+    def __rand__(self,other):
+        return self.val & other
+    def __iand__(self,other):
+        return self.val & other
+
+foo = A()
+bar = B()
+check_int1(foo & 2)
+check_int2(foo.val)
+check_int3(3 & bar)
+check_int4(bar.val)
+check_int5(foo & bar)
+check_int6(foo.val)
+check_int7(bar.val)
+foo &= 1
+check_int8(foo.val)
+bar &= 3
+check_int9(bar)
+    )");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int4"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int5"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int6"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int7"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int8"] = make_builtin_check_value((int64_t)0);
+        (*(state.ns_builtins))["check_int9"] = make_builtin_check_value((int64_t)2);
+        state.eval();
+    }
+
+    SECTION( "of the | operator"){
+        auto code = build_string(R"(
+class A:
+    val = 3
+    def __or__(self, other):
+        self.val = self.val | other
+        return self.val
+    def __ior__(self,other):
+        self.val = self.val | other
+        return self
+
+class B:
+    val = 2
+    def __ror__(self,other):
+        return self.val | other
+    def __ior__(self,other):
+        return self.val | other
+
+foo = A()
+bar = B()
+check_int1(foo | 2)
+check_int2(foo.val)
+check_int3(3 | bar)
+check_int4(bar.val)
+check_int5(foo | bar)
+check_int6(foo.val)
+check_int7(bar.val)
+foo |= 1
+check_int8(foo.val)
+bar |= 3
+check_int9(bar)
+    )");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_int4"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int5"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_int6"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_int7"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int8"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_int9"] = make_builtin_check_value((int64_t)3);
+        state.eval();
+    }
+
+    SECTION( "of the ^ operator"){
+        auto code = build_string(R"(
+class A:
+    val = 3
+    def __xor__(self, other):
+        self.val = self.val ^ other
+        return self.val
+    def __ixor__(self,other):
+        self.val = self.val ^ other
+        return self
+
+class B:
+    val = 2
+    def __rxor__(self,other):
+        return self.val ^ other
+    def __ixor__(self,other):
+        return self.val ^ other
+
+foo = A()
+bar = B()
+check_int1(foo ^ 2)
+check_int2(foo.val)
+check_int3(3 ^ bar)
+check_int4(bar.val)
+check_int5(foo ^ bar)
+check_int6(foo.val)
+check_int7(bar.val)
+foo ^= 1
+check_int8(foo.val)
+bar ^= 3
+check_int9(bar)
+    )");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)1);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)1);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)1);
+        (*(state.ns_builtins))["check_int4"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int5"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_int6"] = make_builtin_check_value((int64_t)3);
+        (*(state.ns_builtins))["check_int7"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int8"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int9"] = make_builtin_check_value((int64_t)1);
+        state.eval();
+    }
+
+    SECTION( "of the % operator"){
+        auto code = build_string(R"(
+class A:
+    val = 3
+    def __mod__(self, other):
+        self.val = self.val % other
+        return self.val
+    def __imod__(self,other):
+        self.val = self.val % other
+        return self
+
+class B:
+    val = 2
+    def __rmod__(self,other):
+        return self.val % other
+    def __imod__(self,other):
+        return self.val % other
+
+foo = A()
+bar = B()
+check_int1(foo % 2)
+check_int2(foo.val)
+check_int3(3 % bar)
+check_int4(bar.val)
+check_int5(foo % bar)
+check_int6(foo.val)
+check_int7(bar.val)
+foo %= 1
+check_int8(foo.val)
+bar %= 3
+check_int9(bar)
+    )");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)1);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)1);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int4"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int5"] = make_builtin_check_value((int64_t)0);
+        (*(state.ns_builtins))["check_int6"] = make_builtin_check_value((int64_t)0);
+        (*(state.ns_builtins))["check_int7"] = make_builtin_check_value((int64_t)2);
+        (*(state.ns_builtins))["check_int8"] = make_builtin_check_value((int64_t)0);
+        (*(state.ns_builtins))["check_int9"] = make_builtin_check_value((int64_t)2);
+        state.eval();
+    }
+
 }
