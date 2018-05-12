@@ -298,6 +298,76 @@ check_int2(baz.foo)
 }
 
 TEST_CASE("Classes should allow operator overloading", "[classes]") {
+    SECTION( "of the comparison operators"){
+            auto code = build_string(R"(
+class foo:
+    val = 7
+    def __lt__(self,other):
+        return True
+    def __gt__(self,other):
+        return 5
+    def __eq__(self,other):
+        self.val = self.val - 1
+        return self.val == 5
+    def __ne__(self,other):
+        return other != self.val
+    def __le__(self,other):
+        return other
+    def __ge__(self,other):
+        return self.val
+
+a = foo()
+check_val1(a < 5)
+check_val2(a > 6)
+check_val3(5 > a)
+check_val4(6 < a)
+check_val5(a == 1)
+check_val6(a == True)
+check_val7(a != 4)
+check_val8(a != 5)
+check_val9(a <= 9)
+check_val10(a >= 6)
+check_val11(9 <= a)
+check_val12(6 >= a)
+)");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_val1"] = make_builtin_check_value((bool)true);
+        (*(state.ns_builtins))["check_val2"] = make_builtin_check_value((int64_t)5);
+        (*(state.ns_builtins))["check_val3"] = make_builtin_check_value((bool)true);
+        (*(state.ns_builtins))["check_val4"] = make_builtin_check_value((int64_t)5);
+        (*(state.ns_builtins))["check_val5"] = make_builtin_check_value((bool)false);
+        (*(state.ns_builtins))["check_val6"] = make_builtin_check_value((bool)true);
+        (*(state.ns_builtins))["check_val7"] = make_builtin_check_value((bool)true);
+        (*(state.ns_builtins))["check_val8"] = make_builtin_check_value((bool)false);
+        (*(state.ns_builtins))["check_val9"] = make_builtin_check_value((int64_t)9);
+        (*(state.ns_builtins))["check_val10"] = make_builtin_check_value((int64_t)5);
+        (*(state.ns_builtins))["check_val11"] = make_builtin_check_value((int64_t)5);
+        (*(state.ns_builtins))["check_val12"] = make_builtin_check_value((int64_t)6);
+        state.eval();
+    }
+    
+    SECTION( "of the __call__ operator"){
+            auto code = build_string(R"(
+class A:
+    val = 1
+    def __init__(self, v):
+        self.val = v
+    def __call__(self,v2):
+        return (self.val * v2)
+
+foo = A(10)
+check_int1(foo(2))
+check_int2(foo(foo(2)))                
+    )");
+        InterpreterState state(code);
+        builtins::inject_builtins(state.ns_builtins);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)20);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)200);
+        state.eval();
+    }
+    
+    
     SECTION( "of the + operator"){
             auto code = build_string(R"(
 class A:

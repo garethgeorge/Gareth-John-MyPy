@@ -235,7 +235,7 @@ struct numeric_visitor {
         } else {
             throw pyerror(string("TypeError: unsupported operand type(s) for ") + T::op_name + string(": '")
                 + typeid(OT2).name() + string("' and '") 
-                + *(std::get<ValueString>((v2->static_attrs->attrs->at("__qualname__"))))
+                + *(std::get<ValueString>((v2->static_attrs->attrs->at("__qualname__")))) + "' "
             );
         }
     }

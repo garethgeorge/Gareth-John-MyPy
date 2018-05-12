@@ -173,7 +173,7 @@ namespace eval_helpers {
         }
 
         constexpr const static char* l_attr = "__lt__";
-        constexpr const static char* r_attr = "X";
+        constexpr const static char* r_attr = "__gt__";
         constexpr const static char* op_name = "<";
     };
 
@@ -184,7 +184,7 @@ namespace eval_helpers {
         }
 
         constexpr const static char* l_attr = "__le__";
-        constexpr const static char* r_attr = "X";
+        constexpr const static char* r_attr = "__ge__";
         constexpr const static char* op_name = "<=";
     };
 
@@ -195,7 +195,7 @@ namespace eval_helpers {
         }
 
         constexpr const static char* l_attr = "__gt__";
-        constexpr const static char* r_attr = "X";
+        constexpr const static char* r_attr = "__lt__";
         constexpr const static char* op_name = ">";
     };
 
@@ -206,7 +206,7 @@ namespace eval_helpers {
         }
 
         constexpr const static char* l_attr = "__ge__";
-        constexpr const static char* r_attr = "X";
+        constexpr const static char* r_attr = "__le__";
         constexpr const static char* op_name = ">=";
     };
 
@@ -217,7 +217,7 @@ namespace eval_helpers {
         }
 
         constexpr const static char* l_attr = "__eq__";
-        constexpr const static char* r_attr = "X";
+        constexpr const static char* r_attr = "__eq__";
         constexpr const static char* op_name = "==";
     };
 
@@ -228,7 +228,7 @@ namespace eval_helpers {
         }
 
         constexpr const static char* l_attr = "__ne__";
-        constexpr const static char* r_attr = "X";
+        constexpr const static char* r_attr = "__ne__";
         constexpr const static char* op_name = "!=";
     };
 

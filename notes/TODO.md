@@ -9,14 +9,11 @@
         - object
 
 # TODO
- - Closures and cells
- - implement Objects/Classes - John/Jack
-    - TEST OVERLOADING and new operators
+ - Closures and cells (MAKE_CLOSURE, LOAD_CLOSURE, *DEREF)
+ - Unary operators
+ - Finish implementing Objects/Classes - John/Jack
     - Get super() working for single inheritance
-    - test __call__ overloading and when trying to calk without __call__ defined
     - Test super()
-    - super() builtin class (https://docs.python.org/3/library/functions.html#super)
-        - In order to implement super, I need to make it a builtin PyClass (PyObject?) with __call__ defined
     - What other non-builtins can be overloaded?
     - Use GC
     - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
@@ -24,14 +21,11 @@
     - Speed up searching parent attributes and way improve the code for determining method resolution order
     - Builtin class 'object' -> just nothing?
     - What builtins do I wanna make? Any? Or should we move immediately to optimization?
-    - Make tests!
-        - Both correct functioning and errors
-        - make sure member functions with default args work
+    - test @classmethod &&  @staticmethod!!!!!
+    - Test for errors
         - test, for example, calling '+' on a class w/out it overload (but for ALL posible overloads)
-        - test everything in classes_test.py for sure
-        - test @classmethod &&  @staticmethod!!!!!
+        - getting attributes that dont exist
         - TypeError: __init__() should return None, not 'int' is a runtime error!
- - implement MAKE_CLOSURE - John/Jack
  - implement variadic functions - John Jack
  - kwarg functions - John/Jack
  - Direct threading!
