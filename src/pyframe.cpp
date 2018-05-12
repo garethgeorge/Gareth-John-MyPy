@@ -269,7 +269,6 @@ namespace eval_helpers {
         template<typename T1, typename T2>        
         static auto action(T1 v1, T2 v2) {
             return (int64_t)(v1 / v2);
-            //return (int)(v1 / v2);
         }
 
         constexpr const static char* l_attr = "__floordiv__";
@@ -280,8 +279,7 @@ namespace eval_helpers {
     struct op_true_div { // a / b
         template<typename T1, typename T2>
         static auto action(T1 v1, T2 v2) {
-            return value::NoneType();
-            //return (double)v1 / (double)v2;
+            return (double)v1 / (double)v2;
         }
 
         constexpr const static char* l_attr = "__truediv__";
@@ -291,7 +289,7 @@ namespace eval_helpers {
 
     struct op_pow { // a ** b
         static auto action(int64_t v1,int64_t v2) {
-            return pow(v1,v2);
+            return (int64_t)pow(v1,v2);
         }
 
         static auto action(double v1,int64_t v2) {

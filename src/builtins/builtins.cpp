@@ -56,6 +56,14 @@ extern void inject_builtins(Namespace& ns) {
         return list;
     }).to_pycfunction();
 
+
+    // Returns a proxy object
+    (*ns)["super"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+       DEBUG_ADV("Super called with args " << args[0] << ", " << ((args.size() > 1) ? args[1] : "") << "\n");
+    });
+
+
+
     // Build a re[resentation of a class
     // Python creates classes via:
     //  LOAD_BUILD_CLASS
