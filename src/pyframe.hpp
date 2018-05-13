@@ -34,7 +34,11 @@ struct Block {
 };
 
 struct FrameState {
-    public:
+public:
+    constexpr const static uint8_t FLAG_CLASS_STATIC_INIT = 1;
+    constexpr const static uint8_t FLAG_GENERATOR_FUNCTION = 4;
+    constexpr const static uint8_t FLAG_CLASS_DYNAMIC_INIT = 2;
+
     uint64_t r_pc = 0; // program counter
     FrameState *parent_frame = nullptr;
     InterpreterState *interpreter_state = nullptr;
@@ -73,13 +77,16 @@ struct FrameState {
     void add_to_ns_local(const std::string& name,Value&& v);
     void initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args);
 
-    // Set the flag that says that this framestate is initializing the static values of a class
-    void set_class_static_init_flag();
-    bool get_class_static_init_flag();
-
-    // Im very sorry but it appears we do need two different flags
-    void set_class_dynamic_init_flag();
-    bool get_class_dynamic_init_flag();
+    // flag getters and setters
+    inline bool get_flag(const uint8_t flag) {
+        return this->flags & flag;
+    }
+    inline void set_flag(const uint8_t flag) {
+        this->flags |= flag;
+    }
+    inline void clear_flag(const uint8_t flag) {
+        this->flags &= (~flag);
+    }
 
     // helper method for checking the stack has enough values for the current
     // operation!

@@ -1,6 +1,9 @@
 #include "../lib/catch.hpp"
+#include "../src/builtins/builtins.hpp"
 
 #include "include/test_helpers.hpp"
+
+using namespace builtins;
 
 TEST_CASE("should be able to call a function", "[functions]") {
     SECTION( "without default args" ){
@@ -104,4 +107,25 @@ func_err(1,2,3,4)
         InterpreterState state(code);
         REQUIRE_THROWS(state.eval());
     }
+
+    SECTION( "functions that contain while loops (more complex degrees of nesting etc) work" ) {
+        // this code was causing an error with STORE_FAST, I changed STORE_FAST to use co_varnames 
+        // instead of co_names as per the spec. LOAD_FAST was already using co_varnames 
+        // as is correct.
+        auto code = build_string(R"(
+def range222():
+    x = 1
+    while x < 10:
+        print(x)
+        x += 1
+generator = range222()
+        )");
+
+        InterpreterState state(code);
+        (*(state.ns_builtins))["print"] = pycfunction_builder([] (Value value) {
+            // pass, but it is necessary that the function exist
+        }).to_pycfunction();
+        state.eval();
+    }
+
 }

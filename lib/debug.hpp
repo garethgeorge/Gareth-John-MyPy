@@ -13,7 +13,7 @@
     fprintf(stderr, "%s %s: %s\n", __FILENAME__, __PRETTY_FUNCTION__, buffer); \
 }
 
-#define DEBUG_ADV(OPS) std::cerr << OPS << std::endl
+#define DEBUG_ADV(OPS) std::cerr << __FILENAME__ << " " << __PRETTY_FUNCTION__ << OPS << std::endl
 
 // usage example: DEBUG_ADV("hello world " << (some python value) << " <- is a python value!");
 

@@ -6,10 +6,6 @@
 
 #include <iostream>
 
-void test(int a, int b) {
-    std::cout << a << ", " << b << std::endl;
-}
-
 // TEST_CASE("should be able to call a builtin", "[builtins]") {
 //     SECTION("my dumb builtin test") {
 //         auto myFunc = builtins::pycfunction_builder([](int64_t a, int64_t b) {

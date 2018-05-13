@@ -54,9 +54,9 @@ struct visitor_debug_repr {
 
     void operator()(ValuePyFunction func) {
         if (func != nullptr) {
-            stream << *(func->name);
+            stream << "PyFunc_" << *(func->name);
         } else 
-            stream << "anonymous function";
+            stream << "PyFunc_<anonymous>";
     }
 
     void operator()(ValuePyClass arg) {

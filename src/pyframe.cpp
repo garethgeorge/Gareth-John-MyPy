@@ -48,7 +48,7 @@ FrameState::FrameState(
     this->value_stack.reserve(code->co_stacksize);
     this->init_class = init_class;
     this->ns_local = this->init_class->attrs;
-    this->set_class_static_init_flag();
+    this->set_flag(FrameState::FLAG_CLASS_STATIC_INIT);
 }
 
 // Find an attribute in the parents of a class
@@ -425,7 +425,6 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func, std::vector
 
     J_DEBUG("(Assigning the following values to names:\n");
 
-
     // put values into the local pool
     // the name is the constant (co_varnames) at the argument number it is
     // the value has been passed in or uses the default
@@ -515,7 +514,6 @@ void FrameState::print_stack() const {
     std::cerr << std::endl;
 }
 
-
 inline void FrameState::eval_next() {
     Code::ByteCode bytecode = code->bytecode[this->r_pc];
     
@@ -546,10 +544,10 @@ inline void FrameState::eval_next() {
                 const std::string& name = this->code->co_names.at(arg);
 
                 // Find it
-                auto itr_local = this->interpreter_state->ns_globals_ptr->find(name);
+                auto itr_local = this->interpreter_state->ns_globals->find(name);
 
                 // Push it to the stack if it exists, otherwise try builtins
-                if (itr_local != this->interpreter_state->ns_globals_ptr->end()) {
+                if (itr_local != this->interpreter_state->ns_globals->end()) {
                     DEBUG("op::LOAD_GLOBAL ('%s') loaded a global", name.c_str());
                     this->value_stack.push_back(itr_local->second);
                     break;
@@ -591,7 +589,7 @@ inline void FrameState::eval_next() {
         {
             try {
                 const std::string& name = this->code->co_names.at(arg);
-                const auto& globals = this->interpreter_state->ns_globals_ptr;
+                const auto& globals = this->interpreter_state->ns_globals;
                 const auto& builtins = this->interpreter_state->ns_builtins;
                 auto itr_local = this->ns_local->find(name);
                 if (itr_local != this->ns_local->end()) {
@@ -623,7 +621,8 @@ inline void FrameState::eval_next() {
             try {
                 // Check which name we are storing and store it
                 const std::string& name = this->code->co_names.at(arg);
-                (*(this->interpreter_state->ns_globals_ptr))[name] = std::move(this->value_stack.back());
+                DEBUG_ADV("\top::STORE_GLOBAL set " << name << " = " << this->value_stack.back());
+                (*(this->interpreter_state->ns_globals))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
                 throw pyerror("op::STORE_GLOBAL tried to store name out of range");
@@ -633,7 +632,8 @@ inline void FrameState::eval_next() {
             this->check_stack_size(1);
             try {
                 // Check which name we are storing and store it
-                const std::string& name = this->code->co_names.at(arg);
+                const std::string& name = this->code->co_varnames.at(arg);
+                DEBUG_ADV("\top::STORE_FAST set " << name << " = " << this->value_stack.back());
                 (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -645,6 +645,7 @@ inline void FrameState::eval_next() {
             this->check_stack_size(1);
             try {
                 const std::string& name = this->code->co_names.at(arg);
+                DEBUG_ADV("\top::STORE_NAME set " << name << " = " << this->value_stack.back());
                 (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -1002,10 +1003,14 @@ inline void FrameState::eval_next() {
 
             break ;
         }
+        case op::YIELD_VALUE:
+        {
+            
+        }
         default:
         {
             std::stringstream ss;
-            ss << "UNIMPLEMENTED BYTECODE" << op::name[bytecode];
+            ss << "UNIMPLEMENTED BYTECODE: " << op::name[bytecode];
             DEBUG(ss.str().c_str());
             throw pyerror(ss.str());
         }
@@ -1064,22 +1069,5 @@ void InterpreterState::eval() {
         throw err;
     }
 }
-
-    void FrameState::set_class_static_init_flag(){
-        flags |= 1;
-    }
-
-    bool FrameState::get_class_static_init_flag(){
-        return flags & 1;
-    }
-
-    void FrameState::set_class_dynamic_init_flag(){
-        flags |= 2;
-    }
-
-    bool FrameState::get_class_dynamic_init_flag(){
-        return flags & 2;
-    }
-
 
 }

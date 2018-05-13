@@ -111,7 +111,7 @@ struct call_visitor {
             std::visit(call_visitor(frame,args),vv);
             
             // Now that a new frame is on the stack, set a flag in it that it's an initializer frame
-            frame.interpreter_state->callstack.top().set_class_dynamic_init_flag();
+            frame.interpreter_state->callstack.top().set_flag(FrameState::FLAG_CLASS_DYNAMIC_INIT);
         } 
 
         // Push the new object on the value stack
