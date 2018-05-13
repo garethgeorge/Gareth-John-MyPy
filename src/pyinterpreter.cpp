@@ -12,12 +12,12 @@ InterpreterState::InterpreterState(
 
     this->ns_builtins = std::make_shared<std::unordered_map<std::string, Value>>();
 
-    this->callstack.push(
-        std::move(FrameState(this, nullptr, code))
+    this->push_frame(
+        std::make_shared<FrameState>(code)
     );
 
     // make ns_globals refer to the bottom's locals
-    this->ns_globals = this->callstack.top().ns_local;
+    this->ns_globals = this->cur_frame->ns_local;
 
     // Save a reference to the code
     this->main_code = code;

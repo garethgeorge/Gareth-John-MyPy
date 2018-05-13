@@ -111,7 +111,7 @@ struct call_visitor {
             std::visit(call_visitor(frame,args),vv);
             
             // Now that a new frame is on the stack, set a flag in it that it's an initializer frame
-            frame.interpreter_state->callstack.top().set_flag(FrameState::FLAG_CLASS_DYNAMIC_INIT);
+            frame.interpreter_state->cur_frame->set_flag(FrameState::FLAG_CLASS_DYNAMIC_INIT);
         } 
 
         // Push the new object on the value stack
@@ -130,10 +130,10 @@ struct call_visitor {
         }
 
         // Push a new FrameState
-        frame.interpreter_state->callstack.push(
-            std::move( FrameState(frame.interpreter_state, &frame, func->code))
+        frame.interpreter_state->push_frame(
+            std::make_shared<FrameState>(func->code)
         );
-        frame.interpreter_state->callstack.top().initialize_from_pyfunc(func,args);
+        frame.interpreter_state->cur_frame->initialize_from_pyfunc(func, args);
     }
     
     template<typename T>

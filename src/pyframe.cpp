@@ -18,31 +18,20 @@ using std::string;
 
 namespace py {
 
-FrameState::FrameState(
-        InterpreterState *interpreter_state, 
-        FrameState *parent_frame,
-        const ValueCode& code) 
+FrameState::FrameState(const ValueCode& code) 
 {
     DEBUG("constructed a new frame");
     this->ns_local = std::make_shared<std::unordered_map<std::string, Value>>();
-    this->interpreter_state = interpreter_state;
-    this->parent_frame = parent_frame;
     this->code = code;
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
     this->value_stack.reserve(code->co_stacksize);
 }
 
 // Construct a framestate meant to initialize everything static about a class
-FrameState::FrameState(
-        InterpreterState *interpreter_state, 
-        FrameState *parent_frame,
-        const ValueCode& code,
-        ValuePyClass& init_class)
+FrameState::FrameState(const ValueCode& code, ValuePyClass& init_class)
 {
     DEBUG("constructed a new frame for statically initializing a class");
     // Everything is mostly the same, but our local namespace is also the class's
-    this->interpreter_state = interpreter_state;
-    this->parent_frame = parent_frame;
     this->code = code;
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
     this->value_stack.reserve(code->co_stacksize);
@@ -810,7 +799,7 @@ inline void FrameState::eval_next() {
             }
 
             // Pop the call stack
-            this->interpreter_state->callstack.pop();
+            this->interpreter_state->pop_frame();
             break ;
         }
         case op::SETUP_LOOP:
@@ -999,20 +988,15 @@ inline void FrameState::eval_next() {
 
 void InterpreterState::eval() {
     try {
-        while (!this->callstack.empty()) {
-            // TODO: try caching the top of the stack
-            #ifdef PRINT_OPS
-            this->callstack.top().eval_print();
-            #else
-            this->callstack.top().eval_next();
-            #endif
+        while (this->cur_frame != nullptr) {
+            this->cur_frame->eval_next();
         }
     } catch (const pyerror& err) {
-        const auto& frame = this->callstack.top();
+        auto& frame = *(this->cur_frame);
         std::cout << err.what() << std::endl;
         std::cout << "FRAME TRACE: " << std::endl;
 
-        FrameState *frm = &this->callstack.top();
+        FrameState *frm = &frame;
         std::string indent = "\t";
         while (frm != nullptr) {
             const auto& lnotab = frm->code->lnotab;
@@ -1027,7 +1011,7 @@ void InterpreterState::eval() {
                 }
             }
             indent += "\t";
-            frm = frm->parent_frame;
+            frm = frm->parent_frame.get();
         }
         std::cout << "STACK:";
         frame.print_stack();

@@ -39,7 +39,7 @@ public:
     constexpr const static uint8_t FLAG_CLASS_DYNAMIC_INIT = 2;
 
     uint64_t r_pc = 0; // program counter
-    FrameState *parent_frame = nullptr;
+    std::shared_ptr<FrameState> parent_frame = nullptr;
     InterpreterState *interpreter_state = nullptr; 
 
     ValueCode code;
@@ -55,17 +55,10 @@ public:
     // Hopefully this can be factored out later, and as such it will only be accessed via helper functions
     ValuePyClass init_class;
 
-    FrameState(
-        InterpreterState *interpreter_state, 
-        FrameState *parent_frame, // null for the top frame on the stack
-        const ValueCode& code);
+    FrameState(const ValueCode& code);
 
     // Initialize for as class static initializer
-    FrameState(
-        InterpreterState *interpreter_state, 
-        FrameState *parent_frame,
-        const ValueCode& code,
-        ValuePyClass& init_class);
+    FrameState(const ValueCode& code, ValuePyClass& init_class);
 
     void eval_next();
 
