@@ -71,7 +71,6 @@ Code::Code(const json& tree) {
         //    decoded instruction jump target locations for instructions
         //    that take a bytecode address as their argument
         // 2) it lets us validate that jump targets are indeed valid before runtime.
-        std::vector<uint64_t> pc_map;
         pc_map.resize(this->bytecode.size());
 
         while (pc < this->bytecode.size()) {
@@ -79,6 +78,7 @@ Code::Code(const json& tree) {
             if (bytecode == 0) continue ;
             Instruction instruction;
             instruction.bytecode = bytecode;
+            instruction.bytecode_index = pc;
             pc_map[pc] = instructions.size();
             
             // do some book keeping, translate the line number table to the new virtual bytecode format

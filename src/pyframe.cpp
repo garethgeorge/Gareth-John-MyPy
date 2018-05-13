@@ -818,11 +818,23 @@ inline void FrameState::eval_next() {
             Block newBlock;
             newBlock.type = Block::Type::LOOP;
             newBlock.level = this->value_stack.size();
-            newBlock.pc_start = this->r_pc + 1; // GARETH: changed this offset to 1
+            newBlock.pc_start = this->code->instructions[this->r_pc + 1].bytecode_index; // GARETH: changed this offset to 1
             newBlock.pc_delta = arg;
             this->block_stack.push(newBlock);
             DEBUG("new block stack height: %lu", this->block_stack.size())
             break ;
+        }
+        case op::BREAK_LOOP: 
+        {
+            Block topBlock = this->block_stack.top();
+            this->block_stack.pop_back();
+            size_t jumpTo = this->code->pc_map[(topBlock.pc_start + topBlock.pc_delta)];
+            if (jumpTo == 0) {
+                throw pyerror("invalid jump destination for break loop!");
+            }
+
+            this->r_pc = jumpTo;
+            return ;
         }
         case op::POP_BLOCK:
             this->block_stack.pop();
@@ -833,14 +845,10 @@ inline void FrameState::eval_next() {
             // TODO: implement handling for truthy values.
             Value top = std::move(this->value_stack.back());
             this->value_stack.pop_back();
-            try {
-                if (!std::get<bool>(top)) {
-                    this->r_pc = arg;
-                    return ;
-                }
-            } catch (std::bad_variant_access& e) {
-                // TODO: does not actually matter what the type of the condition is :o
-                throw pyerror("expected condition to have type bool, got bad type.");
+
+            if (!std::visit(value_helper::visitor_is_truthy(), top)) {
+                this->r_pc = arg;
+                return ;
             }
             break;
         }

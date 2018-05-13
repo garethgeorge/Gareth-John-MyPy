@@ -16,10 +16,14 @@ namespace py {
 struct Code {
     using ByteCode = uint8_t;
 
+    static constexpr const uint8_t FLAG_GENERATOR = 1; // contains the opcode op::YIELD_VALUE;
+
+    uint8_t flags;
     std::string co_name;
     uint64_t co_stacksize;
     uint64_t co_nlocals;
     uint64_t co_argcount;
+    std::vector<uint64_t> pc_map;
     std::vector<ByteCode> bytecode;
     std::vector<Value> co_consts;
     std::vector<std::string> co_names;
@@ -32,7 +36,7 @@ struct Code {
 
     struct Instruction {
         ByteCode bytecode;
-        uint32_t linenotab;
+        size_t bytecode_index; // position in the bytecode table
         uint64_t arg;
     };
 

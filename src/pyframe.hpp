@@ -36,14 +36,12 @@ struct Block {
 struct FrameState {
 public:
     constexpr const static uint8_t FLAG_CLASS_STATIC_INIT = 1;
-    constexpr const static uint8_t FLAG_GENERATOR_FUNCTION = 4;
     constexpr const static uint8_t FLAG_CLASS_DYNAMIC_INIT = 2;
 
     uint64_t r_pc = 0; // program counter
     FrameState *parent_frame = nullptr;
     InterpreterState *interpreter_state = nullptr; 
 
-    ValuePyFunction function;
     ValueCode code;
     std::vector<Value> value_stack;
     std::stack<Block> block_stack; // a stack containing blocks: this should be changed to a standard vector

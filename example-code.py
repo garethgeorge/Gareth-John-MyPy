@@ -1,7 +1,7 @@
-def func():
-    print("hello world")
-
 x = 1
-while x < 100:
-    func()
+while True:
     x += 1
+    if x > 100:
+        break
+    else:
+print(x)
