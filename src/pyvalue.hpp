@@ -45,6 +45,7 @@ namespace value {
 
     // A function of python code
     struct PyFunc;
+    struct PyFuncGenerator;
 
     // The internal representation of a class
     // Created by the builtin __build_class__

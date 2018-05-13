@@ -16,9 +16,9 @@ namespace py {
 struct Code {
     using ByteCode = uint8_t;
 
-    static constexpr const uint8_t FLAG_GENERATOR = 1; // contains the opcode op::YIELD_VALUE;
+    static constexpr const uint8_t FLAG_IS_GENERATOR_FUNCTION = 1; // contains the opcode op::YIELD_VALUE;
 
-    uint8_t flags;
+    uint8_t flags = 0;
     std::string co_name;
     uint64_t co_stacksize;
     uint64_t co_nlocals;
@@ -48,7 +48,18 @@ struct Code {
     
     static std::shared_ptr<Code> from_program(const std::string& python, const std::string& compilePyPath);
 
-    void print_bytecode() const;
+    // flag getters and setters
+    inline bool get_flag(const uint8_t flag) const {
+        return this->flags & flag;
+    }
+
+    inline void set_flag(const uint8_t flag) {
+        this->flags |= flag;
+    }
+
+    inline void clear_flag(const uint8_t flag) {
+        this->flags &= (~flag);
+    }
 };
 
 

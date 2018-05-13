@@ -827,7 +827,7 @@ inline void FrameState::eval_next() {
         case op::BREAK_LOOP: 
         {
             Block topBlock = this->block_stack.top();
-            this->block_stack.pop_back();
+            this->block_stack.pop();
             size_t jumpTo = this->code->pc_map[(topBlock.pc_start + topBlock.pc_delta)];
             if (jumpTo == 0) {
                 throw pyerror("invalid jump destination for break loop!");
@@ -863,39 +863,42 @@ inline void FrameState::eval_next() {
             this->check_stack_size(arg + 2);
 
             // Pop the name and code
-            Value name = std::move(value_stack.back());
-            this->value_stack.pop_back();
-            Value code = std::move(value_stack.back());
-            this->value_stack.pop_back();
+            ValueString name;
+            ValueCode code;
+            try {
+                name = std::move(std::get<ValueString>(value_stack.back()));
+                this->value_stack.pop_back();
+                code = std::move(std::get<ValueCode>(value_stack.back()));
+                this->value_stack.pop_back();
+            } catch (std::bad_variant_access& err) {
+                std::stringstream ss;
+                ss << "MAKE_FUNCTION expects function name to be a string, and code object"
+                    " to be of type code object.";
+                throw pyerror(ss.str());
+            }
 
             // Create a shared pointer to a vector from the args
             std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(
                 std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end())
             );
-            
-            // Remove the args from the value stack
             this->value_stack.resize(this->value_stack.size() - arg);
 
-            J_DEBUG("Creating a function %s that accepts %d default args:\n",*(std::get<ValueString>(name)),arg);
-            J_DEBUG("Those default args are:\n");
-            #ifdef JOHN_DEBUG_ON
-            for(int i = 0;i < v->size();i++){
-                print_value((*v)[i]);
-                fprintf(stderr,"\n",arg);
+            DEBUG_ADV("Creating function " << Value(name) << "(" << Value(arg) << "...)");
+            DEBUG_ADV("Arguments:");
+            #ifdef DEBUG_ON
+            for(int i = 0; i < v->size(); i++) {
+                DEBUG_ADV(i << " => " << (*v)[i]);
             }
             #endif
-            // Create the function object
-            // Error here if the wrong types
-            try {
-                ValuePyFunction nv = std::make_shared<value::PyFunc>(
-                    value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(code), v}
+
+            if (code->get_flag(Code::FLAG_IS_GENERATOR_FUNCTION)) {
+                throw pyerror("generator functions are not implemented yet.");
+            } else {
+                this->value_stack.push_back(
+                    std::make_shared<value::PyFunc>(
+                        value::PyFunc {name, code, v}
+                    )
                 );
-                this->value_stack.push_back(nv);
-            } catch (std::bad_variant_access&) {
-                std::stringstream ss;
-                ss << "MAKE FUNCTION called with name '" << name << "' and code block: " << code;
-                ss << ", but make function expects string and code object";
-                throw pyerror(ss.str());
             }
             break;
         }
@@ -908,7 +911,7 @@ inline void FrameState::eval_next() {
         }
         case op::LOAD_ATTR:
         {
-            DEBUG("Loading Attr %s",this->code->co_names[arg].c_str()) ;
+            DEBUG("Loading Attr %s",this->code->co_names[arg].c_str());
             Value val = std::move(value_stack.back());
             this->value_stack.pop_back();
             // Visit a load_attr_visitor constructed with the frame state and the arg to get

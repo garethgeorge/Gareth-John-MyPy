@@ -20,6 +20,7 @@ struct Code;
 using Namespace = std::shared_ptr<std::unordered_map<std::string, Value>>;
 
 struct InterpreterState {
+    std::shared_ptr<FrameState> cur_frame;
     std::stack<FrameState> callstack;
     Namespace ns_globals; // ns_globals is just ns_local of the very bottom FrameState
     Namespace ns_builtins;

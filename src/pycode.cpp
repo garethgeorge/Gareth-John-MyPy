@@ -181,6 +181,13 @@ Code::Code(const json& tree) {
 
     // load co_name
     this->co_name = tree.at("co_name").get<std::string>();
+
+    // set flags by scanning the instructions
+    for (const Instruction& instr : this->instructions) {
+        if (instr.bytecode == op::YIELD_FROM || instr.bytecode == op::YIELD_VALUE) {
+            this->set_flag(FLAG_IS_GENERATOR_FUNCTION);
+        }
+    }
 }   
 
 Code::~Code() {
@@ -213,22 +220,6 @@ std::shared_ptr<Code> Code::from_program(const std::string& python, const std::s
     }
     DEBUG("read successful.");
     return std::make_shared<Code>(tree);
-}
-
-// Simplistically print out every opcode
-void Code::print_bytecode() const {
-    for(int i = 0;i < bytecode.size();){
-        printf("%u = %s",bytecode[i],op::name[bytecode[i]]);
-        if(bytecode[i] >= op::HAVE_ARGUMENT){
-            uint32_t arg = bytecode[i + 2];
-            arg = (arg << 8) | bytecode[i + 1];
-            printf(" %lu\n",arg);
-            i += 3;
-        } else {
-            printf("\n");
-            i += 1;
-        }
-    }
 }
 
 }
