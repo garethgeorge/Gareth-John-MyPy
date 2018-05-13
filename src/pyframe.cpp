@@ -128,31 +128,6 @@ std::tuple<Value,bool> value::PyObject::find_attr_in_obj(
     }
 }
 
-void FrameState::print_next() {
-    Code::ByteCode bytecode = code->bytecode[this->r_pc];
-    if (this->r_pc >= this->code->bytecode.size()) {
-        printf("popped a frame from the call stack");
-        this->interpreter_state->callstack.pop();
-        return ;
-    }
-
-    if (bytecode == 0) {
-        this->r_pc++;
-        return ;
-    }
-
-    printf("%10llu %s\n", this->r_pc, op::name[bytecode]);
-    if (bytecode == op::LOAD_CONST) {
-        // printf("\tconstant: %s\n", ((std::string)code->co_consts[code->bytecode[this->r_pc + 1]]).c_str());
-    }
-    
-    if (bytecode < op::HAVE_ARGUMENT) {
-        this->r_pc += 1;
-    } else {
-        this->r_pc += 2;
-    }
-}
-
 namespace eval_helpers {
 
     using value_helper::numeric_visitor;
@@ -515,24 +490,13 @@ void FrameState::print_stack() const {
 }
 
 inline void FrameState::eval_next() {
-    Code::ByteCode bytecode = code->bytecode[this->r_pc];
-    
-    // Read the argument
-    uint64_t arg = code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
+    if (this->r_pc >= code->instructions.size()) {
+        throw pyerror("overflowed instructions vector, no code here to run.");
+    }
 
-    // Extend it if necessary
-    while(bytecode == op::EXTENDED_ARG){
-        this->r_pc += 3;
-        bytecode = code->bytecode[this->r_pc];
-        arg = (arg << 16) | code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
-    }
-    
-    if (this->r_pc >= this->code->bytecode.size()) {
-        DEBUG("overflowed program, popped stack frame, however this indicates a failure so we will exit.");
-        this->interpreter_state->callstack.pop();
-        exit(0);
-        return ;
-    }
+    Code::Instruction instruction = code->instructions[this->r_pc];
+    const Code::ByteCode bytecode = instruction.bytecode;
+    const uint64_t arg = instruction.arg;
 
     DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])
     switch (bytecode) {
@@ -854,7 +818,7 @@ inline void FrameState::eval_next() {
             Block newBlock;
             newBlock.type = Block::Type::LOOP;
             newBlock.level = this->value_stack.size();
-            newBlock.pc_start = this->r_pc + 2;
+            newBlock.pc_start = this->r_pc + 1; // GARETH: changed this offset to 1
             newBlock.pc_delta = arg;
             this->block_stack.push(newBlock);
             DEBUG("new block stack height: %lu", this->block_stack.size())
@@ -1003,10 +967,6 @@ inline void FrameState::eval_next() {
 
             break ;
         }
-        case op::YIELD_VALUE:
-        {
-            
-        }
         default:
         {
             std::stringstream ss;
@@ -1023,11 +983,7 @@ inline void FrameState::eval_next() {
     this->print_stack();
 #endif
 
-    if (bytecode < op::HAVE_ARGUMENT) {
-        this->r_pc += 1;
-    } else {
-        this->r_pc += 3;
-    }
+    this->r_pc++;
 }
 
 void InterpreterState::eval() {
@@ -1043,8 +999,6 @@ void InterpreterState::eval() {
     } catch (const pyerror& err) {
         const auto& frame = this->callstack.top();
         std::cout << err.what() << std::endl;
-        // std::cout << "ENCOUNTERED ERROR WHILE EVALUATING OPERATION: " 
-        //     << op::name[frame.code->bytecode[frame.r_pc]] << std::endl;
         std::cout << "FRAME TRACE: " << std::endl;
 
         FrameState *frm = &this->callstack.top();

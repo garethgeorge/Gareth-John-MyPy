@@ -41,7 +41,9 @@ public:
 
     uint64_t r_pc = 0; // program counter
     FrameState *parent_frame = nullptr;
-    InterpreterState *interpreter_state = nullptr;
+    InterpreterState *interpreter_state = nullptr; 
+
+    ValuePyFunction function;
     ValueCode code;
     std::vector<Value> value_stack;
     std::stack<Block> block_stack; // a stack containing blocks: this should be changed to a standard vector
@@ -68,7 +70,6 @@ public:
         ValuePyClass& init_class);
 
     void eval_next();
-    void print_next();
 
     static void print_value(Value& val);
     void print_stack() const;

@@ -29,7 +29,15 @@ struct Code {
         uint64_t line;
         uint64_t pc;
     };
+
+    struct Instruction {
+        ByteCode bytecode;
+        uint32_t linenotab;
+        uint64_t arg;
+    };
+
     std::vector<LineNoMapping> lnotab; // lookup the line number that the error happened on
+    std::vector<Instruction> instructions; // we decode instructions at this step to make later analysis easier
     
     Code(const json& tree);
     ~Code();
@@ -38,6 +46,7 @@ struct Code {
 
     void print_bytecode() const;
 };
+
 
 }
 
