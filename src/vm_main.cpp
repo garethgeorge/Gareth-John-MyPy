@@ -16,6 +16,8 @@
 using std::string;
 using namespace py;
 
+#define STATS_ON
+
 int main(const int argc, const char *argv[]) 
 {
 #ifdef STATS_ON

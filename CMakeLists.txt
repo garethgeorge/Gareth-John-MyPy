@@ -64,5 +64,3 @@ add_executable(cmake_test
 )
 
 target_link_libraries(cmake_test mypycore)
-
-# add_custom_command(TARGET cmake_test POST_BUILD COMMAND ./cmake_test) 
