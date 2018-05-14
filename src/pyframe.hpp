@@ -37,6 +37,8 @@ struct FrameState {
 public:
     constexpr const static uint8_t FLAG_CLASS_STATIC_INIT = 1;
     constexpr const static uint8_t FLAG_CLASS_DYNAMIC_INIT = 2;
+    constexpr const static uint8_t FLAG_IS_GENERATOR_FUNCTION = 4;
+    constexpr const static uint8_t FLAG_RETURNED = 8;
 
     uint64_t r_pc = 0; // program counter
     std::shared_ptr<FrameState> parent_frame = nullptr;

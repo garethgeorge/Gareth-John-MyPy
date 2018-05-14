@@ -45,7 +45,9 @@ namespace value {
 
     // A function of python code
     struct PyFunc;
-    struct PyFuncGenerator;
+    struct PyGenerator {
+        std::shared_ptr<FrameState> frame;
+    };
 
     // The internal representation of a class
     // Created by the builtin __build_class__
@@ -63,6 +65,7 @@ using ValueCode = std::shared_ptr<const Code>;
 using ValueCFunction = std::shared_ptr<const value::CFunction>;
 using ValuePyFunction = std::shared_ptr<const value::PyFunc>;
 using ValuePyObject = std::shared_ptr<value::PyObject>;
+using ValuePyGenerator = value::PyGenerator;
 
 // I think PyClasses (the thing that holds the statics of a class) can be deallocated.
 // Need to confirm this tho
@@ -82,7 +85,8 @@ using Value = std::variant<
     ValuePyFunction,
     ValuePyClass,
     ValuePyObject,
-    ValueList
+    ValueList,
+    ValuePyGenerator
 >;
 
 // Bad copy/paste from pyinterpreter.hpp

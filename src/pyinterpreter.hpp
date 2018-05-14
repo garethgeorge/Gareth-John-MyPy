@@ -31,11 +31,15 @@ struct InterpreterState {
 
     void eval();
 
-    inline void push_frame(std::shared_ptr<FrameState>&& frame) {
+    inline void push_frame(std::shared_ptr<FrameState>& frame) {
         // TBD: does frame->parent_name need to be changed to a std::shared_ptr?
         frame->parent_frame = this->cur_frame;
         frame->interpreter_state = this;
         this->cur_frame = frame;
+    }
+
+    inline void push_frame(std::shared_ptr<FrameState>&& frame) {
+        this->push_frame(frame);
     }
 
     inline void pop_frame() {

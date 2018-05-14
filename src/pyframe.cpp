@@ -342,6 +342,40 @@ namespace eval_helpers {
             throw pyerror(ss.str());
         }
     };
+
+    struct for_iter_visitor {
+        FrameState &frame;
+        uint64_t arg;
+
+        inline void operator ()(value::PyGenerator& gen) {
+            frame.check_stack_size(1);
+            DEBUG_ADV("\tENCOUNTERED op::FOR_ITER, no values on stack so we must yield control to get the values");
+            // pushes the generator frame as the current frame,
+            // and sets its parent_frame to be this frame since we are 
+            // the cur_frame right now
+            gen.frame->parent_frame = frame.interpreter_state->cur_frame;
+            frame.interpreter_state->push_frame(gen.frame);
+        }
+
+        inline void operator ()(bool haveValue) {
+            frame.check_stack_size(1);
+            if (haveValue) {
+                DEBUG_ADV("\tVALUES ON THE STACK, POPPING THOSE VALUES. HAPPY HAPPY.");
+                frame.value_stack.pop_back();
+                frame.r_pc++;
+            } else {
+                DEBUG_ADV("\tITERATOR EXHAUSTED, JUMPING TO END OF LOOP");
+                frame.r_pc = frame.code->pc_map[frame.code->instructions[frame.r_pc].bytecode_index + arg] + 1;
+            }
+    
+        }
+
+        template<typename T>
+        void operator () (T& ) {
+            throw pyerror("FOR_ITER expects iterable");
+        }
+    };
+
 }
 
 // Used in initialize_from_pyfunc to set the first argument of 
@@ -764,35 +798,15 @@ inline void FrameState::eval_next() {
                         }
                         break;
                     }
-                case 1:
-                    /*{
-                        // Static init
-                        // This whole time we have been initalizing the static fields of a class
-                        // Finish that initalization
-                        if (this->parent_frame != nullptr) {
-                            try {
-                                ValuePyClass npc = std::make_shared<value::PyClass>(
-                                        value::PyClass(this->ns_local)
-                                    );
-                                this->parent_frame->value_stack.push_back(
-                                    std::move(npc)
-                                );
-                            } catch (const std::bad_alloc& e) {
-                                throw pyerror(std::string("Need to call garbage collector!\n"));
-                            }
-                        }
-                    }
-                    break;*/
-                case 2:
-                    // Dynamic init
-                    // This whole time we have been initializing a newly allocated object
-                    // Annoyingly, init functions return None, not the class that was just initialized
-                    // so we need special handling
-
-                    // The new object has already been put on the top of the right stack
-                    // during CALL_FUNCTION
-                    // so fo this we do nothing
+                case FrameState::FLAG_CLASS_STATIC_INIT:
+                case FrameState::FLAG_CLASS_DYNAMIC_INIT:
                     break;
+                case FrameState::FLAG_IS_GENERATOR_FUNCTION:
+                    // a false value indicates that the generator is depleated,
+                    // a true value is simply popped and the value under it 
+                    // is treated as the YIELD
+                    this->parent_frame->value_stack.push_back(false);
+                    break ;
                 default:
                     throw pyerror("Invalid FrameState flags");
                     break;
@@ -880,15 +894,11 @@ inline void FrameState::eval_next() {
             }
             #endif
 
-            if (code->get_flag(Code::FLAG_IS_GENERATOR_FUNCTION)) {
-                throw pyerror("generator functions are not implemented yet.");
-            } else {
-                this->value_stack.push_back(
-                    std::make_shared<value::PyFunc>(
-                        value::PyFunc {name, code, v}
-                    )
-                );
-            }
+            this->value_stack.push_back(
+                std::make_shared<value::PyFunc>(
+                    value::PyFunc {name, code, v}
+                )
+            );
             break;
         }
         case op::LOAD_BUILD_CLASS:
@@ -967,6 +977,58 @@ inline void FrameState::eval_next() {
 
             break ;
         }
+        case op::GET_ITER:
+        {
+            DEBUG_ADV("GET_ITER IS A NULL OP FOR NOW");
+            break ;
+        }
+        case op::FOR_ITER:
+        {
+            DEBUG_ADV("\tJUMP OFFSET FOR ITERATOR: " << arg);
+            std::visit(eval_helpers::for_iter_visitor {*this, arg}, this->value_stack.back());
+            return ;
+        }
+        case op::YIELD_VALUE:
+        {
+            this->check_stack_size(1);
+
+            if (this->get_flag(FrameState::FLAG_IS_GENERATOR_FUNCTION)) {
+                // we pop a value from our stack, 
+                Value val = std::move(this->value_stack.back());
+                DEBUG_ADV("\tYIELDING VALUE: " << val);
+                // we push that value to the parent_frame's stack, which was 
+                // set by GET_ITER (we hope!)
+                this->parent_frame->value_stack.push_back(std::move(val));
+                this->parent_frame->value_stack.push_back(true);
+                this->interpreter_state->pop_frame();
+
+                break ;
+            } else {
+                this->set_flag(FrameState::FLAG_IS_GENERATOR_FUNCTION);
+                DEBUG_ADV("\tENCOUNTERED op::YIELD_VALUE in function -- treating it as a generator"
+                    ", moving frame off of linear call stack, and returning a generator object" 
+                    " with that frame.");
+                // we ran into an op::YIELD_VALUE, this means we need to go back
+                // act as though this function call returned a genrator,
+                // in reality we are giving that generator a reference to this
+                // stack frame, and then removing this frame from the call stack
+                // so that its execution can 'sortof' continue on the side
+
+                // have the generator hold a reference to the current frame
+                value::PyGenerator generator { this->interpreter_state->cur_frame };
+                this->interpreter_state->pop_frame();
+                // now that the interpreter state is holding our parent frame, null the parent 
+                // frame as our 'parent frame' is now managed by GET_ITER
+                generator.frame->parent_frame = nullptr;
+                this->interpreter_state->cur_frame->value_stack.push_back(
+                    std::move(generator)
+                );
+                DEBUG_ADV("\tframe was successfully completely moved from the callstack.");
+
+                return ; // return so that this op will be run again.
+            }
+        }
+        
         default:
         {
             std::stringstream ss;
