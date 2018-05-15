@@ -17,6 +17,7 @@ namespace py {
 
 struct Code;
 extern std::ostream& operator << (std::ostream& stream, const Value value);
+extern ValuePyClass cell_class;
 
 namespace value_helper {
 
@@ -247,6 +248,10 @@ struct numeric_visitor {
         throw pyerror(ss.str());
     }
 };
+
+// I do not believe this can be a reference
+// Return a cell
+ValuePyObject create_cell(Value contents);
 
 }
 }

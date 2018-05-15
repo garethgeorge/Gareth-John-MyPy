@@ -542,8 +542,13 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func, std::vector
 
     int first_arg_is_self = (has_implicit_arg ? 1 : 0);
 
-    J_DEBUG("(Assigning the following values to names:\n");
 
+    /*J_DEBUG("Cell Vars:\n")
+    for(int i = 0;i < this->code->co_cellvars.size();i++){
+        std::cout << this->code->co_cellvars[i] << "\n";
+    }*/
+
+    J_DEBUG("(Assigning the following values to names:\n");
 
     // put values into the local pool
     // the name is the constant (co_varnames) at the argument number it is
@@ -576,13 +581,37 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func, std::vector
         print_value(arg_num < args.size() ? args[arg_num] : (*(func->def_args))[arg_num - first_def_arg]);
         #endif
 
-        // The argument exists, save it
-        add_to_ns_local(
-            // Read the name to save to from the constants pool
-            this->code->co_varnames[i], 
-            // read the value from passed in args, or else the default
-            arg_num < args.size() ? std::move(args[arg_num]) : (*(func->def_args))[arg_num - first_def_arg] 
-        );
+        if(this->code->co_cellvars.size() == 0){
+            // The argument exists, save it
+            add_to_ns_local(
+                // Read the name to save to from the constants pool
+                this->code->co_varnames[i], 
+                // read the value from passed in args, or else the default
+                arg_num < args.size() ? std::move(args[arg_num]) : (*(func->def_args))[arg_num - first_def_arg] 
+            );
+        } else {
+            // I haaate this copy/paste
+            Value v = arg_num < args.size() ? std::move(args[arg_num]) : (*(func->def_args))[arg_num - first_def_arg];
+            
+            bool found = false;
+            // Check to see if this is a cell var
+            for(auto it = this->code->co_cellvars.begin();it != this->code->co_cellvars.end();++it){
+                if((*it).compare(this->code->co_varnames[i]) == 0){
+                    add_to_ns_local(
+                        this->code->co_varnames[i], 
+                        std::move(value_helper::create_cell(v))
+                    );
+                    found = true;
+                    break;
+                }
+            }
+            if(!found){
+                add_to_ns_local(
+                        this->code->co_varnames[i], 
+                        std::move(v)
+                    );
+            }
+        }
     }
 }
 
@@ -737,6 +766,39 @@ inline void FrameState::eval_next() {
                 throw pyerror("op::LOAD_FAST tried to load name out of range");
             }
             break ;
+        case op::LOAD_CLOSURE:
+            try {
+                std::string name;
+                if(arg < this->code->co_cellvars.size()){
+                    name = this->code->co_cellvars.at(arg);
+                } else {
+                    name = this->code->co_freevars.at(arg - this->code->co_cellvars.size());
+                }
+                const auto& globals = this->interpreter_state->ns_globals_ptr;
+                const auto& builtins = this->interpreter_state->ns_builtins;
+                // Search through all local namespaces up the stack
+                auto curr_frame = this;
+                bool found = false;
+                while(curr_frame != NULL){
+                    auto itr_local = curr_frame->ns_local->find(name);
+                    if (itr_local != curr_frame->ns_local->end()) {
+                        DEBUG("op::LOAD_CLOSURE ('%s') loaded a local", name.c_str());
+                        // This is expected to be a cell
+                        this->value_stack.push_back(itr_local->second);
+                        found = true;
+                        curr_frame = NULL;
+                        break ;
+                    } 
+                    curr_frame = curr_frame->parent_frame;
+                }
+                // Do not check globals or builtins for free vars
+                if(!found){
+                    throw pyerror(string("op::LOAD_CLOSURE name not found: ") + name);
+                }
+            } catch (std::out_of_range& err) {
+                throw pyerror("op::LOAD_CLOSURE tried to load name out of range");
+            }
+            break;
         case op::LOAD_NAME:
         {
             try {
@@ -766,7 +828,7 @@ inline void FrameState::eval_next() {
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_NAME tried to load name out of range");
             }
-            break ;
+            break;
         }
         case op::STORE_GLOBAL:
             this->check_stack_size(1);
@@ -814,6 +876,18 @@ inline void FrameState::eval_next() {
             }
             break ;
         }
+        /*case op::LOAD_CLOSURE:
+        {
+            try {
+                DEBUG("op::LOAD_CONST pushed constant at index %d", (int)arg);
+                this->value_stack.push_back(
+                    this->code->co_consts.at(arg)
+                );
+            } catch (std::out_of_range& err) {
+                throw pyerror("op::LOAD_CONST tried to load constant out of range");
+            }
+            break ;
+        }*/
         case op::CALL_FUNCTION:
         {
             DEBUG("op::CALL_FUNCTION attempted to call a function with %d arguments", arg);

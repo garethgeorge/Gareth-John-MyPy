@@ -202,6 +202,10 @@ namespace value {
             }
         }
 
+        PyClass(){
+            this->attrs = std::make_shared<std::unordered_map<std::string, Value>>();
+        }
+
         PyClass(std::vector<ValuePyClass>& ps){
             // Allocate the attributes namespace
             this->attrs = std::make_shared<std::unordered_map<std::string, Value>>();

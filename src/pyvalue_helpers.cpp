@@ -85,11 +85,22 @@ struct visitor_debug_repr {
     }
 };
 
+ValuePyObject create_cell(Value contents){
+    ValuePyObject nobj = std::make_shared<value::PyObject>(value::PyObject(cell_class));
+    nobj->store_attr("contents",contents);
+    //ValueString vs = std::make_shared<std::string>(std::string("CELL_OBJECT"));
+    //nobj->store_attr("__qualname__",vs);
+    //(*(nobj->attrs))["__qualname__"] = std::make_shared<std::string>(std::string("CELL_OBJECT"));
+}
+
 }
 
 std::ostream& operator << (std::ostream& stream, const Value value) {
     std::visit(value_helper::visitor_debug_repr(stream), value);
     return stream;
 }
+
+// This is needed to allow the create_cell function
+ValuePyClass cell_class = std::make_shared<value::PyClass>(value::PyClass());
 
 }

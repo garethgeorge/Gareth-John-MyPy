@@ -10,6 +10,10 @@
 
 # TODO
  - Closures and cells (MAKE_CLOSURE, LOAD_CLOSURE, *DEREF)
+ - https://stackoverflow.com/questions/12919278/how-to-define-free-variable-in-python TEST ALL HERE
+ - LOAD_CLASSDEREF
+ - Printing the stack with a cell_object on it causes a segfault
+ - Test closures and cells
  - Unary operators
  - Finish implementing Objects/Classes - John/Jack
     - Get super() working for single inheritance
