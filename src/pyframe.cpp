@@ -823,69 +823,97 @@ inline void FrameState::eval_next() {
                 throw pyerror("op::LOAD_CLOSURE tried to load name out of range");
             }
             break;
+        case op::LOAD_CLASSDEREF:
+        {
+            // First check the locals, otherwise fall through into LOAD_DEREF
+            try {
+                std::string name;
+                if(arg < this->code->co_cellvars.size()){
+                    name = this->code->co_cellvars.at(arg);
+                } else {
+                    name = this->code->co_freevars.at(arg - this->code->co_cellvars.size());
+                }
+                auto itr_local = this->ns_local->find(name);
+                if (itr_local != this->ns_local->end()) {
+                    DEBUG("op::LOAD_CLASSDEREF ('%s') loaded a local", name.c_str());
+                    // This is expected to be a cell
+                    this->value_stack.push_back(itr_local->second);
+                    break ;
+                } else {
+                    DEBUG("op::LOAD_CLASSDEREF did not find ('%s') locally, falling through...", name.c_str());
+                }
+            } catch (std::out_of_range& err) {
+                throw pyerror("op::LOAD_CLASSDEREF tried to load name out of range");
+            }
+        }
         case op::LOAD_DEREF:
         {
+            auto which_frame = this;
+            if(this->flags & CLASS_INIT_FRAME){
+                which_frame = this->parent_frame;
+            }
+
             // Check out of range
-            if(arg >= this->cells.size()){
-                if(this->curr_func){
-                    if((arg - this->cells.size()) >=  this->curr_func->__closure__->values.size()){
-                        throw pyerror("Attempted LOAD_DEREF out of range\n");
+            if(arg >= which_frame->cells.size()){
+                if(which_frame->curr_func && which_frame->curr_func->__closure__ != nullptr){
+                    if((arg - which_frame->cells.size()) >=  which_frame->curr_func->__closure__->values.size()){
+                        throw pyerror(std::string(
+                            "Attempted LOAD_DEREF out of range 2 (" + std::to_string(arg) + ")\n"
+                        ));
                     }
                 } else {
-                    throw pyerror("Attempted LOAD_DEREF out of range\n");
+                    throw pyerror(std::string(
+                        "Attempted LOAD_DEREF out of range (" + std::to_string(arg) + ")\n"
+                    ));
                 }
             } 
             
             DEBUG("Accessing Cell %d",arg);
-            DEBUG("Cells: %d",this->cells.size());
+            DEBUG("Cells: %d",which_frame->cells.size());
             if(arg >= cells.size()){
-                DEBUG("Function Closure: %d",this->curr_func->__closure__->values.size());
+                DEBUG("Function Closure: %d",which_frame->curr_func->__closure__->values.size());
             }
 
             // Access the closure of the function or the cells
-            if(arg < this->cells.size()){
+            if(arg < which_frame->cells.size()){
                 this->value_stack.push_back(
-                    this->cells[arg]->attrs->at("contents")
+                    which_frame->cells[arg]->attrs->at("contents")
                 );
             } else {
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
-                DEBUG_ADV("Here are some thing: "   << this->curr_func << ","
-                                                    << this->curr_func->__closure__ << ","
-                                                    << this->curr_func->__closure__->values[arg] << ","
-                                                    << std::get<ValuePyObject>(this->curr_func->__closure__->values[arg]) << ","
-                                                    << (*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs))["contents"] << "\n"
-                                                    );
+                DEBUG_ADV("Here are some thing: "   
+                    << which_frame->curr_func << ","
+                    << which_frame->curr_func->__closure__ << ","
+                    << which_frame->curr_func->__closure__->values[arg] << ","
+                    << std::get<ValuePyObject>(which_frame->curr_func->__closure__->values[arg]) << ","
+                    << (*(std::get<ValuePyObject>(which_frame->curr_func->__closure__->values[arg])->attrs))["contents"] << "\n"
+                );
                 this->value_stack.push_back(
-                    std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs->at("contents")
-                    //(*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs))["contents"]
+                    std::get<ValuePyObject>(which_frame->curr_func->__closure__->values[arg])->attrs->at("contents")
                 );
             }
             break;
         }
         case op::STORE_DEREF:
         {
-
-            DEBUG("1");
-            // Check out of range
-            if(arg >= this->cells.size()){
-                DEBUG("3");
+            // Access the closure of the function or the cells
+            if(arg < this->cells.size()){
+                    (*(this->cells[arg]->attrs))["contents"] = std::move(this->value_stack.back());
+                    this->value_stack.pop_back();
+            } else {
+                // If the function does not have a closure yet, give it one
                 if(this->curr_func){
-                    DEBUG("2");
-                    if((arg - this->cells.size()) >=  this->curr_func->__closure__->values.size()){
-                        throw pyerror("Attempted STORE_DEREF out of range\n");
+                    if(this->curr_func->__closure__ == nullptr){
+                        this->curr_func->__closure__ = this->interpreter_state->alloc.heap_lists.make();
+                    }
+                    while(this->curr_func->__closure__->values.size() <= arg){
+                        this->curr_func->__closure__->values.push_back(
+                            value_helper::create_cell(value::NoneType())
+                        );
                     }
                 } else {
                     throw pyerror("Attempted STORE_DEREF out of range\n");
                 }
-            } 
-            DEBUG("4");
-            // Access the closure of the function or the cells
-            if(arg < this->cells.size()){
-                DEBUG("5");
-                    (*(this->cells[arg]->attrs))["contents"] = std::move(this->value_stack.back());
-                    this->value_stack.pop_back();
-            } else {
-                DEBUG("6");
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
                 (*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs))["contents"]
                                                                     = std::move(this->value_stack.back());

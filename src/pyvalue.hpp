@@ -129,7 +129,7 @@ namespace value {
         const uint8_t flags;
 
         // CHANGE TO TO A TUPLE!
-        ValueList __closure__;
+        ValueList __closure__ = nullptr;
 
     };
 
