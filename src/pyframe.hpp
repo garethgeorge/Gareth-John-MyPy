@@ -55,9 +55,9 @@ struct FrameState {
     // Hopefully this can be factored out later, and as such it will only be accessed via helper functions
     ValuePyClass init_class;
 
-    // The function of this current frame state
     // Needed in LOAD_CLOSURE, LOAD_DEREF, and STORE_DEREF
-    ValuePyFunction curr_func;
+    ValuePyFunction curr_func; // The function of this current frame stat
+    std::vector<ValuePyObject> cells; // Cells that happen to be in my local namespace
 
     FrameState(
         InterpreterState *interpreter_state, 

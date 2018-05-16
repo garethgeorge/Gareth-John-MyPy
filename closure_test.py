@@ -4,9 +4,19 @@ def print_msg(msg):
     return printer
 
 def ret_msg(msg):
+    def printer(alt):
+        def b():
+            return(msg + 4)
+        return b
+    return printer(msg)
+
+def print_msg_store(msg):
+    msg = "hmm"
     def printer():
-        return(msg + 4)
+        print(msg)
     return printer
+
+
 
 a = print_msg("fun")
 a()
@@ -17,3 +27,5 @@ print(c())
 d = ret_msg(5.5)
 print(d())
 a()
+e = print_msg_store("oh!")
+e()

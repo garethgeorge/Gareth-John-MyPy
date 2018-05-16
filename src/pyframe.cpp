@@ -600,10 +600,12 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction func, std::vector<
             // Check to see if this is a cell var
             for(auto it = this->code->co_cellvars.begin();it != this->code->co_cellvars.end();++it){
                 if((*it).compare(this->code->co_varnames[i]) == 0){
+                    ValuePyObject new_cell = value_helper::create_cell(v);
                     add_to_ns_local(
                         this->code->co_varnames[i], 
-                        std::move(value_helper::create_cell(v))
+                        new_cell
                     );
+                    cells.push_back(new_cell);
                     found = true;
                     break;
                 }
@@ -804,11 +806,25 @@ inline void FrameState::eval_next() {
             break;
         case op::LOAD_DEREF:
         {
-            // Access the closure of the function
-            if(arg >= this->curr_func->__closure__->values.size()){
-                throw pyerror("Attempted LOAD_DEREF out of range\n");
+            // Check out of range
+            if(arg >= this->cells.size()){
+                if(this->curr_func){
+                    if((arg - this->cells.size()) >=  this->curr_func->__closure__->values.size()){
+                        throw pyerror("Attempted LOAD_DEREF out of range\n");
+                    }
+                } else {
+                    throw pyerror("Attempted LOAD_DEREF out of range\n");
+                }
+            } 
+            
+            // Access the closure of the function or the cells
+            if(arg < this->cells.size()){
+                DEBUG("???\n");
+                this->value_stack.push_back(
+                    this->cells[arg]->attrs->at("contents")
+                );
             } else {
-                DEBUG("SIZE: %d\n",this->curr_func->__closure__->values.size());
+                DEBUG("!!!\n");
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
                 this->value_stack.push_back(
                     std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs->at("contents")
