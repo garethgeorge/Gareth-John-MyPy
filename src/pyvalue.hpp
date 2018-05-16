@@ -60,7 +60,7 @@ namespace value {
 using ValueString = std::shared_ptr<std::string>;
 using ValueCode = std::shared_ptr<const Code>;
 using ValueCFunction = std::shared_ptr<const value::CFunction>;
-using ValuePyFunction = std::shared_ptr<const value::PyFunc>;
+using ValuePyFunction = std::shared_ptr<value::PyFunc>;
 using ValuePyObject = std::shared_ptr<value::PyObject>;
 
 // I think PyClasses (the thing that holds the statics of a class) can be deallocated.
@@ -127,6 +127,9 @@ namespace value {
 
         // Flags as needed
         const uint8_t flags;
+
+        // CHANGE TO TO A TUPLE!
+        ValueList __closure__;
 
     };
 

@@ -530,7 +530,10 @@ struct set_implicit_arg_visitor {
     }
 };
 
-void FrameState::initialize_from_pyfunc(const ValuePyFunction& func, std::vector<Value>& args){
+void FrameState::initialize_from_pyfunc(const ValuePyFunction func, std::vector<Value>& args){
+    // Set current function
+    curr_func = func;
+    
     // Calculate which argument is the first argument with a default value
     // Also whether or not the very first argument is self (or class)
     // This could be stored in PyFunc struct but that is a tiny space tradeoff vs tiny time tradeoff
@@ -799,6 +802,20 @@ inline void FrameState::eval_next() {
                 throw pyerror("op::LOAD_CLOSURE tried to load name out of range");
             }
             break;
+        case op::LOAD_DEREF:
+        {
+            // Access the closure of the function
+            if(arg >= this->curr_func->__closure__->values.size()){
+                throw pyerror("Attempted LOAD_DEREF out of range\n");
+            } else {
+                DEBUG("SIZE: %d\n",this->curr_func->__closure__->values.size());
+                // Push to the top of the stack the contents of cell arg in the current enclosing scope
+                this->value_stack.push_back(
+                    std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs->at("contents")
+                );
+            }
+            break;
+        }
         case op::LOAD_NAME:
         {
             try {
@@ -844,8 +861,9 @@ inline void FrameState::eval_next() {
         case op::STORE_FAST:
             this->check_stack_size(1);
             try {
+                //DEBUG("STORE_FAST ARG: %d\n",arg);
                 // Check which name we are storing and store it
-                const std::string& name = this->code->co_names.at(arg);
+                const std::string& name = this->code->co_varnames.at(arg);
                 (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -876,18 +894,6 @@ inline void FrameState::eval_next() {
             }
             break ;
         }
-        /*case op::LOAD_CLOSURE:
-        {
-            try {
-                DEBUG("op::LOAD_CONST pushed constant at index %d", (int)arg);
-                this->value_stack.push_back(
-                    this->code->co_consts.at(arg)
-                );
-            } catch (std::out_of_range& err) {
-                throw pyerror("op::LOAD_CONST tried to load constant out of range");
-            }
-            break ;
-        }*/
         case op::CALL_FUNCTION:
         {
             DEBUG("op::CALL_FUNCTION attempted to call a function with %d arguments", arg);
@@ -1155,8 +1161,51 @@ inline void FrameState::eval_next() {
         case op::JUMP_FORWARD:
             this->r_pc += arg;
             return ;
+        case op::MAKE_CLOSURE:
+        {
+            // Loooots of copy/paste here
+            // I really should factor the copied part of make_closure/make_function into a function,
+            // But since I will just undo that later for direct threading i guess it's copy/paste time
+            this->check_stack_size(arg + 3);
+
+            // Pop the name and code
+            Value name = std::move(value_stack.back());
+            this->value_stack.pop_back();
+            Value code = std::move(value_stack.back());
+            this->value_stack.pop_back();
+            //ValueList closure = std::move(std::get<ValueList>(value_stack.back()));
+            ValueList closure = std::get<ValueList>(value_stack.back());
+            this->value_stack.pop_back();
+
+            // Create a shared pointer to a vector from the args
+            std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(
+                std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end())
+            );
+            
+            // Remove the args from the value stack
+            this->value_stack.resize(this->value_stack.size() - arg);
+            // Create the function object
+            // Error here if the wrong types
+            try {
+                ValuePyFunction nv = std::make_shared<value::PyFunc>(
+                    value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(code), v}
+                );
+                // CHange to a tuple!
+                nv->__closure__ = closure;
+                this->value_stack.push_back(nv);
+            } catch (std::bad_variant_access&) {
+                std::stringstream ss;
+                ss << "MAKE FUNCTION called with name '" << name << "' and code block: " << code;
+                ss << ", but make function expects string and code object";
+                throw pyerror(ss.str());
+            }
+            break;
+        }
         case op::MAKE_FUNCTION:
         {
+
+            // DONT FORGET TO CHANGE MAKE_CLOSURE TOO WHEN YOU CHANGE HOW ARG IS USED HERE
+
             this->check_stack_size(arg + 2);
 
             // Pop the name and code
@@ -1242,6 +1291,7 @@ inline void FrameState::eval_next() {
             throw pyerror(std::string("STORE_ATTR called with bad stack!"));
             break;
         }
+        case op::BUILD_TUPLE:
         case op::BUILD_LIST:
         {
             this->check_stack_size(arg);

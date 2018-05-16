@@ -55,6 +55,10 @@ struct FrameState {
     // Hopefully this can be factored out later, and as such it will only be accessed via helper functions
     ValuePyClass init_class;
 
+    // The function of this current frame state
+    // Needed in LOAD_CLOSURE, LOAD_DEREF, and STORE_DEREF
+    ValuePyFunction curr_func;
+
     FrameState(
         InterpreterState *interpreter_state, 
         FrameState *parent_frame, // null for the top frame on the stack
@@ -75,7 +79,7 @@ struct FrameState {
 
     // Add a value to local namespace (for use when creating the frame state)
     void add_to_ns_local(const std::string& name,Value&& v);
-    void initialize_from_pyfunc(const ValuePyFunction& func,std::vector<Value>& args);
+    void initialize_from_pyfunc(const ValuePyFunction func,std::vector<Value>& args);
 
     // helper method for checking the stack has enough values for the current
     // operation!

@@ -90,7 +90,8 @@ ValuePyObject create_cell(Value contents){
     nobj->store_attr("contents",contents);
     //ValueString vs = std::make_shared<std::string>(std::string("CELL_OBJECT"));
     //nobj->store_attr("__qualname__",vs);
-    //(*(nobj->attrs))["__qualname__"] = std::make_shared<std::string>(std::string("CELL_OBJECT"));
+    (*(nobj->static_attrs->attrs))["__qualname__"] = std::make_shared<std::string>(std::string("CELL_OBJECT"));
+    return nobj;
 }
 
 }

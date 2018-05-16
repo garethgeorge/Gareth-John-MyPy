@@ -107,6 +107,7 @@ const uint8_t RAISE_VARARGS   = 0x82;
 const uint8_t CALL_FUNCTION   = 0x83;
 const uint8_t MAKE_FUNCTION   = 0x84;
 const uint8_t BUILD_SLICE     = 0x85;
+const uint8_t MAKE_CLOSURE    = 0x86;
 const uint8_t LOAD_CLOSURE    = 0x87;
 const uint8_t LOAD_DEREF      = 0x88;
 const uint8_t STORE_DEREF     = 0x89;
