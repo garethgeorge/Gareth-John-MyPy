@@ -541,7 +541,26 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction func, std::vector<
    
     // Set the implicit argument
     bool has_implicit_arg = func->flags & (value::CLASS_METHOD | value::INSTANCE_METHOD);
-    if(has_implicit_arg) std::visit(set_implicit_arg_visitor(*this),func->self);
+    if(has_implicit_arg){
+        
+        // Need to allow 'self' to possibly be a cell
+        bool found = false;
+        if(this->code->co_cellvars.size() > 0){
+            for(auto it = this->code->co_cellvars.begin();it != this->code->co_cellvars.end();++it){
+                if((*it).compare(this->code->co_varnames[0]) == 0){
+                    cells.push_back(std::move(value_helper::create_cell(func->self)));
+                    found = true;
+                    break;
+                }
+            }
+        } 
+
+        if(found){
+            std::visit(set_implicit_arg_visitor(*this),(Value)cells[0]);
+        } else {
+            std::visit(set_implicit_arg_visitor(*this),func->self);
+        }  
+    }
 
     int first_arg_is_self = (has_implicit_arg ? 1 : 0);
 
@@ -817,6 +836,12 @@ inline void FrameState::eval_next() {
                 }
             } 
             
+            DEBUG("Accessing Cell %d",arg);
+            DEBUG("Cells: %d",this->cells.size());
+            if(arg >= cells.size()){
+                DEBUG("Function Closure: %d",this->curr_func->__closure__->values.size());
+            }
+
             // Access the closure of the function or the cells
             if(arg < this->cells.size()){
                 this->value_stack.push_back(
@@ -824,8 +849,15 @@ inline void FrameState::eval_next() {
                 );
             } else {
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
+                DEBUG_ADV("Here are some thing: "   << this->curr_func << ","
+                                                    << this->curr_func->__closure__ << ","
+                                                    << this->curr_func->__closure__->values[arg] << ","
+                                                    << std::get<ValuePyObject>(this->curr_func->__closure__->values[arg]) << ","
+                                                    << (*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs))["contents"] << "\n"
+                                                    );
                 this->value_stack.push_back(
                     std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs->at("contents")
+                    //(*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs))["contents"]
                 );
             }
             break;

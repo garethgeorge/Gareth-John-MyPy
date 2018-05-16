@@ -9,13 +9,8 @@
         - object
 
 # TODO
- - STORE_DEREF
  - LOAD_CLASSDEREF
- - The cells is definitally a NAMESPACE MADE FROM A TUPLE, not just a tuple itself!
- - modify message within the running of print_msg and see if my handling of closures still works!
  - https://stackoverflow.com/questions/12919278/how-to-define-free-variable-in-python TEST ALL HERE
- - Make sure load_deref accesses the correct thing!x
- - Printing the stack with a cell_object on it causes a segfault
  - Test closures and cells
  - Unary operators
  - Finish implementing Objects/Classes - John/Jack

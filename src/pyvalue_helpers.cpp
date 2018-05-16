@@ -86,6 +86,7 @@ struct visitor_debug_repr {
 };
 
 ValuePyObject create_cell(Value contents){
+    DEBUG_ADV("Creating cell for " << contents << "\n");
     ValuePyObject nobj = std::make_shared<value::PyObject>(value::PyObject(cell_class));
     nobj->store_attr("contents",contents);
     //ValueString vs = std::make_shared<std::string>(std::string("CELL_OBJECT"));

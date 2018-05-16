@@ -16,6 +16,13 @@ def print_msg_store(msg):
         print(msg)
     return printer
 
+class Ah:
+    val = 5
+    def getfunc(self,something):
+        def b():
+            return(self.val + something)
+        return b
+
 
 
 a = print_msg("fun")
@@ -29,3 +36,8 @@ print(d())
 a()
 e = print_msg_store("oh!")
 e()
+f = Ah()
+g = f.getfunc(10)
+print(g())
+f.val = 12
+print(g())
