@@ -819,16 +819,39 @@ inline void FrameState::eval_next() {
             
             // Access the closure of the function or the cells
             if(arg < this->cells.size()){
-                DEBUG("???\n");
                 this->value_stack.push_back(
                     this->cells[arg]->attrs->at("contents")
                 );
             } else {
-                DEBUG("!!!\n");
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
                 this->value_stack.push_back(
                     std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs->at("contents")
                 );
+            }
+            break;
+        }
+        case op::STORE_DEREF:
+        {
+            // Check out of range
+            if(arg >= this->cells.size()){
+                if(this->curr_func){
+                    if((arg - this->cells.size()) >=  this->curr_func->__closure__->values.size()){
+                        throw pyerror("Attempted STORE_DEREF out of range\n");
+                    }
+                } else {
+                    throw pyerror("Attempted STORE_DEREF out of range\n");
+                }
+            } 
+            
+            // Access the closure of the function or the cells
+            if(arg < this->cells.size()){
+                    (*(this->cells[arg]->attrs))["contents"] = std::move(this->value_stack.back());
+                    this->value_stack.pop_back();
+            } else {
+                // Push to the top of the stack the contents of cell arg in the current enclosing scope
+                (*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs))["contents"]
+                                                                    = std::move(this->value_stack.back());
+                this->value_stack.pop_back();  
             }
             break;
         }
