@@ -16,8 +16,10 @@ def print_msg_store(msg):
         print(msg)
     return printer
 
+weird = 10
+
 class Ah:
-    val = 5
+    val = weird
     def getfunc(self,something):
         def b():
             return(self.val + something)
@@ -41,3 +43,8 @@ g = f.getfunc(10)
 print(g())
 f.val = 12
 print(g())
+h = Ah()
+i = h.getfunc(30)
+print(i())
+weird = 90
+print(i())

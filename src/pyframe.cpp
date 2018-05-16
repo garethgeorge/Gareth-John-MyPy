@@ -864,9 +864,13 @@ inline void FrameState::eval_next() {
         }
         case op::STORE_DEREF:
         {
+
+            DEBUG("1");
             // Check out of range
             if(arg >= this->cells.size()){
+                DEBUG("3");
                 if(this->curr_func){
+                    DEBUG("2");
                     if((arg - this->cells.size()) >=  this->curr_func->__closure__->values.size()){
                         throw pyerror("Attempted STORE_DEREF out of range\n");
                     }
@@ -874,12 +878,14 @@ inline void FrameState::eval_next() {
                     throw pyerror("Attempted STORE_DEREF out of range\n");
                 }
             } 
-            
+            DEBUG("4");
             // Access the closure of the function or the cells
             if(arg < this->cells.size()){
+                DEBUG("5");
                     (*(this->cells[arg]->attrs))["contents"] = std::move(this->value_stack.back());
                     this->value_stack.pop_back();
             } else {
+                DEBUG("6");
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
                 (*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs))["contents"]
                                                                     = std::move(this->value_stack.back());
