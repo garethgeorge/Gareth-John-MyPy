@@ -25,7 +25,7 @@ namespace py {
 
 Code::Code(const json& tree) {
     DEBUG("loading in source code from json");
-    
+
 #ifdef DEBUG_ON
     std::cout << __FILENAME__ << " ";
     std::cout << std::setw(4) << tree << std::endl;
@@ -35,7 +35,9 @@ Code::Code(const json& tree) {
     this->co_nlocals = tree.at("co_nlocals").get<uint64_t>();
     this->co_argcount = tree.at("co_argcount").get<uint64_t>();
 
-    // decode the bytecode and push it into the bytecode property :)
+    /*
+        decode the bytecode and push it into the bytecode property
+    */
     std::string base64bytecode = tree.at("co_code").get<std::string>();
     std::string bytecode = base64_decode(base64bytecode);
     this->bytecode.reserve(bytecode.length());
@@ -43,6 +45,81 @@ Code::Code(const json& tree) {
     for (const unsigned char c : bytecode) {
         this->bytecode.push_back(c);
     }
+
+    /*
+        read the line number table into a temporary
+    */
+    std::vector<LineNoMapping> lnotab_orig;
+
+    for (const json& linenumber : tree.at("lnotab")) {
+        // DEBUG("loaded line number %d", linenumber);
+        lnotab_orig.push_back(
+            LineNoMapping {linenumber.at(0).get<uint64_t>(), linenumber.at(1).get<uint64_t>()}
+        );
+    }
+
+    /*
+        decode the bytecode array into fully expanded instructions w/their arguments
+    */
+    {
+        DEBUG_ADV("decoding instructions from this->bytecode");
+        size_t lnotab_idx = 0;
+        uint64_t pc = 0;
+
+        // we use pc_map to serve a dual purpose
+        // 1) it lets us translate from the bytecode's jump locations to the new
+        //    decoded instruction jump target locations for instructions
+        //    that take a bytecode address as their argument
+        // 2) it lets us validate that jump targets are indeed valid before runtime.
+        pc_map.resize(this->bytecode.size());
+
+        while (pc < this->bytecode.size()) {
+            ByteCode bytecode = this->bytecode[pc];
+            if (bytecode == 0) continue ;
+            Instruction instruction;
+            instruction.bytecode = bytecode;
+            instruction.bytecode_index = pc;
+            pc_map[pc] = instructions.size();
+            
+            // do some book keeping, translate the line number table to the new virtual bytecode format
+            if (pc >= lnotab_orig[lnotab_idx].pc && lnotab_idx < lnotab_orig.size()) {
+                this->lnotab.push_back(
+                    LineNoMapping {this->instructions.size(), lnotab_orig[lnotab_idx].line}
+                );
+                lnotab_idx++;
+            }
+
+            // decode the arg if there is an argument, otherwise set it to 0
+            if (bytecode >= op::HAVE_ARGUMENT) {
+                // Read the argument
+                instruction.arg = this->bytecode[pc + 1] | (this->bytecode[pc + 2] << 8);
+                DEBUG_ADV("decoded " << pc << ":" << op::name[bytecode] << ":" << instruction.arg);
+                pc += 3;
+            } else {
+                instruction.arg = 0;
+                DEBUG_ADV("decoded " << pc << ":" << op::name[bytecode]);
+                pc += 1;
+            }
+            this->instructions.push_back(instruction);
+        }
+
+        // stitch arguments that reference program counter
+        for (auto& instr : this->instructions) {
+            switch (instr.bytecode) {
+                case op::POP_JUMP_IF_FALSE:
+                case op::JUMP_ABSOLUTE:
+                {
+                    if (instr.arg >= pc_map.size() || pc_map[instr.arg] == 0) {
+                        throw pyerror("invalid jump target, is not the beginning of an instruction.");
+                    }
+                    instr.arg = pc_map[instr.arg];
+                    break;
+                }
+                default: continue;
+            }
+        }
+    }
+    
 
     // load constants
     const json& co_consts = tree.at("co_consts");
@@ -129,6 +206,13 @@ Code::Code(const json& tree) {
 
     // load co_name
     this->co_name = tree.at("co_name").get<std::string>();
+
+    // set flags by scanning the instructions
+    for (const Instruction& instr : this->instructions) {
+        if (instr.bytecode == op::YIELD_FROM || instr.bytecode == op::YIELD_VALUE) {
+            this->set_flag(FLAG_IS_GENERATOR_FUNCTION);
+        }
+    }
 }   
 
 Code::~Code() {
@@ -161,22 +245,6 @@ std::shared_ptr<Code> Code::from_program(const std::string& python, const std::s
     }
     DEBUG("read successful.");
     return std::make_shared<Code>(tree);
-}
-
-// Simplistically print out every opcode
-void Code::print_bytecode() const {
-    for(int i = 0;i < bytecode.size();){
-        printf("%u = %s",bytecode[i],op::name[bytecode[i]]);
-        if(bytecode[i] >= op::HAVE_ARGUMENT){
-            uint32_t arg = bytecode[i + 2];
-            arg = (arg << 8) | bytecode[i + 1];
-            printf(" %lu\n",arg);
-            i += 3;
-        } else {
-            printf("\n");
-            i += 1;
-        }
-    }
 }
 
 }

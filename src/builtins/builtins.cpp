@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <variant>
 #include "builtins.hpp"
+#include "builtins_helpers.hpp"
 #include "../pyvalue_helpers.hpp"
 #include "../pyerror.hpp"
 #include "../pyframe.hpp"
@@ -21,10 +22,10 @@ extern void inject_builtins(Namespace& ns) {
     // TODO: add argument count support
     (*ns)["print"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
         try {
-            for (auto it = args.rbegin(); it != args.rend(); ++it) {
+            for (auto it = args.begin(); it != args.end(); ++it) {
                 const std::string str = std::visit(value_helper::visitor_str(), *it);
                 std::cout << str;
-                if (it + 1 != args.rend()) {
+                if (it + 1 != args.end()) {
                     std::cout << " ";
                 }
             }
@@ -123,16 +124,16 @@ extern void inject_builtins(Namespace& ns) {
 
         // Push the static initializer frame ontop the stack
         // The static initializer code block is the first argument
-        frame.interpreter_state->callstack.push(
-            std::move(FrameState(frame.interpreter_state, &frame, init_code, new_class))
+        frame.interpreter_state->push_frame(
+            std::make_shared<FrameState>(init_code, new_class)
         );
 
         // Add it's name to it's local namespace
         // Remember that this actually adds it to the class
-        frame.interpreter_state->callstack.top().add_to_ns_local("__name__",class_name);
+        frame.interpreter_state->cur_frame->add_to_ns_local("__name__",class_name);
 
         // No need to initialize from pyfunc, it has no arguments (I think this is always true?)
-        //frame.interpreter_state->callstack.top().initialize_from_pyfunc(std::get<ValuePyFunction>(args[0]),std::vector());
+        // frame.interpreter_state->callstack.top().initialize_from_pyfunc(std::get<ValuePyFunction>(args[0]),std::vector());
         
     });
 

@@ -33,15 +33,18 @@ struct Block {
     size_t level = 0; // value level to pop up to
 };
 
-const uint8_t CLASS_INIT_FRAME = 1;
-const uint8_t OBJECT_INIT_FRAME = 2;
-const uint8_t DONT_RETURN_FRAME = 4;
-
 struct FrameState {
-    public:
+public:
+    constexpr const static uint8_t FLAG_CLASS_INIT_FRAME = 1;
+    constexpr const static uint8_t FLAG_OBJECT_INIT_FRAME = 2;
+    constexpr const static uint8_t FLAG_IS_GENERATOR_FUNCTION = 4;
+    constexpr const static uint8_t FLAG_RETURNED = 8;
+    constexpr const static uint8_t FLAG_DONT_RETURN = 16;
+
     uint64_t r_pc = 0; // program counter
-    FrameState *parent_frame = nullptr;
-    InterpreterState *interpreter_state = nullptr;
+    std::shared_ptr<FrameState> parent_frame = nullptr;
+    InterpreterState *interpreter_state = nullptr; 
+
     ValueCode code;
     std::vector<Value> value_stack;
     std::stack<Block> block_stack; // a stack containing blocks: this should be changed to a standard vector
@@ -59,28 +62,30 @@ struct FrameState {
     ValuePyFunction curr_func; // The function of this current frame stat
     std::vector<ValuePyObject> cells; // Cells that happen to be in my local namespace
 
-    FrameState(
-        InterpreterState *interpreter_state, 
-        FrameState *parent_frame, // null for the top frame on the stack
-        const ValueCode& code);
-
-    // Initialize for as class static initializer
-    FrameState(
-        InterpreterState *interpreter_state, 
-        FrameState *parent_frame,
-        const ValueCode& code,
-        ValuePyClass& init_class);
+    FrameState(const ValueCode& code);
+    FrameState(const ValueCode& code, ValuePyClass& init_class);
 
     void eval_next();
-    void print_next();
 
     static void print_value(Value& val);
     void print_stack() const;
 
     // Add a value to local namespace (for use when creating the frame state)
     void add_to_ns_local(const std::string& name,Value&& v);
-    void initialize_from_pyfunc(const ValuePyFunction func,std::vector<Value>& args);
 
+    void initialize_from_pyfunc(const ValuePyFunction func,std::vector<Value>& args);
+    
+    // flag getters and setters
+    inline bool get_flag(const uint8_t flag) {
+        return this->flags & flag;
+    }
+    inline void set_flag(const uint8_t flag) {
+        this->flags |= flag;
+    }
+    inline void clear_flag(const uint8_t flag) {
+        this->flags &= (~flag);
+    }
+    
     // helper method for checking the stack has enough values for the current
     // operation!
     inline const void check_stack_size(size_t expected) {

@@ -38,6 +38,7 @@ namespace value {
     struct NoneType { };
 
     struct CFunction;
+    struct CMethod;
     struct List;
     struct Tuple;
     // struct Map;
@@ -45,6 +46,9 @@ namespace value {
 
     // A function of python code
     struct PyFunc;
+    struct PyGenerator {
+        std::shared_ptr<FrameState> frame;
+    };
 
     // The internal representation of a class
     // Created by the builtin __build_class__
@@ -59,16 +63,17 @@ namespace value {
 // it also allows sharing string objects between multiple values whenever possible
 using ValueString = std::shared_ptr<std::string>;
 using ValueCode = std::shared_ptr<const Code>;
-using ValueCFunction = std::shared_ptr<const value::CFunction>;
+using ValueCFunction = std::shared_ptr<value::CFunction>;
+using ValueCMethod = std::shared_ptr<value::CMethod>;
 using ValuePyFunction = std::shared_ptr<value::PyFunc>;
 using ValuePyObject = std::shared_ptr<value::PyObject>;
+using ValuePyGenerator = value::PyGenerator;
 
 // I think PyClasses (the thing that holds the statics of a class) can be deallocated.
 // Need to confirm this tho
 // THIS NEEDS TO CHANGE TO A GC_PTR (or do i?)
 using ValuePyClass = std::shared_ptr<value::PyClass>;
 using ValueList = gc_ptr<value::List>;
-
 
 using Value = std::variant<
     bool,
@@ -77,11 +82,13 @@ using Value = std::variant<
     ValueString,
     ValueCode,
     ValueCFunction,
+    ValueCMethod,
     value::NoneType,
     ValuePyFunction,
     ValuePyClass,
     ValuePyObject,
-    ValueList
+    ValueList,
+    ValuePyGenerator
 >;
 
 // Bad copy/paste from pyinterpreter.hpp
@@ -90,7 +97,22 @@ using Namespace = std::shared_ptr<std::unordered_map<std::string, Value>>;
 namespace value {
     struct CFunction {
         std::function<void(FrameState&, std::vector<Value>&)> action;
-        CFunction(const std::function<void(FrameState&, std::vector<Value>&)>& _action) : action(_action) { };
+        CFunction(const decltype(action)& _action) : action(_action) { };
+    };
+
+    struct CMethod {
+        Value thisArg = value::NoneType();
+        std::function<void(FrameState&, std::vector<Value>&)> action;
+        
+        CMethod(const decltype(action)& action) : thisArg(thisArg), action(action) {
+        }
+
+        CMethod(Value& thisArg, const decltype(action)& action) : thisArg(thisArg), action(action) {
+        }
+
+        ValueCMethod bindThisArg(Value&& thisArg) {
+            return std::make_shared<CMethod>(thisArg, action);
+        }
     };
     
     struct List { 

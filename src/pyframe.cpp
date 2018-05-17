@@ -18,37 +18,26 @@ using std::string;
 
 namespace py {
 
-FrameState::FrameState(
-        InterpreterState *interpreter_state, 
-        FrameState *parent_frame,
-        const ValueCode& code) 
+FrameState::FrameState(const ValueCode& code) 
 {
     DEBUG("constructed a new frame");
     this->ns_local = std::make_shared<std::unordered_map<std::string, Value>>();
-    this->interpreter_state = interpreter_state;
-    this->parent_frame = parent_frame;
     this->code = code;
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
     this->value_stack.reserve(code->co_stacksize);
 }
 
 // Construct a framestate meant to initialize everything static about a class
-FrameState::FrameState(
-        InterpreterState *interpreter_state, 
-        FrameState *parent_frame,
-        const ValueCode& code,
-        ValuePyClass& init_class)
+FrameState::FrameState(const ValueCode& code, ValuePyClass& init_class)
 {
     DEBUG("constructed a new frame for statically initializing a class");
     // Everything is mostly the same, but our local namespace is also the class's
-    this->interpreter_state = interpreter_state;
-    this->parent_frame = parent_frame;
     this->code = code;
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
     this->value_stack.reserve(code->co_stacksize);
     this->init_class = init_class;
     this->ns_local = this->init_class->attrs;
-    this->flags |= CLASS_INIT_FRAME;
+    this->set_flag(FrameState::FLAG_CLASS_INIT_FRAME);
 }
 
 // Find an attribute in the parents of a class
@@ -125,31 +114,6 @@ std::tuple<Value,bool> value::PyObject::find_attr_in_obj(
             // All is well, push as normal
             return std::tuple<Value,bool>(static_val,true);
         }
-    }
-}
-
-void FrameState::print_next() {
-    Code::ByteCode bytecode = code->bytecode[this->r_pc];
-    if (this->r_pc >= this->code->bytecode.size()) {
-        printf("popped a frame from the call stack");
-        this->interpreter_state->callstack.pop();
-        return ;
-    }
-
-    if (bytecode == 0) {
-        this->r_pc++;
-        return ;
-    }
-
-    printf("%10llu %s\n", this->r_pc, op::name[bytecode]);
-    if (bytecode == op::LOAD_CONST) {
-        // printf("\tconstant: %s\n", ((std::string)code->co_consts[code->bytecode[this->r_pc + 1]]).c_str());
-    }
-    
-    if (bytecode < op::HAVE_ARGUMENT) {
-        this->r_pc += 1;
-    } else {
-        this->r_pc += 2;
     }
 }
 
@@ -428,48 +392,6 @@ namespace eval_helpers {
         }
     };
 
-    // Visitor for accessing class attributes
-    struct load_attr_visitor {
-        FrameState& frame;
-        const std::string& attr;
-
-        load_attr_visitor(FrameState& frame, const std::string& attr) : frame(frame), attr(attr) {}
-        
-        void operator()(const ValuePyClass& cls){
-            try {
-                frame.value_stack.push_back(cls->attrs->at(attr));
-            } catch (const std::out_of_range& oor) {
-                throw pyerror(std::string(
-                    *(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))
-                    + " has no attribute " + attr
-                ));
-            }
-        }
-
-        // For pyobject, first look in their own namespace, then look in their static namespace
-        // ValuePyObject cannot be const as it might be modified
-        void operator()(ValuePyObject& obj){
-            // First look in my own namespace
-            std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(obj, attr);
-            if(std::get<1>(res)){
-                frame.value_stack.push_back(std::get<0>(res));
-            } else {
-                // Nothing found, throw error!
-                throw pyerror(std::string(
-                    // Should this be __name__??
-                    *(std::get<ValueString>( (*(obj->static_attrs->attrs))["__qualname__"]))
-                    + " has no attribute " + attr
-                ));
-            }
-        }
-
-        template<typename T>
-        void operator()(T) const {
-            throw pyerror(string("can not get attributed from an object of type ") + typeid(T).name());
-        }
-
-    };
-
     struct binary_subscr_visitor {
         /*
             the binary subscript visitor is used to implement
@@ -497,38 +419,96 @@ namespace eval_helpers {
             throw pyerror(ss.str());
         }
     };
+
+    struct for_iter_visitor {
+        FrameState &frame;
+        uint64_t arg;
+
+        inline void operator ()(value::PyGenerator& gen) {
+            frame.check_stack_size(1);
+            DEBUG_ADV("\tENCOUNTERED op::FOR_ITER, no values on stack so we must yield control to get the values");
+            // pushes the generator frame as the current frame,
+            // and sets its parent_frame to be this frame since we are 
+            // the cur_frame right now
+            gen.frame->parent_frame = frame.interpreter_state->cur_frame;
+            frame.interpreter_state->push_frame(gen.frame);
+        }
+
+        inline void operator ()(bool haveValue) {
+            frame.check_stack_size(1);
+            if (haveValue) {
+                DEBUG_ADV("\tVALUES ON THE STACK, POPPING THOSE VALUES. HAPPY HAPPY.");
+                frame.value_stack.pop_back();
+                frame.r_pc++;
+            } else {
+                DEBUG_ADV("\tITERATOR EXHAUSTED, JUMPING TO END OF LOOP");
+                frame.r_pc = frame.code->pc_map[frame.code->instructions[frame.r_pc].bytecode_index + arg] + 1;
+            }
+    
+        }
+
+        template<typename T>
+        void operator () (T& ) {
+            throw pyerror("FOR_ITER expects iterable");
+        }
+    };
+
+    // Used in initialize_from_pyfunc to set the first argument of 
+    struct set_implicit_arg_visitor {
+        FrameState& frame;
+        
+        set_implicit_arg_visitor(FrameState& frame) : frame(frame) {}
+
+        void operator()(const ValuePyClass& cls) const {
+            if(cls){
+                frame.add_to_ns_local(
+                    frame.code->co_varnames[0],
+                    cls
+                );
+            }
+        }
+
+        void operator()(const ValuePyObject& obj) const {
+            if(obj){
+                frame.add_to_ns_local(
+                    frame.code->co_varnames[0],
+                    obj
+                );
+            }
+        }
+        
+        template<typename T>
+        void operator()(T) const {
+            throw pyerror("can not set implicit arg on this type ");
+        }
+    };
+
+    struct store_subscr_visitor {
+        Value& key;
+        Value& value;
+
+        void operator()(ValueList& list) {
+            try {
+                int64_t k = std::get<int64_t>(key);
+                if (k < 0 || k > list->values.size()) {
+                    throw pyerror("list index out of range");
+                }
+                list->values[k] = std::move(value);
+            } catch (std::bad_variant_access& err) {
+                throw pyerror("list key must be integer index");
+            }
+
+        }
+
+        template<typename T>
+        void operator()(T value) const {
+            std::stringstream ss;
+            ss << "store[] is not a valid operation on " << Value(value) << std::endl;
+            throw pyerror(ss.str());
+        }
+    };
+
 }
-
-// Used in initialize_from_pyfunc to set the first argument of 
-struct set_implicit_arg_visitor {
-    FrameState& frame;
-    
-    set_implicit_arg_visitor(FrameState& frame) : frame(frame) {}
-
-    void operator()(const ValuePyClass& cls) const {
-        if(cls){
-            frame.add_to_ns_local(
-                frame.code->co_varnames[0],
-                cls
-            );
-        }
-    }
-
-    void operator()(const ValuePyObject& obj) const {
-        if(obj){
-            frame.add_to_ns_local(
-                frame.code->co_varnames[0],
-                obj
-            );
-        }
-    }
-    
-    template<typename T>
-    void operator()(T) const {
-        // Do nothing
-        return;
-    }
-};
 
 void FrameState::initialize_from_pyfunc(const ValuePyFunction func, std::vector<Value>& args){
     // Set current function
@@ -556,9 +536,9 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction func, std::vector<
         } 
 
         if(found){
-            std::visit(set_implicit_arg_visitor(*this),(Value)cells[0]);
+            std::visit(eval_helpers::set_implicit_arg_visitor(*this),(Value)cells[0]);
         } else {
-            std::visit(set_implicit_arg_visitor(*this),func->self);
+            std::visit(eval_helpers::set_implicit_arg_visitor(*this),func->self);
         }  
     }
 
@@ -653,6 +633,7 @@ void FrameState::print_value(Value& val) {
             [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
             [](const ValueString arg) {std::cerr << "ValueString(" << *arg << ")"; },
             [](const ValueCFunction arg) {std::cerr << "CFunction()"; },
+            [](const ValueCMethod arg) {std::cerr << "CMethod()"; },
             [](const ValueCode arg) {std::cerr << "Code()"; },
             [](const ValuePyFunction arg) {std::cerr << "Python Function()"; },
             [](const ValuePyClass arg) {std::cerr << "ValuePyClass ("
@@ -718,26 +699,14 @@ void FrameState::print_stack() const {
     std::cerr << std::endl;
 }
 
-
 inline void FrameState::eval_next() {
-    Code::ByteCode bytecode = code->bytecode[this->r_pc];
-    
-    // Read the argument
-    uint64_t arg = code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
+    if (this->r_pc >= code->instructions.size()) {
+        throw pyerror("overflowed instructions vector, no code here to run.");
+    }
 
-    // Extend it if necessary
-    while(bytecode == op::EXTENDED_ARG){
-        this->r_pc += 3;
-        bytecode = code->bytecode[this->r_pc];
-        arg = (arg << 16) | code->bytecode[this->r_pc + 1] | (code->bytecode[this->r_pc + 2] << 8);
-    }
-    
-    if (this->r_pc >= this->code->bytecode.size()) {
-        DEBUG("overflowed program, popped stack frame, however this indicates a failure so we will exit.");
-        this->interpreter_state->callstack.pop();
-        exit(0);
-        return ;
-    }
+    Code::Instruction instruction = code->instructions[this->r_pc];
+    const Code::ByteCode bytecode = instruction.bytecode;
+    const uint64_t arg = instruction.arg;
 
     DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])
     switch (bytecode) {
@@ -749,10 +718,10 @@ inline void FrameState::eval_next() {
                 const std::string& name = this->code->co_names.at(arg);
 
                 // Find it
-                auto itr_local = this->interpreter_state->ns_globals_ptr->find(name);
+                auto itr_local = this->interpreter_state->ns_globals->find(name);
 
                 // Push it to the stack if it exists, otherwise try builtins
-                if (itr_local != this->interpreter_state->ns_globals_ptr->end()) {
+                if (itr_local != this->interpreter_state->ns_globals->end()) {
                     DEBUG("op::LOAD_GLOBAL ('%s') loaded a global", name.c_str());
                     this->value_stack.push_back(itr_local->second);
                     break;
@@ -798,7 +767,7 @@ inline void FrameState::eval_next() {
                 } else {
                     name = this->code->co_freevars.at(arg - this->code->co_cellvars.size());
                 }
-                const auto& globals = this->interpreter_state->ns_globals_ptr;
+                const auto& globals = this->interpreter_state->ns_globals;
                 const auto& builtins = this->interpreter_state->ns_builtins;
                 // Search through all local namespaces up the stack
                 auto curr_frame = this;
@@ -813,7 +782,7 @@ inline void FrameState::eval_next() {
                         curr_frame = NULL;
                         break ;
                     } 
-                    curr_frame = curr_frame->parent_frame;
+                    curr_frame = curr_frame->parent_frame.get();
                 }
                 // Do not check globals or builtins for free vars
                 if(!found){
@@ -849,8 +818,8 @@ inline void FrameState::eval_next() {
         case op::LOAD_DEREF:
         {
             auto which_frame = this;
-            if(this->flags & CLASS_INIT_FRAME){
-                which_frame = this->parent_frame;
+            if(this->flags & FLAG_CLASS_INIT_FRAME) {
+                which_frame = this->parent_frame.get();
             }
 
             // Check out of range
@@ -927,7 +896,7 @@ inline void FrameState::eval_next() {
         {
             try {
                 const std::string& name = this->code->co_names.at(arg);
-                const auto& globals = this->interpreter_state->ns_globals_ptr;
+                const auto& globals = this->interpreter_state->ns_globals;
                 const auto& builtins = this->interpreter_state->ns_builtins;
                 auto itr_local = this->ns_local->find(name);
                 if (itr_local != this->ns_local->end()) {
@@ -959,7 +928,8 @@ inline void FrameState::eval_next() {
             try {
                 // Check which name we are storing and store it
                 const std::string& name = this->code->co_names.at(arg);
-                (*(this->interpreter_state->ns_globals_ptr))[name] = std::move(this->value_stack.back());
+                DEBUG_ADV("\top::STORE_GLOBAL set " << name << " = " << this->value_stack.back());
+                (*(this->interpreter_state->ns_globals))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
                 throw pyerror("op::STORE_GLOBAL tried to store name out of range");
@@ -971,6 +941,7 @@ inline void FrameState::eval_next() {
                 //DEBUG("STORE_FAST ARG: %d\n",arg);
                 // Check which name we are storing and store it
                 const std::string& name = this->code->co_varnames.at(arg);
+                DEBUG_ADV("\top::STORE_FAST set " << name << " = " << this->value_stack.back());
                 (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -982,6 +953,7 @@ inline void FrameState::eval_next() {
             this->check_stack_size(1);
             try {
                 const std::string& name = this->code->co_names.at(arg);
+                DEBUG_ADV("\top::STORE_NAME set " << name << " = " << this->value_stack.back());
                 (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -1191,7 +1163,7 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_rshift>(*this),v1,v2);
-            break ;
+            break;
         }
         case op::INPLACE_AND:
             this->check_stack_size(2);
@@ -1232,46 +1204,67 @@ inline void FrameState::eval_next() {
         case op::RETURN_VALUE:
         {
             this->check_stack_size(1);
-            if((this->flags & (CLASS_INIT_FRAME | OBJECT_INIT_FRAME | DONT_RETURN_FRAME)) == 0){
-                // Normal function return
-                auto val = this->value_stack.back();
-                if (this->parent_frame != nullptr) {
-                    this->parent_frame->value_stack.push_back(std::move(val));
-                }
+
+            DEBUG("\tRETURNED FRAME'S FLAGS WERE: %x", (uint32_t)this->flags);
+
+            if (this->get_flag(FrameState::FLAG_DONT_RETURN | FrameState::FLAG_CLASS_INIT_FRAME | FrameState::FLAG_OBJECT_INIT_FRAME)) {
+                DEBUG_ADV("POPPED FRAME, NO RETURN");
+                this->interpreter_state->pop_frame();
+                return;
             }
-                
-            // Pop the call stack
-            this->interpreter_state->callstack.pop();
-            break ;
+
+            if (this->get_flag(FrameState::FLAG_IS_GENERATOR_FUNCTION)) {
+                DEBUG_ADV("POPPED FRAME, IS GENERATOR");
+                this->parent_frame->value_stack.push_back(false);
+                this->interpreter_state->pop_frame();
+                return;
+            }
+
+            DEBUG_ADV("REGULAR OLD RETURN");
+
+            if (this->parent_frame != nullptr) {
+                this->parent_frame->value_stack.push_back(std::move(this->value_stack.back()));
+            }
+
+            this->interpreter_state->pop_frame();
+            return ;
         }
         case op::SETUP_LOOP:
         {
             Block newBlock;
             newBlock.type = Block::Type::LOOP;
             newBlock.level = this->value_stack.size();
-            newBlock.pc_start = this->r_pc + 2;
+            newBlock.pc_start = this->code->instructions[this->r_pc + 1].bytecode_index; // GARETH: changed this offset to 1
             newBlock.pc_delta = arg;
             this->block_stack.push(newBlock);
             DEBUG("new block stack height: %lu", this->block_stack.size())
-            break ;
+            break;
+        }
+        case op::BREAK_LOOP: 
+        {
+            Block topBlock = this->block_stack.top();
+            this->block_stack.pop();
+            size_t jumpTo = this->code->pc_map[(topBlock.pc_start + topBlock.pc_delta)];
+            if (jumpTo == 0) {
+                throw pyerror("invalid jump destination for break loop!");
+            }
+
+            this->r_pc = jumpTo;
+            return;
         }
         case op::POP_BLOCK:
             this->block_stack.pop();
-            break ;
+            break;
         case op::POP_JUMP_IF_FALSE:
         {
             this->check_stack_size(1);
             // TODO: implement handling for truthy values.
             Value top = std::move(this->value_stack.back());
             this->value_stack.pop_back();
-            try {
-                if (!std::get<bool>(top)) {
-                    this->r_pc = arg;
-                    return ;
-                }
-            } catch (std::bad_variant_access& e) {
-                // TODO: does not actually matter what the type of the condition is :o
-                throw pyerror("expected condition to have type bool, got bad type.");
+
+            if (!std::visit(value_helper::visitor_is_truthy(), top)) {
+                this->r_pc = arg;
+                return ;
             }
             break;
         }
@@ -1329,40 +1322,38 @@ inline void FrameState::eval_next() {
             this->check_stack_size(arg + 2);
 
             // Pop the name and code
-            Value name = std::move(value_stack.back());
-            this->value_stack.pop_back();
-            Value code = std::move(value_stack.back());
-            this->value_stack.pop_back();
+            ValueString name;
+            ValueCode code;
+            try {
+                name = std::move(std::get<ValueString>(value_stack.back()));
+                this->value_stack.pop_back();
+                code = std::move(std::get<ValueCode>(value_stack.back()));
+                this->value_stack.pop_back();
+            } catch (std::bad_variant_access& err) {
+                std::stringstream ss;
+                ss << "MAKE_FUNCTION expects function name to be a string, and code object"
+                    " to be of type code object.";
+                throw pyerror(ss.str());
+            }
 
             // Create a shared pointer to a vector from the args
             std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(
                 std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end())
             );
-            
-            // Remove the args from the value stack
             this->value_stack.resize(this->value_stack.size() - arg);
 
-            J_DEBUG("Creating a function %s that accepts %d default args:\n",*(std::get<ValueString>(name)),arg);
-            J_DEBUG("Those default args are:\n");
-            #ifdef JOHN_DEBUG_ON
-            for(int i = 0;i < v->size();i++){
-                print_value((*v)[i]);
-                fprintf(stderr,"\n",arg);
+            DEBUG_ADV("Arguments:");
+            #ifdef DEBUG_ON
+            for(int i = 0; i < v->size(); i++) {
+                DEBUG_ADV(i << " => " << (*v)[i]);
             }
             #endif
-            // Create the function object
-            // Error here if the wrong types
-            try {
-                ValuePyFunction nv = std::make_shared<value::PyFunc>(
-                    value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(code), v}
-                );
-                this->value_stack.push_back(nv);
-            } catch (std::bad_variant_access&) {
-                std::stringstream ss;
-                ss << "MAKE FUNCTION called with name '" << name << "' and code block: " << code;
-                ss << ", but make function expects string and code object";
-                throw pyerror(ss.str());
-            }
+
+            this->value_stack.push_back(
+                std::make_shared<value::PyFunc>(
+                    value::PyFunc {name, code, v}
+                )
+            );
             break;
         }
         case op::LOAD_BUILD_CLASS:
@@ -1381,7 +1372,7 @@ inline void FrameState::eval_next() {
             // Visit a load_attr_visitor constructed with the frame state and the arg to get
             // Do it this way because val might turn out to be a PyClass or a PyObject
             std::visit(
-                eval_helpers::load_attr_visitor(*this,this->code->co_names[arg]),
+                value_helper::load_attr_visitor(*this,this->code->co_names[arg]),
                 val
             );
             break;
@@ -1444,11 +1435,77 @@ inline void FrameState::eval_next() {
 
             break ;
         }
+        case op::GET_ITER:
+        {
+            DEBUG_ADV("GET_ITER IS A NULL OP FOR NOW, WHEN LIST ITERATION IS IMPLEMENTED IT WILL WORK");
+            break ;
+        }
+        case op::FOR_ITER:
+        {
+            DEBUG_ADV("\tJUMP OFFSET FOR ITERATOR: " << arg);
+            std::visit(eval_helpers::for_iter_visitor {*this, arg}, this->value_stack.back());
+            return ;
+        }
+        case op::YIELD_VALUE:
+        {
+            this->check_stack_size(1);
+
+            if (this->get_flag(FrameState::FLAG_IS_GENERATOR_FUNCTION)) {
+                // we pop a value from our stack, 
+                Value val = std::move(this->value_stack.back());
+                DEBUG_ADV("\tYIELDING VALUE: " << val);
+                // we push that value to the parent_frame's stack, which was 
+                // set by GET_ITER (we hope!)
+                this->parent_frame->value_stack.push_back(std::move(val));
+                this->parent_frame->value_stack.push_back(true);
+                this->interpreter_state->pop_frame();
+
+                break ;
+            } else {
+                this->set_flag(FrameState::FLAG_IS_GENERATOR_FUNCTION);
+                DEBUG_ADV("\tENCOUNTERED op::YIELD_VALUE in function -- treating it as a generator"
+                    ", moving frame off of linear call stack, and returning a generator object" 
+                    " with that frame.");
+                // we ran into an op::YIELD_VALUE, this means we need to go back
+                // act as though this function call returned a genrator,
+                // in reality we are giving that generator a reference to this
+                // stack frame, and then removing this frame from the call stack
+                // so that its execution can 'sortof' continue on the side
+
+                // have the generator hold a reference to the current frame
+                value::PyGenerator generator { this->interpreter_state->cur_frame };
+                this->interpreter_state->pop_frame();
+                // now that the interpreter state is holding our parent frame, null the parent 
+                // frame as our 'parent frame' is now managed by GET_ITER
+                generator.frame->parent_frame = nullptr;
+                this->interpreter_state->cur_frame->value_stack.push_back(
+                    std::move(generator)
+                );
+                DEBUG_ADV("\tframe was successfully completely moved from the callstack.");
+
+                return ; // return so that this op will be run again.
+            }
+        }
+
+        case op::STORE_SUBSCR:
+        {
+            this->check_stack_size(3);
+            Value key = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+            Value self = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+            Value value = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+
+            std::visit(eval_helpers::store_subscr_visitor {key, value}, self);
+            break ;
+        }
+        
         default:
         {
             std::stringstream ss;
-            ss << "UNIMPLEMENTED BYTECODE" << op::name[bytecode];
-            DEBUG(ss.str().c_str());
+            ss << "UNIMPLEMENTED BYTECODE: " << op::name[bytecode];
+            std::cerr << ss.str() << std::endl;
             throw pyerror(ss.str());
         }
     }
@@ -1460,48 +1517,37 @@ inline void FrameState::eval_next() {
     this->print_stack();
 #endif
 
-    if (bytecode < op::HAVE_ARGUMENT) {
-        this->r_pc += 1;
-    } else {
-        this->r_pc += 3;
-    }
+    this->r_pc++;
 }
 
 void InterpreterState::eval() {
     try {
-        while (!this->callstack.empty()) {
-            // TODO: try caching the top of the stack
-            #ifdef PRINT_OPS
-            this->callstack.top().eval_print();
-            #else
-            this->callstack.top().eval_next();
-            #endif
+        while (this->cur_frame != nullptr) {
+            this->cur_frame->eval_next();
         }
     } catch (const pyerror& err) {
-        const auto& frame = this->callstack.top();
-        std::cout << err.what() << std::endl;
-        // std::cout << "ENCOUNTERED ERROR WHILE EVALUATING OPERATION: " 
-        //     << op::name[frame.code->bytecode[frame.r_pc]] << std::endl;
-        std::cout << "FRAME TRACE: " << std::endl;
+        auto& frame = *(this->cur_frame);
+        std::cerr << err.what() << std::endl;
+        std::cerr << "FRAME TRACE: " << std::endl;
 
-        FrameState *frm = &this->callstack.top();
+        FrameState *frm = &frame;
         std::string indent = "\t";
         while (frm != nullptr) {
             const auto& lnotab = frm->code->lnotab;
             for (size_t i = 1; i < lnotab.size(); ++i) {
                 auto mapping = lnotab[i];
                 if (i == lnotab.size() - 1) {
-                    std::cout << indent << frm->code->co_name << ":" << mapping.line << std::endl;
+                    std::cerr << indent << frm->code->co_name << ":" << mapping.line << std::endl;
                     break ;
                 } else if (mapping.pc >= frm->r_pc) {
-                    std::cout << indent << frm->code->co_name << ":" << lnotab[i - 1].line << std::endl;
+                    std::cerr << indent << frm->code->co_name << ":" << lnotab[i - 1].line << std::endl;
                     break ;
                 }
             }
             indent += "\t";
-            frm = frm->parent_frame;
+            frm = frm->parent_frame.get();
         }
-        std::cout << "STACK:";
+        std::cerr << "STACK:";
         frame.print_stack();
         throw err;
     }

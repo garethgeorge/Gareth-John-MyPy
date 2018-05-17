@@ -1,6 +1,10 @@
 #include "../lib/catch.hpp"
+#include "../src/builtins/builtins.hpp"
+#include "../src/builtins/builtins_helpers.hpp"
 
 #include "include/test_helpers.hpp"
+
+using namespace builtins;
 
 TEST_CASE("should be able to call a function", "[functions]") {
     SECTION( "without default args" ){
@@ -103,5 +107,80 @@ func_err(1,2,3,4)
         )");
         InterpreterState state(code);
         REQUIRE_THROWS(state.eval());
+    }
+
+    SECTION( "functions that contain while loops (more complex degrees of nesting etc) work" ) {
+        // this code was causing an error with STORE_FAST, I changed STORE_FAST to use co_varnames 
+        // instead of co_names as per the spec. LOAD_FAST was already using co_varnames 
+        // as is correct.
+        auto code = build_string(R"(
+def range222():
+    x = 1
+    while x < 10:
+        print(x)
+        x += 1
+generator = range222()
+        )");
+
+        InterpreterState state(code);
+        (*(state.ns_builtins))["print"] = pycfunction_builder([] (Value value) {
+            // pass, but it is necessary that the function exist
+        }).to_pycfunction();
+        state.eval();
+    }
+
+    SECTION("should get arguments in the correct order") {
+        auto code = build_string(R"(
+def test(a, b, c):
+    check(a == 1)
+    check(b == 2)
+    check(c == 3)
+test(1, 2, 3)
+        )");
+
+        InterpreterState state(code);
+        (*(state.ns_builtins))["check"] = make_builtin_check_value(true);
+        state.eval();       
+
+    }
+
+}
+
+
+TEST_CASE("should be able to use a generator function", "[functions]") {
+    SECTION("simple range generator should work") {
+        auto code = build_string(R"(
+def range(n):
+    x = 0
+    while x < n:
+        yield x 
+        x += 1 
+y = 0
+for x in range(10):
+    y += x
+check_value(y)
+        )");
+
+        InterpreterState state(code);
+        (*(state.ns_builtins))["check_value"] = make_builtin_check_value((int64_t)(1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9));
+        state.eval();
+    }
+
+    SECTION("complex generator comprehensions should also work") {
+        auto code = build_string(R"(
+def range(n):
+    x = 0
+    while x < n:
+        yield x 
+        x += 1 
+y = 0
+for x in (x * x for x in (x + 1 for x in range(10) if x != 5)):
+    y += x
+check_value(349)
+        )");
+
+        InterpreterState state(code);
+        (*(state.ns_builtins))["check_value"] = make_builtin_check_value((int64_t)(349));
+        state.eval();
     }
 }
