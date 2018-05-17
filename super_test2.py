@@ -27,6 +27,7 @@ class C(A):
 class D(B,C):
     def foo(self):
         print("D")
+        return 4
         return super().foo()
 
 d = D()

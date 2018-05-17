@@ -35,10 +35,11 @@ struct Block {
 
 struct FrameState {
 public:
-    constexpr const static uint8_t FLAG_CLASS_STATIC_INIT = 1;
-    constexpr const static uint8_t FLAG_CLASS_DYNAMIC_INIT = 2;
+    constexpr const static uint8_t FLAG_CLASS_INIT_FRAME = 1;
+    constexpr const static uint8_t FLAG_OBJECT_INIT_FRAME = 2;
     constexpr const static uint8_t FLAG_IS_GENERATOR_FUNCTION = 4;
     constexpr const static uint8_t FLAG_RETURNED = 8;
+    constexpr const static uint8_t FLAG_DONT_RETURN = 16;
 
     uint64_t r_pc = 0; // program counter
     std::shared_ptr<FrameState> parent_frame = nullptr;
@@ -57,6 +58,10 @@ public:
     // Hopefully this can be factored out later, and as such it will only be accessed via helper functions
     ValuePyClass init_class;
 
+    // Needed in LOAD_CLOSURE, LOAD_DEREF, and STORE_DEREF
+    ValuePyFunction curr_func; // The function of this current frame stat
+    std::vector<ValuePyObject> cells; // Cells that happen to be in my local namespace
+
     FrameState(const ValueCode& code);
     FrameState(const ValueCode& code, ValuePyClass& init_class);
 
@@ -67,7 +72,8 @@ public:
 
     // Add a value to local namespace (for use when creating the frame state)
     void add_to_ns_local(const std::string& name,Value&& v);
-    void initialize_from_pyfunc(const ValuePyFunction& func, std::vector<Value>& args);
+
+    void initialize_from_pyfunc(const ValuePyFunction func,std::vector<Value>& args);
     
     // flag getters and setters
     inline bool get_flag(const uint8_t flag) {
@@ -79,7 +85,7 @@ public:
     inline void clear_flag(const uint8_t flag) {
         this->flags &= (~flag);
     }
-
+    
     // helper method for checking the stack has enough values for the current
     // operation!
     inline const void check_stack_size(size_t expected) {

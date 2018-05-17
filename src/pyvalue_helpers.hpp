@@ -17,6 +17,7 @@ namespace py {
 
 struct Code;
 extern std::ostream& operator << (std::ostream& stream, const Value value);
+extern ValuePyClass cell_class;
 
 namespace value_helper {
 
@@ -117,8 +118,8 @@ struct call_visitor {
             std::visit(call_visitor(frame,args),vv);
             
             // Now that a new frame is on the stack, set a flag in it that it's an initializer frame
-            frame.interpreter_state->cur_frame->set_flag(FrameState::FLAG_CLASS_DYNAMIC_INIT);
-        } 
+            frame.interpreter_state->cur_frame->set_flag(FrameState::FLAG_OBJECT_INIT_FRAME);
+        }
 
         // Push the new object on the value stack
         frame.value_stack.push_back(std::move(npo));
@@ -128,7 +129,7 @@ struct call_visitor {
         DEBUG("call_visitor dispatching on a PyFunction");
 
         // Throw an error if too many arguments
-        if(args.size() > func->code->co_argcount){
+        if (args.size() > func->code->co_argcount){
             throw pyerror(std::string("TypeError: " + *(func->name)
                         + " takes " + std::to_string(func->code->co_argcount)
                         + " positional arguments but " + std::to_string(args.size())
@@ -140,6 +141,26 @@ struct call_visitor {
             std::make_shared<FrameState>(func->code)
         );
         frame.interpreter_state->cur_frame->initialize_from_pyfunc(func, args);
+    }
+
+    // An object was called like a function
+    // Look for it'a __call__ overload and run that
+    void operator()(const ValuePyObject& obj) const {
+        DEBUG("call_visitor dispatching on a PyObject");
+
+        std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(obj,"__call__");
+        if(std::get<1>(res)){
+            // Visit again with the newly found thing
+            std::visit(
+                call_visitor(frame,args),
+                std::get<0>(res)
+            );
+        } else {
+            throw pyerror(std::string(
+                "'" + *(std::get<ValueString>((obj->static_attrs->attrs->at("__qualname__"))))
+                + "' object is not callable"
+            ));
+        }
     }
     
     template<typename T>
@@ -167,6 +188,26 @@ struct numeric_visitor {
         frame.value_stack.push_back(T::action(v1, v2));
     }
     
+    void operator()(ValuePyObject& v1, ValuePyObject& v2) const {
+        /// Get the attribute for it
+        std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(v1,std::string(T::l_attr));
+        if(std::get<1>(res)){
+            // Call it like a function
+            std::vector<Value> args(1, v2);
+            std::visit(
+                call_visitor(frame, args),
+                std::get<0>(res)
+            );
+        } else {
+            throw pyerror(
+                string("TypeError: unsupported operand type(s) for ") + T::op_name + string(": '")
+                + *(std::get<ValueString>((v1->static_attrs->attrs->at("__qualname__"))))
+                + string("' and '")
+                + *(std::get<ValueString>((v1->static_attrs->attrs->at("__qualname__")))) + "' "
+            );
+        }
+    }
+
     template<typename OT>
     void operator()(ValuePyObject& v1, OT& v2) const {
         // Get the attribute for it
@@ -182,12 +223,12 @@ struct numeric_visitor {
             throw pyerror(
                 string("TypeError: unsupported operand type(s) for ") + T::op_name + string(": '")
                 + *(std::get<ValueString>((v1->static_attrs->attrs->at("__qualname__"))))
-                + string("' and '") + typeid(OT).name()
+                + string("' and '") + typeid(OT).name() + "' "
             );
         }
     }
 
-    /*template<typename OT2>
+    template<typename OT2>
     void operator()(OT2& v1, ValuePyObject& v2) const {
         // Get the attribute for it
         std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(v2,std::string(T::r_attr));
@@ -199,13 +240,12 @@ struct numeric_visitor {
                 std::get<0>(res)
             );
         } else {
-            throw pyerror(
-                string("TypeError: unsupported operand type(s) for ") + T::op_name + string(": '")
+            throw pyerror(string("TypeError: unsupported operand type(s) for ") + T::op_name + string(": '")
                 + typeid(OT2).name() + string("' and '") 
-                + *(std::get<ValueString>((v2->static_attrs->attrs->at("__qualname__"))))
+                + *(std::get<ValueString>((v2->static_attrs->attrs->at("__qualname__")))) + "' "
             );
         }
-    }*/
+    }
     
     template<typename T1, typename T2>
     void operator()(T1 a, T2 b) const {
@@ -260,6 +300,9 @@ struct load_attr_visitor {
     }
 
 };
+// I do not believe this can be a reference
+// Return a cell
+ValuePyObject create_cell(Value contents);
 
 }
 }

@@ -9,45 +9,36 @@
         - object
 
 # TODO
- - implement MAKE_CLOSURE - John/Jack
- - implement Objects/Classes - John/Jack
-    - Make classes able to overload binary operators
-    - Make classes able to overload inplace operators
-    - For ones that dont have a r_attr, etc, return a special string marking that and throw an error!
-    - Change how framestag flags are set and checked, also make RETURN_VALUE not use a switch
-    - Allow __call__ to be defined and the rest of the overloads
-    - PyClasses are callable but not PyObjects unless __call__ is defined
-    - make the parents attribute of a pyclass just __mro__! ???
-    - super() builtin class (https://docs.python.org/3/library/functions.html#super)
-        - In order to implement super, I need to make it a builtin PyClass (PyObject?) with __call__ defined
-    - __mro__ attribute. (I also need to get all attributes right!)
-    - __bases__ attribute
-    - DYNAMIC INHERITANCE???
+ - 
+ - DELETE_DEREF
+ - Make cells/closures actually go into the specified slot when created, not just push it!!
+ - https://stackoverflow.com/questions/12919278/how-to-define-free-variable-in-python TEST ALL HERE
+ - Test closures and cells
+ - Make curr_func a reference to a function, not a function
+ - Unary operators
+ - Finish implementing Objects/Classes - John/Jack
+    - Get super() working for single inheritance
+    - Test super()
+    - What other non-builtins can be overloaded?
     - Use GC
     - What is the correct way to handle __name__ and other default attrs in PyClass and PyObject?
-    - make initialize_from_pyfunc just a constructor
-    - Can you define a class inside a function?
-    - make the 'str' builtin work correctly for PyFuncs, PyObjects, and PyClasses
+        - All builtin attributes: __mro__, __bases__, etc
     - Speed up searching parent attributes and way improve the code for determining method resolution order
-    - Builtin class 'object'
-    - Make tests!
-        - Both correct functioning and errors
-        - make sure member functions with default args work
+    - Builtin class 'object' -> just nothing?
+    - What builtins do I wanna make? Any? Or should we move immediately to optimization?
+    - test @classmethod &&  @staticmethod!!!!!
+    - Test for errors
         - test, for example, calling '+' on a class w/out it overload (but for ALL posible overloads)
-        - test everything in classes_test.py for sure
-        - test @classmethod &&  @staticmethod!!!!!
+        - getting attributes that dont exist
         - TypeError: __init__() should return None, not 'int' is a runtime error!
-        - PyClasses are callable but not PyObjects, test that (unless __call__ is defined in the class?)
-        - overloading in classes and general function overloading
-        - Make sure the 'deadly diamond problem' (https://www.python-course.eu/python3_multiple_inheritance.php) resolves correctly
-        - Make sure to test for the error where MRO could not be determined
-        - Make tests for MRO consistent with complicated examples lower down in https://www.python.org/download/releases/2.3/mro/
  - implement variadic functions - John Jack
- - finish implement continue/break/try/except - John/Jack
  - kwarg functions - John/Jack
- - find a testing framework that specifically tests python interpreters - John/Jack or Gareth
+ - Direct threading!
  - Implement all opertor overloads fro python strings (make string a builting PyClass) - John/Jack or Gareth
+ - Implmenet BINARY_MATRIX_MULTIPLY - John/Jack or Gareth
+ - Unary arithmetic operations - John/Jack or Gareth
  - Create a formatted error handling function - Gareth
+- finish implement continue/break/try/except - Gareth
  - implement garbage collection - Gareth
  - implement generators/iterators - Gareth
  - primitive types for Lists/Tupples/Map/Set - Gareth

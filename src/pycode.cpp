@@ -173,9 +173,34 @@ Code::Code(const json& tree) {
 
     // load var names
     for (const json& vname : tree.at("co_varnames")) {
-        DEBUG("loaded var name %lu) %s", this->co_names.size(), vname.get<std::string>().c_str())
+        DEBUG("loaded var name %lu) %s", this->co_varnames.size(), vname.get<std::string>().c_str())
         this->co_varnames.push_back(
             vname.get<std::string>()
+        );
+    }
+
+    // load cell vars
+    for (const json& cvname : tree.at("co_cellvars")) {
+        DEBUG("loaded cell var name %lu) %s", this->co_cellvars.size(), cvname.get<std::string>().c_str())
+        this->co_cellvars.push_back(
+            cvname.get<std::string>()
+        );
+    }
+
+    // load free vars
+    for (const json& fvname : tree.at("co_freevars")) {
+        DEBUG("loaded free var name %lu) %s", this->co_freevars.size(), fvname.get<std::string>().c_str())
+        this->co_freevars.push_back(
+            fvname.get<std::string>()
+        );
+    }
+
+
+    // load lnotab 
+    for (const json& linenumber : tree.at("lnotab")) {
+        DEBUG("loaded line number %d", linenumber);
+        this->lnotab.push_back(
+            LineNoMapping {linenumber.at(0).get<uint64_t>(), linenumber.at(1).get<uint64_t>()}
         );
     }
 
