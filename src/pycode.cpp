@@ -195,6 +195,13 @@ Code::Code(const json& tree) {
         );
     }
 
+    // build the co_cellmap
+    {
+        size_t index = 0;
+        for (std::string& cellvarname : this->co_cellvars) {
+            this->co_cellmap[cellvarname] = index++;
+        }
+    }
 
     // load lnotab 
     for (const json& linenumber : tree.at("lnotab")) {

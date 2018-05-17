@@ -30,6 +30,7 @@ struct Code {
     std::vector<std::string> co_varnames;
     std::vector<std::string> co_cellvars;
     std::vector<std::string> co_freevars;
+    std::unordered_map<std::string, size_t> co_cellmap;
 
     struct LineNoMapping {
         uint64_t line;
