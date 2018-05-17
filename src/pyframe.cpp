@@ -896,6 +896,8 @@ inline void FrameState::eval_next() {
         }
         case op::STORE_DEREF:
         {
+            this->check_stack_size(1);
+
             // Access the closure of the function or the cells
             if(arg < this->cells.size()){
                     (*(this->cells[arg]->attrs))["contents"] = std::move(this->value_stack.back());
@@ -1032,6 +1034,7 @@ inline void FrameState::eval_next() {
         }
         case op::ROT_TWO:
         {
+            this->check_stack_size(2);
             std::swap(*(this->value_stack.end()), *(this->value_stack.end() - 1));
             break ;
         }
@@ -1081,6 +1084,7 @@ inline void FrameState::eval_next() {
             break;
         }
         case op::INPLACE_ADD:
+            this->check_stack_size(2);
         // see https://stackoverflow.com/questions/15376509/when-is-i-x-different-from-i-i-x-in-python
         // INPLACE_ADD should call __iadd__ method on full objects, falls back to __add__ if not available.
             if(attempt_inplace_op(*this,"__iadd__")) break;
@@ -1094,6 +1098,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_SUBTRACT:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__isub__")) break;
         case op::BINARY_SUBTRACT:
         {
@@ -1105,6 +1110,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_FLOOR_DIVIDE:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__ifloordiv__")) break;
         case op::BINARY_FLOOR_DIVIDE:
         {
@@ -1116,6 +1122,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_MULTIPLY:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__imul__")) break;
         case op::BINARY_MULTIPLY:
         {
@@ -1127,6 +1134,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_MODULO:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__imod__")) break;
         case op::BINARY_MODULO:
         {
@@ -1138,6 +1146,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_POWER:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__ipow__")) break;
         case op::BINARY_POWER:
         {
@@ -1149,6 +1158,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_TRUE_DIVIDE:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__itruediv__")) break;
         case op::BINARY_TRUE_DIVIDE:
         {
@@ -1160,6 +1170,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_LSHIFT:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__ilshift__")) break;
         case op::BINARY_LSHIFT:
         {
@@ -1171,6 +1182,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_RSHIFT:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__irshift__")) break;
         case op::BINARY_RSHIFT:
         {
@@ -1182,6 +1194,7 @@ inline void FrameState::eval_next() {
             break ;
         }
         case op::INPLACE_AND:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__iand__")) break;
         case op::BINARY_AND:
         {
@@ -1193,6 +1206,7 @@ inline void FrameState::eval_next() {
             break;
         }
         case op::INPLACE_XOR:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__ixor__")) break;
         case op::BINARY_XOR:
         {
@@ -1204,6 +1218,7 @@ inline void FrameState::eval_next() {
             break;
         }
         case op::INPLACE_OR:
+            this->check_stack_size(2);
             if(attempt_inplace_op(*this,"__ior__")) break;
         case op::BINARY_OR:
         {
@@ -1359,6 +1374,7 @@ inline void FrameState::eval_next() {
         }
         case op::LOAD_ATTR:
         {
+            this->check_stack_size(1);
             DEBUG("Loading Attr %s",this->code->co_names[arg].c_str()) ;
             Value val = std::move(value_stack.back());
             this->value_stack.pop_back();
@@ -1372,6 +1388,7 @@ inline void FrameState::eval_next() {
         }
         case op::STORE_ATTR:
         {
+            this->check_stack_size(2);
             DEBUG("Storing Attr %s",this->code->co_names[arg].c_str()) ;
             
             Value tos = std::move(this->value_stack.back());

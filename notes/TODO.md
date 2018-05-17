@@ -10,6 +10,7 @@
 
 # TODO
  - DELETE_DEREF
+ - Put stack size checks in
  - https://stackoverflow.com/questions/12919278/how-to-define-free-variable-in-python TEST ALL HERE
  - Test closures and cells
  - Unary operators
