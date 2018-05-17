@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <variant>
 #include "builtins.hpp"
+#include "builtins_helpers.hpp"
 #include "../pyvalue_helpers.hpp"
 #include "../pyerror.hpp"
 #include "../pyframe.hpp"

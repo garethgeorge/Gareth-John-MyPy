@@ -1,5 +1,6 @@
 #include "../lib/catch.hpp"
 #include "../src/builtins/builtins.hpp"
+#include "../src/builtins/builtins_helpers.hpp"
 
 #include "include/test_helpers.hpp"
 

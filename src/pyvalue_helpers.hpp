@@ -75,6 +75,12 @@ struct call_visitor {
         func->action(frame, args);
     }
 
+    void operator()(const ValueCMethod& func) const {
+        DEBUG("call_visitor dispatching CMethod->action");
+        args.insert(args.begin(), func->thisArg);
+        func->action(frame, args);
+    }
+
     // A PyClass was called like a function, therein creating a PyObject
     void operator()(const ValuePyClass& cls) const {
         DEBUG("Constructing a '%s' Object",std::get<ValueString>(
@@ -207,6 +213,52 @@ struct numeric_visitor {
         ss << "TypeError: can't add values " << Value(a) << " and " << Value(b);
         throw pyerror(ss.str());
     }
+};
+
+
+// Visitor for accessing class attributes
+struct load_attr_visitor {
+    FrameState& frame;
+    const std::string& attr;
+
+    load_attr_visitor(FrameState& frame, const std::string& attr) : frame(frame), attr(attr) {}
+    
+    void operator()(const ValuePyClass& cls){
+        try {
+            frame.value_stack.push_back(cls->attrs->at(attr));
+        } catch (const std::out_of_range& oor) {
+            throw pyerror(std::string(
+                *(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))
+                + " has no attribute " + attr
+            ));
+        }
+    }
+
+    // For pyobject, first look in their own namespace, then look in their static namespace
+    // ValuePyObject cannot be const as it might be modified
+    void operator()(ValuePyObject& obj){
+        // First look in my own namespace
+        std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(obj, attr);
+        if(std::get<1>(res)){
+            frame.value_stack.push_back(std::get<0>(res));
+        } else {
+            // Nothing found, throw error!
+            throw pyerror(std::string(
+                // Should this be __name__??
+                *(std::get<ValueString>( (*(obj->static_attrs->attrs))["__qualname__"]))
+                + " has no attribute " + attr
+            ));
+        }
+    }
+
+    // Load attribute for a List 
+    void operator()(ValueList& list);
+
+    template<typename T>
+    void operator()(T) const {
+        throw pyerror(string("can not get attributed from an object of type ") + typeid(T).name());
+    }
+
 };
 
 }

@@ -273,48 +273,6 @@ namespace eval_helpers {
         }
     };
 
-    // Visitor for accessing class attributes
-    struct load_attr_visitor {
-        FrameState& frame;
-        const std::string& attr;
-
-        load_attr_visitor(FrameState& frame, const std::string& attr) : frame(frame), attr(attr) {}
-        
-        void operator()(const ValuePyClass& cls){
-            try {
-                frame.value_stack.push_back(cls->attrs->at(attr));
-            } catch (const std::out_of_range& oor) {
-                throw pyerror(std::string(
-                    *(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))
-                    + " has no attribute " + attr
-                ));
-            }
-        }
-
-        // For pyobject, first look in their own namespace, then look in their static namespace
-        // ValuePyObject cannot be const as it might be modified
-        void operator()(ValuePyObject& obj){
-            // First look in my own namespace
-            std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(obj, attr);
-            if(std::get<1>(res)){
-                frame.value_stack.push_back(std::get<0>(res));
-            } else {
-                // Nothing found, throw error!
-                throw pyerror(std::string(
-                    // Should this be __name__??
-                    *(std::get<ValueString>( (*(obj->static_attrs->attrs))["__qualname__"]))
-                    + " has no attribute " + attr
-                ));
-            }
-        }
-
-        template<typename T>
-        void operator()(T) const {
-            throw pyerror(string("can not get attributed from an object of type ") + typeid(T).name());
-        }
-
-    };
-
     struct binary_subscr_visitor {
         /*
             the binary subscript visitor is used to implement
@@ -478,6 +436,7 @@ void FrameState::print_value(Value& val) {
             [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
             [](const ValueString arg) {std::cerr << "ValueString(" << *arg << ")"; },
             [](const ValueCFunction arg) {std::cerr << "CFunction()"; },
+            [](const ValueCMethod arg) {std::cerr << "CMethod()"; },
             [](const ValueCode arg) {std::cerr << "Code()"; },
             [](const ValuePyFunction arg) {std::cerr << "Python Function()"; },
             [](const ValuePyClass arg) {std::cerr << "ValuePyClass ("
@@ -886,7 +845,6 @@ inline void FrameState::eval_next() {
             );
             this->value_stack.resize(this->value_stack.size() - arg);
 
-            DEBUG_ADV("Creating function " << Value(name) << "(" << Value(arg) << "...)");
             DEBUG_ADV("Arguments:");
             #ifdef DEBUG_ON
             for(int i = 0; i < v->size(); i++) {
@@ -916,7 +874,7 @@ inline void FrameState::eval_next() {
             // Visit a load_attr_visitor constructed with the frame state and the arg to get
             // Do it this way because val might turn out to be a PyClass or a PyObject
             std::visit(
-                eval_helpers::load_attr_visitor(*this,this->code->co_names[arg]),
+                value_helper::load_attr_visitor(*this,this->code->co_names[arg]),
                 val
             );
             break;
@@ -1033,7 +991,7 @@ inline void FrameState::eval_next() {
         {
             std::stringstream ss;
             ss << "UNIMPLEMENTED BYTECODE: " << op::name[bytecode];
-            DEBUG(ss.str().c_str());
+            std::cerr << ss.str() << std::endl;
             throw pyerror(ss.str());
         }
     }
@@ -1055,8 +1013,8 @@ void InterpreterState::eval() {
         }
     } catch (const pyerror& err) {
         auto& frame = *(this->cur_frame);
-        std::cout << err.what() << std::endl;
-        std::cout << "FRAME TRACE: " << std::endl;
+        std::cerr << err.what() << std::endl;
+        std::cerr << "FRAME TRACE: " << std::endl;
 
         FrameState *frm = &frame;
         std::string indent = "\t";
@@ -1065,17 +1023,17 @@ void InterpreterState::eval() {
             for (size_t i = 1; i < lnotab.size(); ++i) {
                 auto mapping = lnotab[i];
                 if (i == lnotab.size() - 1) {
-                    std::cout << indent << frm->code->co_name << ":" << mapping.line << std::endl;
+                    std::cerr << indent << frm->code->co_name << ":" << mapping.line << std::endl;
                     break ;
                 } else if (mapping.pc >= frm->r_pc) {
-                    std::cout << indent << frm->code->co_name << ":" << lnotab[i - 1].line << std::endl;
+                    std::cerr << indent << frm->code->co_name << ":" << lnotab[i - 1].line << std::endl;
                     break ;
                 }
             }
             indent += "\t";
             frm = frm->parent_frame.get();
         }
-        std::cout << "STACK:";
+        std::cerr << "STACK:";
         frame.print_stack();
         throw err;
     }

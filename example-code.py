@@ -1,10 +1,11 @@
-def test(a, b, c):
-    print(a)
-    print(b)
-    print(c)
+test = [1]
+x = 0
+while x < 100:
+    x += 1
+    test.append(x)
+print(test)
 
-test("first", "second", "third")
-
+# test[0] = 5
 
 
 # def range(start, stop):

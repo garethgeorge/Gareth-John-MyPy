@@ -1,4 +1,5 @@
 #include "pyvalue_helpers.hpp"
+#include "builtins/builtins.hpp"
 #include <iostream>
 #include <sstream>
 #include <stdio.h>
@@ -22,6 +23,29 @@ bool visitor_is_truthy::operator()(const ValueString& s) const {
 
 bool visitor_is_truthy::operator()(const value::NoneType) const {
     return false;
+}
+
+
+/*
+    attribute visitor implementations for specific types i.e. lists
+*/
+
+// Namespace list_attributes;
+// struct init_list_attributes {
+//     init_list_attributes() {
+//         list_attributes
+//     }
+// };
+
+void load_attr_visitor::operator()(ValueList& list) {
+    if (builtins::builtin_list_attributes.find(attr) != builtins::builtin_list_attributes.end()) {
+        auto& method = builtins::builtin_list_attributes[attr];
+        frame.value_stack.push_back(method->bindThisArg(list));
+    } else {
+        std::stringstream ss;
+        ss << "AttributeError: attribute '" << attr << "' could not be found";
+        throw pyerror(ss.str());
+    }
 }
 
 
