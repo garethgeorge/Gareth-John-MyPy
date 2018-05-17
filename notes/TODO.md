@@ -9,10 +9,12 @@
         - object
 
 # TODO
+ - 
  - DELETE_DEREF
- - Put stack size checks in
+ - Make cells/closures actually go into the specified slot when created, not just push it!!
  - https://stackoverflow.com/questions/12919278/how-to-define-free-variable-in-python TEST ALL HERE
  - Test closures and cells
+ - Make curr_func a reference to a function, not a function
  - Unary operators
  - Finish implementing Objects/Classes - John/Jack
     - Get super() working for single inheritance
