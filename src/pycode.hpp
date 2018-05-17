@@ -24,6 +24,8 @@ struct Code {
     std::vector<Value> co_consts;
     std::vector<std::string> co_names;
     std::vector<std::string> co_varnames;
+    std::vector<std::string> co_cellvars;
+    std::vector<std::string> co_freevars;
 
     struct LineNoMapping {
         uint64_t line;

@@ -136,7 +136,7 @@ const char *name[] = {
     "CALL_FUNCTION",
     "MAKE_FUNCTION",
     "BUILD_SLICE",
-    "<134>",
+    "MAKE_CLOSURE",
     "LOAD_CLOSURE",
     "LOAD_DEREF",
     "STORE_DEREF",
@@ -256,8 +256,7 @@ const char *name[] = {
     "<251>",
     "<252>",
     "<253>",
-    "<254>",
-    "<255>"
+    "<254>"
 };
 
 const char *cmp::name[] = {

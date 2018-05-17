@@ -11,6 +11,13 @@ class add_overload:
     def __init__(self,myval):
         self.val = myval
 
+class wow:
+    cool = 9
+    def __radd__(self,other):
+        print("in cool");
+        self.cool = other + self.cool
+        return(self.cool)
+
 a1 = add_overload(10)
 a2 = add_overload(20)
 
@@ -27,9 +34,9 @@ print(a1 + a2)
 print(a1.val)
 print(a2.val)
 
-a1.val = 1
-a2.val = 5
+
 print("4")
-print(a2 + a1)
+c1 = wow()
+print(a2 + c1)
 print(a1.val)
-print(a2.val)
+print(c1.cool)
