@@ -22,6 +22,7 @@ include_directories("lib")
 # TODO: have a cmake file per directory which adds its own sources
 # see https://stackoverflow.com/questions/7046956/populating-srcs-from-cmakelists-txt-in-subdirectories
 
+
 # identify the mypy libraries
 file(GLOB_RECURSE SRCS_LIB
   "lib/*.cpp"
@@ -34,11 +35,22 @@ file(GLOB_RECURSE SRCS_MYPY
 
 list(FILTER SRCS_MYPY EXCLUDE REGEX ".*vm_main.cpp$") # remove vm_main.cpp from it, this is a separate binary
 
+#
+# resolve our dependency on asmjit
+#
+set(ASMJIT_DIR "thirdparty/asmjit")
+Set(ASMJIT_STATIC TRUE)
+Set(ASMJIT_BUILD_TEST FALSE)
+Set(ASMJIT_RELEASE TRUE)
+Add_Definitions(-DASMJIT_STATIC)
+include("${ASMJIT_DIR}/CMakeLists.txt")
+include_directories(${ASMJIT_DIR})
 
 #
 # create a static library for mypy sources
 # 
-add_library( mypycore ${SRCS_MYPY} ${SRCS_LIB} )
+add_library( mypycore ${SRCS_MYPY} ${SRCS_LIB})
+target_link_libraries( mypycore asmjit ${ASMJIT_DEPS})
 
 #
 # create mypy executable
@@ -49,7 +61,6 @@ add_executable(mypy
 )
 
 target_link_libraries(mypy mypycore)
-
 
 #
 # create mypy tests

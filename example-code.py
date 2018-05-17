@@ -5,7 +5,8 @@ while x < 100:
     test.append(x)
 print(test)
 
-# test[0] = 5
+test[0] = 5
+print(test)
 
 
 # def range(start, stop):

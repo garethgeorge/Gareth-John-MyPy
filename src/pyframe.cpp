@@ -334,38 +334,62 @@ namespace eval_helpers {
         }
     };
 
+    // Used in initialize_from_pyfunc to set the first argument of 
+    struct set_implicit_arg_visitor {
+        FrameState& frame;
+        
+        set_implicit_arg_visitor(FrameState& frame) : frame(frame) {}
+
+        void operator()(const ValuePyClass& cls) const {
+            if(cls){
+                frame.add_to_ns_local(
+                    frame.code->co_varnames[0],
+                    cls
+                );
+            }
+        }
+
+        void operator()(const ValuePyObject& obj) const {
+            if(obj){
+                frame.add_to_ns_local(
+                    frame.code->co_varnames[0],
+                    obj
+                );
+            }
+        }
+        
+        template<typename T>
+        void operator()(T) const {
+            throw pyerror("can not set implicit arg on this type ");
+        }
+    };
+
+    struct store_subscr_visitor {
+        Value& key;
+        Value& value;
+
+        void operator()(ValueList& list) {
+            try {
+                int64_t k = std::get<int64_t>(key);
+                if (k < 0 || k > list->values.size()) {
+                    throw pyerror("list index out of range");
+                }
+                list->values[k] = std::move(value);
+            } catch (std::bad_variant_access& err) {
+                throw pyerror("list key must be integer index");
+            }
+
+        }
+
+        template<typename T>
+        void operator()(T value) const {
+            std::stringstream ss;
+            ss << "store[] is not a valid operation on " << Value(value) << std::endl;
+            throw pyerror(ss.str());
+        }
+    };
+
 }
-
-// Used in initialize_from_pyfunc to set the first argument of 
-struct set_implicit_arg_visitor {
-    FrameState& frame;
-    
-    set_implicit_arg_visitor(FrameState& frame) : frame(frame) {}
-
-    void operator()(const ValuePyClass& cls) const {
-        if(cls){
-            frame.add_to_ns_local(
-                frame.code->co_varnames[0],
-                cls
-            );
-        }
-    }
-
-    void operator()(const ValuePyObject& obj) const {
-        if(obj){
-            frame.add_to_ns_local(
-                frame.code->co_varnames[0],
-                obj
-            );
-        }
-    }
-    
-    template<typename T>
-    void operator()(T) const {
-        // Do nothing
-        return;
-    }
-};
 
 void FrameState::initialize_from_pyfunc(const ValuePyFunction& func, std::vector<Value>& args){
     // Calculate which argument is the first argument with a default value
@@ -375,7 +399,7 @@ void FrameState::initialize_from_pyfunc(const ValuePyFunction& func, std::vector
    
     // Set the implicit argument
     bool has_implicit_arg = func->flags & (value::CLASS_METHOD | value::INSTANCE_METHOD);
-    if(has_implicit_arg) std::visit(set_implicit_arg_visitor(*this),func->self);
+    if(has_implicit_arg) std::visit(eval_helpers::set_implicit_arg_visitor(*this),func->self);
 
     int first_arg_is_self = (has_implicit_arg ? 1 : 0);
 
@@ -937,7 +961,7 @@ inline void FrameState::eval_next() {
         }
         case op::GET_ITER:
         {
-            DEBUG_ADV("GET_ITER IS A NULL OP FOR NOW");
+            DEBUG_ADV("GET_ITER IS A NULL OP FOR NOW, WHEN LIST ITERATION IS IMPLEMENTED IT WILL WORK");
             break ;
         }
         case op::FOR_ITER:
@@ -985,6 +1009,20 @@ inline void FrameState::eval_next() {
 
                 return ; // return so that this op will be run again.
             }
+        }
+
+        case op::STORE_SUBSCR:
+        {
+            this->check_stack_size(3);
+            Value key = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+            Value self = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+            Value value = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+
+            std::visit(eval_helpers::store_subscr_visitor {key, value}, self);
+            break ;
         }
         
         default:
