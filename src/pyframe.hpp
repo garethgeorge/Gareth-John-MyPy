@@ -73,7 +73,7 @@ public:
     // Add a value to local namespace (for use when creating the frame state)
     void add_to_ns_local(const std::string& name,Value&& v);
 
-    void initialize_from_pyfunc(const ValuePyFunction func,std::vector<Value>& args);
+    void initialize_from_pyfunc(const ValuePyFunction func, ArgList& args);
     
     // flag getters and setters
     inline bool get_flag(const uint8_t flag) {

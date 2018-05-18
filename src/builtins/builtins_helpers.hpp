@@ -55,29 +55,32 @@ template <typename traits>
 struct unpack_caller
 {
     static constexpr size_t num_args = traits::arity;
-    std::vector<Value>& args;
+    ArgList& args;
     FrameState *frame;
 
     // we construct the unpack caller with the args it will attempt to apply
-    unpack_caller(std::vector<Value>& args) : args(args) {
-        if (args.size() != num_args) {
-        }
+    unpack_caller(ArgList& args) : args(args) {
+        
     };
 
     // transform argument
     template<size_t index>
-    auto&& transform() {
+    auto transform() {
         typedef typename traits::template arg<index>::type argType;
         if constexpr(std::is_same<typename std::decay<argType>::type, FrameState>::value) {
             return *frame;
         } else if constexpr(std::is_same<typename std::decay<argType>::type, Value>::value) {
+            if (index >= args.size()) {
+                throw pyerror("no more values in args vector.");
+            }
             return args[index];
-        } else if constexpr(std::is_same<typename std::decay<argType>::type, typename std::vector<Value>>::value) {
+        } else if constexpr(std::is_same<typename std::decay<argType>::type, ArgList>::value) {
             return args;
         } else {
-            if (args.size() <= index) {
-                throw pyerror("ArgError: CFunction no argument at index " + std::to_string(index));
+            if (index >= args.size()) {
+                throw pyerror("no more values in args vector.");
             }
+
             try {
                 return std::get<typename std::decay<argType>::type>(args[index]);
             } catch (std::bad_variant_access& e) {
@@ -88,7 +91,7 @@ struct unpack_caller
             }
         }
     }
-    
+
     // internal call method
     template <typename FuncType, size_t... I>
     auto call(FuncType &f, indices<I...>){
@@ -112,20 +115,20 @@ public:
     };
 
     auto to_pycfunction() {
-        return std::make_shared<value::CFunction>([*this](FrameState& frm, std::vector<Value>& vals) -> void {
+        return std::make_shared<value::CFunction>([*this](FrameState& frm, ArgList& vals) -> void {
             (*this)(frm, vals);
             return ;
         });
     }
 
     auto to_pycmethod() {
-        return std::make_shared<value::CMethod>([*this](FrameState& frm, std::vector<Value>& vals) -> void {
+        return std::make_shared<value::CMethod>([*this](FrameState& frm, ArgList& vals) -> void {
             (*this)(frm, vals);
             return ;
         });
     }
 
-    Value operator()(FrameState& frame, std::vector<py::Value>& args) const {
+    Value operator()(FrameState& frame, ArgList& args) const {
         typedef function_traits<decltype(func)> traits;
 
         auto caller = unpack_caller<traits>(args);

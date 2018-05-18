@@ -19,7 +19,7 @@ extern std::shared_ptr<Code> build_string(const string&);
 // wrapped values
 template<typename T>
 extern ValueCFunction make_builtin_check_value(std::shared_ptr<T> value) {
-    return std::make_shared<value::CFunction>([value](FrameState& frame, std::vector<Value>& args) {
+    return std::make_shared<value::CFunction>([value](FrameState& frame, ArgList& args) {
         REQUIRE(*std::get<std::shared_ptr<T>>(args[0]) == *value);
         frame.value_stack.push_back(value::NoneType());
         return ;
@@ -28,7 +28,7 @@ extern ValueCFunction make_builtin_check_value(std::shared_ptr<T> value) {
 
 template<typename T>
 extern ValueCFunction make_builtin_check_value(T value) {
-    return std::make_shared<value::CFunction>([value](FrameState& frame, std::vector<Value>& args) {
+    return std::make_shared<value::CFunction>([value](FrameState& frame, ArgList& args) {
         REQUIRE(std::get<T>(args[0]) == value);
         frame.value_stack.push_back(value::NoneType());
         return ;

@@ -510,117 +510,158 @@ namespace eval_helpers {
 
 }
 
-void FrameState::initialize_from_pyfunc(const ValuePyFunction func, std::vector<Value>& args){
+void FrameState::initialize_from_pyfunc(ValuePyFunction func, ArgList& args){
     // Set current function
     curr_func = func;
-    
-    // Calculate which argument is the first argument with a default value
-    // Also whether or not the very first argument is self (or class)
-    // This could be stored in PyFunc struct but that is a tiny space tradeoff vs tiny time tradeoff
-    int first_def_arg = this->code->co_argcount - func->def_args->size();
-   
-    // Set the implicit argument
+    DEBUG_ADV("Setting up stackframe from " << Value(func));
+    DEBUG_ADV("Arguments passed to function: ");
+    #ifdef DEBUG 
+    for (size_t i = 0; i < args.size(); ++i) {
+        DEBUG_ADV("\t" << i << ") " << args[i]);
+    }
+    #endif
+
+
+    size_t argcount = this->code->co_argcount;
+    if (func->flags & (value::INSTANCE_METHOD | value::STATIC_METHOD)) {
+        argcount++;
+    }
+
+    // compute the index of the first argument that should be treated as a
+    // default argument parameter
+
+
+    if (args.size() < this->code->co_argcount - func->def_args->size()) {
+        int missing_num = (this->code->co_argcount - func->def_args->size()) - args.size();
+        DEBUG_ADV("Found that we are missing " << missing_num << " arguments, preparing and then throwing error.");
+        std::stringstream ss;
+        ss << "TypeError: " << Value(func) << " missing " << (missing_num) << " required positional arguments:";
+        // List the missing params
+        throw pyerror(ss.str());
+    }
+
     bool has_implicit_arg = func->flags & (value::CLASS_METHOD | value::INSTANCE_METHOD);
-    if(has_implicit_arg){
-        
-        // Need to allow 'self' to possibly be a cell
-        bool found = false;
-        if(this->code->co_cellvars.size() > 0){
-            for(auto it = this->code->co_cellvars.begin();it != this->code->co_cellvars.end();++it){
-                if((*it).compare(this->code->co_varnames[0]) == 0){
-                    cells.push_back(std::move(value_helper::create_cell(func->self)));
-                    found = true;
-                    break;
-                }
-            }
-        } 
-
-        if(found){
-            std::visit(eval_helpers::set_implicit_arg_visitor(*this),(Value)cells[0]);
-        } else {
-            std::visit(eval_helpers::set_implicit_arg_visitor(*this),func->self);
-        }  
+    if (has_implicit_arg) {
+        DEBUG_ADV("calling a class method! binding func->self as thisArg");
+        args.bind(func->self);
     }
 
-    int first_arg_is_self = (has_implicit_arg ? 1 : 0);
+    DEBUG_ADV("Useful values to keep in mind:" 
+        << "\n\thas_implicit_arg: " << has_implicit_arg 
+        << "\n\targcount: " << argcount
+        << "\n\tco_argcount: " << this->code->co_argcount
+        << "\n\tdef_args->size(): " << func->def_args->size());
 
+    
 
-    /*J_DEBUG("Cell Vars:\n")
-    for(int i = 0;i < this->code->co_cellvars.size();i++){
-        std::cout << this->code->co_cellvars[i] << "\n";
-    }*/
+    bool have_cells = this->code->co_cellvars.size() == 0;
+    this->cells.resize(this->code->co_cellvars.size());
 
-    J_DEBUG("(Assigning the following values to names:\n");
+    DEBUG_ADV("Determined we have " << this->code->co_cellvars.size());
 
-    // put values into the local pool
-    // the name is the constant (co_varnames) at the argument number it is
-    // the value has been passed in or uses the default
-    // If we are an instance method, skip the first arg as it was set above
-    for(int i = (has_implicit_arg ? 1 : 0); i < this->code->co_argcount; i++){
-        // The arg to consider may not quite align with i
-        int arg_num = i - first_arg_is_self;
+    DEBUG_ADV("Assigning arguments that do not have default values");
+    for (size_t i = 0; i < args.size(); ++i) {
+        const std::string& varname = this->code->co_varnames[i];
+        const Value v = args[i];
 
-        //Error if not given enough arguments
-        //TypeError: simplefunc() missing 2 required positional arguments: 'a' and 'd'
-        if(arg_num < first_def_arg && arg_num >= args.size()){
-            int missing_num = first_def_arg - arg_num;
+        DEBUG_ADV("\t" << i << ") assigning '" << varname << "' = '" << v << "'");
 
-            std::stringstream ss;
-            ss << "TypeError: " << Value(func) << " missing " << (missing_num) << " required positional arguments:";
-            for (; arg_num < first_def_arg; arg_num++) {
-                ss << "'" << this->code->co_varnames[i] << "'";
-                if (arg_num < first_def_arg - 1) ss << ",";
-            }
+        if (have_cells && this->code->co_cellmap.find(varname) != this->code->co_cellmap.end()) {
+            ValuePyObject new_cell = value_helper::create_cell(v);
+            this->ns_local->emplace(varname, new_cell);
 
-            // List the missing params
-            throw pyerror(ss.str());
-            return;
-        }
-
-        J_DEBUG("Name: %s\n",this->code->co_varnames[i].c_str());
-        J_DEBUG("Value: ");
-        #ifdef JOHN_DEBUG_ON
-        print_value(arg_num < args.size() ? args[arg_num] : (*(func->def_args))[arg_num - first_def_arg]);
-        #endif
-
-        if(this->code->co_cellvars.size() == 0){
-            // The argument exists, save it
-            add_to_ns_local(
-                // Read the name to save to from the constants pool
-                this->code->co_varnames[i], 
-                // read the value from passed in args, or else the default
-                arg_num < args.size() ? std::move(args[arg_num]) : (*(func->def_args))[arg_num - first_def_arg] 
-            );
+            this->cells[i] = new_cell;
         } else {
-            // I haaate this copy/paste
-            Value v = arg_num < args.size() ? std::move(args[arg_num]) : (*(func->def_args))[arg_num - first_def_arg];
+            this->ns_local->emplace(varname, v);
+        }
+    }
+
+    DEBUG_ADV("Assigning arguments that DO have default values");
+    DEBUG_ADV("first we will dump default arguments:");
+    #ifdef DEBUG
+    for (const auto& defarg : *(func->def_args)) {
+        DEBUG_ADV("\t" << defarg);
+    }
+    #endif
+
+    if (func->def_args->size() != 0) {
+        // TODO: rewrite how default argument offsets are calculated
+        // this is pretty terrible
+        size_t first_def_arg = func->code->co_argcount - func->def_args->size();
+
+        for (size_t i = args.size(); i < this->code->co_argcount; ++i) {
+            const std::string& varname = this->code->co_varnames[i];
+            int offset = i - first_def_arg;
+            DEBUG_ADV("calculated offset: " << offset);
+            Value default_value = (*(func->def_args))[offset];
+
+            DEBUG_ADV("\t" << i << ") assigning '" << varname << "' = '" << default_value << "'");
+
+            if (have_cells && this->code->co_cellmap.find(varname) != this->code->co_cellmap.end()) {
+                ValuePyObject new_cell = value_helper::create_cell(default_value);
+                this->ns_local->emplace(varname, new_cell);
+
+                this->cells[i] = new_cell;
+            } else {
+                this->ns_local->emplace(varname, default_value);
+            }
+        }
+    }
+    
+
+    // for(size_t i = 0; i < this->code->co_argcount; i++){
+    //     //Error if not given enough arguments
+    //     //TypeError: simplefunc() missing 2 required positional arguments: 'a' and 'd'
+    //     if(i < first_def_arg && arg_num >= args.size()){
             
-            bool found = false;
-            // Check to see if this is a cell var
-            for(auto it = this->code->co_cellvars.begin();it != this->code->co_cellvars.end();++it){
-                if((*it).compare(this->code->co_varnames[i]) == 0){
-                    ValuePyObject new_cell = value_helper::create_cell(v);
-                    add_to_ns_local(
-                        this->code->co_varnames[i], 
-                        new_cell
-                    );
-                    cells.push_back(new_cell);
-                    found = true;
-                    break;
-                }
-            }
-            if(!found){
-                add_to_ns_local(
-                        this->code->co_varnames[i], 
-                        std::move(v)
-                    );
-            }
-        }
-    }
+    //         return;
+    //     }
+
+    //     J_DEBUG("Name: %s\n",this->code->co_varnames[i].c_str());
+    //     J_DEBUG("Value: ");
+    //     #ifdef JOHN_DEBUG_ON
+    //     print_value(arg_num < args.size() ? args[arg_num] : (*(func->def_args))[arg_num - first_def_arg]);
+    //     #endif
+
+    //     if(this->code->co_cellvars.size() == 0){
+    //         // The argument exists, save it
+    //         add_to_ns_local(
+    //             // Read the name to save to from the constants pool
+    //             this->code->co_varnames[i], 
+    //             // read the value from passed in args, or else the default
+    //             arg_num < args.size() ? std::move(args[arg_num]) : (*(func->def_args))[arg_num - first_def_arg] 
+    //         );
+    //     } else {
+    //         // I haaate this copy/paste
+    //         Value v = arg_num < args.size() ? std::move(args[arg_num]) : (*(func->def_args))[arg_num - first_def_arg];
+            
+    //         bool found = false;
+    //         // Check to see if this is a cell var
+    //         for(auto it = this->code->co_cellvars.begin();it != this->code->co_cellvars.end();++it){
+    //             if((*it).compare(this->code->co_varnames[i]) == 0){
+    //                 ValuePyObject new_cell = value_helper::create_cell(v);
+    //                 add_to_ns_local(
+    //                     this->code->co_varnames[i], 
+    //                     new_cell
+    //                 );
+    //                 cells.push_back(new_cell);
+    //                 found = true;
+    //                 break;
+    //             }
+    //         }
+    //         if(!found){
+    //             add_to_ns_local(
+    //                     this->code->co_varnames[i], 
+    //                     std::move(v)
+    //                 );
+    //         }
+    //     }
+    //     ++args;
+    // }
 }
 
 // Add a value to the ns local
-void FrameState::add_to_ns_local(const std::string& name,Value&& v){
+void FrameState::add_to_ns_local(const std::string& name, Value&& v){
     this->ns_local->emplace(name,v);
 }
 
@@ -665,15 +706,26 @@ bool attempt_inplace_op(FrameState& frame,const std::string& i_attr){
             std::tuple<Value,bool> res = (*obj)->find_attr_in_obj((*obj),i_attr);
             
             if(std::get<1>(res)) {
-                // It did!
                 // Call the function
-                std::vector<Value> args; 
-                args.push_back(std::move(frame.value_stack[frame.value_stack.size() - 1]));
-                frame.value_stack.resize(frame.value_stack.size() - 2);
+                // std::vector<Value> args;
+                // args.push_back(std::move(frame.value_stack[frame.value_stack.size() - 1]));
+                // frame.value_stack.resize(frame.value_stack.size() - 2);
+                // ArgList arglist(std::move(args));
+                // std::visit(
+                //     value_helper::call_visitor(frame, arglist),
+                //     std::get<0>(res)
+                // );
+                // throw pyerror("inplace op not implemented since ArgList refactor.");
+
+                ArgList args(frame.value_stack.back());
+                frame.value_stack.pop_back();
+                args.bind(frame.value_stack.back());
+                frame.value_stack.pop_back();
                 std::visit(
-                    value_helper::call_visitor(frame,args),
+                    value_helper::call_visitor(frame, args),
                     std::get<0>(res)
                 );
+
                 return true;
             }
 
@@ -980,7 +1032,7 @@ inline void FrameState::eval_next() {
             
             // Instead of reading out into a vector, can I just pass have 'initialize_from_pyfunc'
             // read directly off the stack?
-            std::vector<Value> args(
+            ArgList args(
                 this->value_stack.end() - arg,
                 this->value_stack.end());
             this->value_stack.resize(this->value_stack.size() - arg);

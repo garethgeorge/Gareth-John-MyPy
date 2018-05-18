@@ -10,8 +10,9 @@
 #include <functional>
 #include <ostream>
 #include <pygc.hpp>
-#include "pyerror.hpp"
 #include <tuple>
+
+#include "pyerror.hpp"
 
 namespace py {
 
@@ -94,15 +95,66 @@ using Value = std::variant<
 // Bad copy/paste from pyinterpreter.hpp
 using Namespace = std::shared_ptr<std::unordered_map<std::string, Value>>;
 
+// Arg List definition
+struct ArgList {
+    /*
+        if index is set to 0 initially, this indicates that there is a value for self
+        otherwise index starts out holding the value 1 
+    */
+    size_t offset;
+    std::vector<Value> _args;
+
+    ArgList() {
+        offset = 1;
+        _args.resize(1);
+    }
+
+    ArgList(std::vector<Value>::iterator&& begin, std::vector<Value>::iterator&& end) : ArgList() {
+        // insert all of those arguments
+        _args.reserve(_args.size() + distance(begin, end));
+        _args.insert(_args.end(), begin, end);
+    }
+
+    ArgList(const Value& value) : ArgList() {
+        _args.insert(_args.end(), value);
+    }
+
+    void append_arg(const Value& value) {
+        _args.insert(_args.end(), value);
+    }
+
+    void bind(Value& thisArg) {
+        offset = 0;
+        _args[0] = thisArg;
+    }
+
+    void bind(Value&& thisArg) {
+        offset = 0;
+        _args[0] = thisArg;
+    }
+
+    inline const Value& operator[](size_t index) const {
+        return _args[offset + index];
+    }
+
+    inline Value& operator[](size_t index) {
+        return _args[offset + index];
+    }
+    
+    inline size_t size() const {
+        return _args.size() - offset;
+    }
+};
+
 namespace value {
     struct CFunction {
-        std::function<void(FrameState&, std::vector<Value>&)> action;
+        std::function<void(FrameState&, ArgList&)> action;
         CFunction(const decltype(action)& _action) : action(_action) { };
     };
 
     struct CMethod {
         Value thisArg = value::NoneType();
-        std::function<void(FrameState&, std::vector<Value>&)> action;
+        std::function<void(FrameState&, ArgList&)> action;
         
         CMethod(const decltype(action)& action) : thisArg(thisArg), action(action) {
         }
@@ -145,7 +197,7 @@ namespace value {
         const std::shared_ptr<std::vector<Value>> def_args;
 
         // A pointer to self for if this is an instance function or class function
-        const Value self;
+        Value self = value::NoneType();
 
         // Flags as needed
         const uint8_t flags;

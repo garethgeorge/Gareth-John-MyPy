@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <variant>
 #include "builtins.hpp"
-#include "builtins_helpers.hpp"
+// #include "builtins_helpers.hpp"
 #include "../pyvalue_helpers.hpp"
 #include "../pyerror.hpp"
 #include "../pyframe.hpp"
@@ -20,12 +20,12 @@ extern void inject_builtins(Namespace& ns) {
     
     // inject the global print builtin
     // TODO: add argument count support
-    (*ns)["print"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+    (*ns)["print"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {
         try {
-            for (auto it = args.begin(); it != args.end(); ++it) {
-                const std::string str = std::visit(value_helper::visitor_str(), *it);
+            for (size_t i = 0; i < args.size(); ++i) {
+                const std::string str = std::visit(value_helper::visitor_str(), args[i]);
                 std::cout << str;
-                if (it + 1 != args.end()) {
+                if (i != args.size() - 1){
                     std::cout << " ";
                 }
             }
@@ -40,28 +40,28 @@ extern void inject_builtins(Namespace& ns) {
         return ;
     });
 
-    (*ns)["str"] = pycfunction_builder([] (Value value) {
-        return std::make_shared<std::string>(std::move(std::visit(value_helper::visitor_str(), value)));
-    }).to_pycfunction();
+    // (*ns)["str"] = pycfunction_builder([] (Value value) {
+    //     return std::make_shared<std::string>(std::move(std::visit(value_helper::visitor_str(), value)));
+    // }).to_pycfunction();
 
-    (*ns)["len"] = pycfunction_builder([] (ValueList list) {
-        return (int64_t) list->values.size();
-    }).to_pycfunction();
+    // (*ns)["len"] = pycfunction_builder([] (ValueList list) {
+    //     return (int64_t) list->values.size();
+    // }).to_pycfunction();
 
-    (*ns)["range"] = pycfunction_builder([] (int64_t range, FrameState& frame) {
-        ValueList list = frame.interpreter_state->alloc.heap_lists.make();
-        list->values.resize(range);
-        for (int64_t i = 0; i < range; ++i) {
-            list->values[i] = i;
-        }
-        return list;
-    }).to_pycfunction();
+    // (*ns)["range"] = pycfunction_builder([] (int64_t range, FrameState& frame) {
+    //     ValueList list = frame.interpreter_state->alloc.heap_lists.make();
+    //     list->values.resize(range);
+    //     for (int64_t i = 0; i < range; ++i) {
+    //         list->values[i] = i;
+    //     }
+    //     return list;
+    // }).to_pycfunction();
 
 
-    // Returns a proxy object
-    (*ns)["super"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
-       DEBUG_ADV("Super called with args " << args[0] << ", " << ((args.size() > 1) ? args[1] : "") << "\n");
-    });
+    // // Returns a proxy object
+    // (*ns)["super"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+    //    DEBUG_ADV("Super called with args " << args[0] << ", " << ((args.size() > 1) ? args[1] : "") << "\n");
+    // });
 
 
 
@@ -79,7 +79,7 @@ extern void inject_builtins(Namespace& ns) {
     // and instance of the class it represents
     // See the RETURN_VALUE opcode in pyframe.cpp for the final allocation
     // Actually allocating a new PyObject from a PyClass happens in CALL_FUNCTION later
-    (*ns)["__build_class__"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+    (*ns)["__build_class__"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {
         #ifdef JOHN_DEBUG_ON
         fprintf(stderr,"__build_class__ called with arguments:\n");
         for(int i = 0;i < args.size();i++){
@@ -89,13 +89,17 @@ extern void inject_builtins(Namespace& ns) {
         (std::get<ValuePyFunction>(args[0]))->code->print_bytecode();
         #endif
 
+        /*while (args.hasNext()) {
+            std::cout << "ARGUMENT: " << *args << std::endl;
+            ++args;
+        }
+
+        exit(0);*/
+
         // Store code
         ValueCode init_code = std::get<ValuePyFunction>(args[0])->code;
-        args.erase(args.begin());
-
         // Store name
-        ValueString class_name = std::get<ValueString>(args[0]);
-        args.erase(args.begin());
+        ValueString class_name = std::get<ValueString>(args[1]);
 
         // There is some unhealthy copying going on here
         // This needs to be fixed and made better
@@ -104,7 +108,7 @@ extern void inject_builtins(Namespace& ns) {
 
         // Check for type errors
         try{
-            for(int i = 0;i < args.size();i++){
+            for(size_t i = 2; i < args.size(); ++i) {
                 tmp_vect.push_back(std::get<ValuePyClass>(args[i]));
             }
         } catch (const std::bad_variant_access& e) {
@@ -112,9 +116,7 @@ extern void inject_builtins(Namespace& ns) {
         }
 
         // Allocate the class
-        ValuePyClass new_class = std::make_shared<value::PyClass>(value::PyClass(
-            tmp_vect
-        ));
+        ValuePyClass new_class = std::make_shared<value::PyClass>(tmp_vect);
 
         // Allocate the class and push it to the top of the stack
         // Args now holds the list of parents
@@ -144,7 +146,7 @@ extern void inject_builtins(Namespace& ns) {
     // have a reference to the class (it doesnt exist yet)
     // This means flags need to be involved
     // Is there a better way to do this without addng a field to FrameState?
-    (*ns)["classmethod"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+    (*ns)["classmethod"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {
         if (args.size() != 1) {
             throw pyerror("classmethod builtin not passed exactly one argument");
         }
@@ -209,7 +211,7 @@ extern void inject_builtins(Namespace& ns) {
     });
 
     // Makes a method static!
-    (*ns)["staticmethod"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
+    (*ns)["staticmethod"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {
         if (args.size() != 1) {
             throw pyerror("staticmethod builtin not passed exactly one argument");
         }

@@ -117,15 +117,11 @@ func_err(1,2,3,4)
 def range222():
     x = 1
     while x < 10:
-        print(x)
         x += 1
 generator = range222()
         )");
 
         InterpreterState state(code);
-        (*(state.ns_builtins))["print"] = pycfunction_builder([] (Value value) {
-            // pass, but it is necessary that the function exist
-        }).to_pycfunction();
         state.eval();
     }
 
@@ -147,7 +143,7 @@ test(1, 2, 3)
 }
 
 
-TEST_CASE("should be able to use a generator function", "[functions]") {
+TEST_CASE("should be able to use a generator function", "[generators]") {
     SECTION("simple range generator should work") {
         auto code = build_string(R"(
 def range(n):

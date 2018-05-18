@@ -6,117 +6,199 @@
 
 namespace py {
 namespace value_helper {
-/*
-    visitor_is_truthy
-*/
-bool visitor_is_truthy::operator()(double d) const {
-    return d != (double)0;
-}
-
-bool visitor_is_truthy::operator()(int64_t d) const {
-    return d != (int64_t)0;
-}
-
-bool visitor_is_truthy::operator()(const ValueString& s) const {
-    return s->size() != 0;
-}
-
-bool visitor_is_truthy::operator()(const value::NoneType) const {
-    return false;
-}
-
-
-/*
-    attribute visitor implementations for specific types i.e. lists
-*/
-
-// Namespace list_attributes;
-// struct init_list_attributes {
-//     init_list_attributes() {
-//         list_attributes
-//     }
-// };
-
-void load_attr_visitor::operator()(ValueList& list) {
-    if (builtins::builtin_list_attributes.find(attr) != builtins::builtin_list_attributes.end()) {
-        auto& method = builtins::builtin_list_attributes[attr];
-        frame.value_stack.push_back(method->bindThisArg(list));
-    } else {
-        std::stringstream ss;
-        ss << "AttributeError: attribute '" << attr << "' could not be found";
-        throw pyerror(ss.str());
-    }
-}
-
-
-/*
-    visitor_debug_repr
-*/
-struct visitor_debug_repr {
-    std::ostream& stream;
-    visitor_debug_repr(std::ostream& stream) : stream(stream) { };
-
-    void operator()(bool v) {
-        stream << v ? "true" : "false";
+    /*
+        visitor_is_truthy
+    */
+    bool visitor_is_truthy::operator()(double d) const {
+        return d != (double)0;
     }
 
-    void operator()(double d) {
-        stream << d;
+    bool visitor_is_truthy::operator()(int64_t d) const {
+        return d != (int64_t)0;
     }
 
-    void operator()(int64_t d) {
-        stream << d;
+    bool visitor_is_truthy::operator()(const ValueString& s) const {
+        return s->size() != 0;
     }
 
-    void operator()(ValueString d) {
-        stream << *d;
+    bool visitor_is_truthy::operator()(const value::NoneType) const {
+        return false;
     }
 
-    void operator()(value::NoneType) {
-        stream << "None";
-    }
 
-    void operator()(ValuePyFunction func) {
-        if (func != nullptr) {
-            stream << "PyFunc_" << *(func->name);
-        } else 
-            stream << "PyFunc_<anonymous>";
-    }
+    /*
+        attribute visitor implementations for specific types i.e. lists
+    */
 
-    void operator()(ValuePyClass arg) {
-        stream << "ValuePyClass ("
-               << *(std::get<ValueString>((*(arg->attrs))["__qualname__"])) << ")";
-    }
+    // Namespace list_attributes;
+    // struct init_list_attributes {
+    //     init_list_attributes() {
+    //         list_attributes
+    //     }
+    // };
 
-    void operator()(ValuePyObject arg) {
-        stream << "ValuePyObject of class ("
-               << *(std::get<ValueString>((*(arg->static_attrs->attrs))["__qualname__"])) << ")";
-    }
-
-    void operator()(ValueList list) {
-        stream << "[";
-        for (auto& value : list->values) {
-            std::visit(value_helper::visitor_debug_repr(stream), value);
-            stream << ", ";
+    void load_attr_visitor::operator()(ValueList& list) {
+        if (builtins::builtin_list_attributes.find(attr) != builtins::builtin_list_attributes.end()) {
+            auto& method = builtins::builtin_list_attributes[attr];
+            frame.value_stack.push_back(method->bindThisArg(list));
+        } else {
+            std::stringstream ss;
+            ss << "AttributeError: attribute '" << attr << "' could not be found";
+            throw pyerror(ss.str());
         }
-        stream << "]";
     }
 
-    template<typename T> 
-    void operator()(T) const {
-        // TODO: use typetraits to generate this.
-        throw pyerror("unimplemented repr for type");
+
+    /*
+        visitor_debug_repr
+    */
+    struct visitor_debug_repr {
+        std::ostream& stream;
+        visitor_debug_repr(std::ostream& stream) : stream(stream) { };
+
+        void operator()(bool v) {
+            stream << v ? "true" : "false";
+        }
+
+        void operator()(double d) {
+            stream << d;
+        }
+
+        void operator()(int64_t d) {
+            stream << d;
+        }
+
+        void operator()(ValueString d) {
+            stream << *d;
+        }
+
+        void operator()(value::NoneType) {
+            stream << "None";
+        }
+
+        void operator()(ValuePyFunction func) {
+            if (func != nullptr) {
+                stream << "PyFunc_" << *(func->name);
+            } else 
+                stream << "PyFunc_<anonymous>";
+        }
+
+        void operator()(ValuePyClass arg) {
+            stream << "ValuePyClass ("
+                << *(std::get<ValueString>((*(arg->attrs))["__qualname__"])) << ")";
+        }
+
+        void operator()(ValuePyObject arg) {
+            stream << "ValuePyObject of class ("
+                << *(std::get<ValueString>((*(arg->static_attrs->attrs))["__qualname__"])) << ")";
+        }
+
+        void operator()(ValueList list) {
+            stream << "[";
+            for (auto& value : list->values) {
+                std::visit(value_helper::visitor_debug_repr(stream), value);
+                stream << ", ";
+            }
+            stream << "]";
+        }
+
+        template<typename T> 
+        void operator()(T) {
+            // TODO: use typetraits to generate this.
+            throw pyerror(string("unimplemented repr for type: ") + typeid(T).name());
+        }
+    };
+
+    ValuePyObject create_cell(Value contents){
+        DEBUG_ADV("Creating cell for " << contents << "\n");
+        ValuePyObject nobj = std::make_shared<value::PyObject>(value::PyObject(cell_class));
+        nobj->store_attr("contents",contents);
+        return nobj;
     }
-};
-
-ValuePyObject create_cell(Value contents){
-    DEBUG_ADV("Creating cell for " << contents << "\n");
-    ValuePyObject nobj = std::make_shared<value::PyObject>(value::PyObject(cell_class));
-    nobj->store_attr("contents",contents);
-    return nobj;
-}
 
 
+    /*
+        call_visitor methods
+    */
+
+    void call_visitor::operator()(const ValuePyClass& cls) const {
+        DEBUG("Constructing a '%s' Object",std::get<ValueString>(
+            (*(cls->attrs))["__qualname__"]
+        )->c_str());
+        /*for(auto it = cls->attrs.begin();it != cls->attrs.end();++it){
+            printf("%s = ",it->first.c_str());
+            frame.print_value(it->second);
+            printf("\n");
+        }*/
+        ValuePyObject npo = std::make_shared<value::PyObject>(
+            value::PyObject(cls)
+        );
+
+
+        // Check the class if it has an init function
+        auto itr = cls->attrs->find("__init__");
+        Value vv;
+        bool has_init = true;
+        if(itr == cls->attrs->end()){
+            std::tuple<Value,bool> par_val = value::PyClass::find_attr_in_parents(cls,std::string("__init__"));
+            if(std::get<1>(par_val)){
+                vv = std::get<0>(par_val);
+            } else {
+                has_init = false;
+            }
+        } else {
+            vv = itr->second;
+        }
+
+        if(has_init){
+            // call the init function, pushing the new object as the first argument 'self'
+            args.bind(npo);
+            std::visit(call_visitor(frame, args),vv);
+            
+            // Now that a new frame is on the stack, set a flag in it that it's an initializer frame
+            frame.interpreter_state->cur_frame->set_flag(FrameState::FLAG_OBJECT_INIT_FRAME);
+        }
+
+        // Push the new object on the value stack
+        frame.value_stack.push_back(npo);
+    }
+
+    void call_visitor::operator()(const ValuePyFunction& func) const {
+        DEBUG("call_visitor dispatching on a PyFunction");
+
+        // Throw an error if too many arguments
+        if (args.size() > func->code->co_argcount){
+            throw pyerror(std::string("TypeError: " + *(func->name)
+                        + " takes " + std::to_string(func->code->co_argcount)
+                        + " positional arguments but " + std::to_string(args.size())
+                        + " were given"));
+        }
+
+        // Push a new FrameState
+        frame.interpreter_state->push_frame(
+            std::make_shared<FrameState>(func->code)
+        );
+        frame.interpreter_state->cur_frame->initialize_from_pyfunc(func, args);
+    }
+
+    void call_visitor::operator()(const ValuePyObject& obj) const {
+        DEBUG("call_visitor dispatching on a PyObject");
+
+        std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(obj,"__call__");
+        if(std::get<1>(res)){
+            // Visit again with the newly found thing
+            args.bind(obj);
+            std::visit(
+                call_visitor(frame,args),
+                std::get<0>(res)
+            );
+        } else {
+            throw pyerror(std::string(
+                "'" + *(std::get<ValueString>((obj->static_attrs->attrs->at("__qualname__"))))
+                + "' object is not callable"
+            ));
+        }
+    }
 }
 
 std::ostream& operator << (std::ostream& stream, const Value value) {
