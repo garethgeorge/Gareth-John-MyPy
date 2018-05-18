@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <variant>
 #include "builtins.hpp"
-// #include "builtins_helpers.hpp"
+#include "builtins_helpers.hpp"
 #include "../pyvalue_helpers.hpp"
 #include "../pyerror.hpp"
 #include "../pyframe.hpp"
@@ -40,28 +40,28 @@ extern void inject_builtins(Namespace& ns) {
         return ;
     });
 
-    // (*ns)["str"] = pycfunction_builder([] (Value value) {
-    //     return std::make_shared<std::string>(std::move(std::visit(value_helper::visitor_str(), value)));
-    // }).to_pycfunction();
+    (*ns)["str"] = pycfunction_builder([] (Value value) {
+        return std::make_shared<std::string>(std::move(std::visit(value_helper::visitor_str(), value)));
+    }).to_pycfunction();
 
-    // (*ns)["len"] = pycfunction_builder([] (ValueList list) {
-    //     return (int64_t) list->values.size();
-    // }).to_pycfunction();
+    (*ns)["len"] = pycfunction_builder([] (ValueList list) {
+        return (int64_t) list->values.size();
+    }).to_pycfunction();
 
-    // (*ns)["range"] = pycfunction_builder([] (int64_t range, FrameState& frame) {
-    //     ValueList list = frame.interpreter_state->alloc.heap_lists.make();
-    //     list->values.resize(range);
-    //     for (int64_t i = 0; i < range; ++i) {
-    //         list->values[i] = i;
-    //     }
-    //     return list;
-    // }).to_pycfunction();
+    (*ns)["range"] = pycfunction_builder([] (int64_t range, FrameState& frame) {
+        ValueList list = frame.interpreter_state->alloc.heap_lists.make();
+        list->values.resize(range);
+        for (int64_t i = 0; i < range; ++i) {
+            list->values[i] = i;
+        }
+        return list;
+    }).to_pycfunction();
 
 
-    // // Returns a proxy object
-    // (*ns)["super"] = std::make_shared<value::CFunction>([](FrameState& frame, std::vector<Value>& args) {
-    //    DEBUG_ADV("Super called with args " << args[0] << ", " << ((args.size() > 1) ? args[1] : "") << "\n");
-    // });
+    // Returns a proxy object
+    (*ns)["super"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {
+       DEBUG_ADV("Super called with args " << args[0] << ", " << ((args.size() > 1) ? args[1] : "") << "\n");
+    });
 
 
 

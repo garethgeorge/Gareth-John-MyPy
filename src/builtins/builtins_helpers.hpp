@@ -60,27 +60,27 @@ struct unpack_caller
 
     // we construct the unpack caller with the args it will attempt to apply
     unpack_caller(ArgList& args) : args(args) {
-        
+        if (args.size() != num_args) {
+        }
     };
 
     // transform argument
     template<size_t index>
-    auto transform() {
+    auto&& transform() {
         typedef typename traits::template arg<index>::type argType;
         if constexpr(std::is_same<typename std::decay<argType>::type, FrameState>::value) {
             return *frame;
         } else if constexpr(std::is_same<typename std::decay<argType>::type, Value>::value) {
-            if (index >= args.size()) {
-                throw pyerror("no more values in args vector.");
+            if (args.size() <= index) {
+                throw pyerror("ArgError: CFunction no argument at index " + std::to_string(index));
             }
             return args[index];
-        } else if constexpr(std::is_same<typename std::decay<argType>::type, ArgList>::value) {
+        } else if constexpr(std::is_same<typename std::decay<argType>::type, typename std::vector<Value>>::value) {
             return args;
         } else {
-            if (index >= args.size()) {
-                throw pyerror("no more values in args vector.");
+            if (args.size() <= index) {
+                throw pyerror("ArgError: CFunction no argument at index " + std::to_string(index));
             }
-
             try {
                 return std::get<typename std::decay<argType>::type>(args[index]);
             } catch (std::bad_variant_access& e) {
@@ -91,7 +91,7 @@ struct unpack_caller
             }
         }
     }
-
+    
     // internal call method
     template <typename FuncType, size_t... I>
     auto call(FuncType &f, indices<I...>){
