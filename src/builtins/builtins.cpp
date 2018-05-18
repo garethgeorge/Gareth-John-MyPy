@@ -40,23 +40,37 @@ extern void inject_builtins(Namespace& ns) {
         return ;
     });
 
-    (*ns)["str"] = pycfunction_builder([] (Value value) {
-        return std::make_shared<std::string>(std::move(std::visit(value_helper::visitor_str(), value)));
-    }).to_pycfunction();
+    (*ns)["range"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& _args) {
+        arg_decoder<int64_t, int64_t, int64_t> args(_args);
+        int64_t start = args.get<1>((int64_t)0);
+        int64_t stop = args.get<0>();
+        int64_t step_size = args.get<2>((int64_t)1);
 
-    (*ns)["len"] = pycfunction_builder([] (ValueList list) {
-        return (int64_t) list->values.size();
-    }).to_pycfunction();
-
-    (*ns)["range"] = pycfunction_builder([] (int64_t range, FrameState& frame) {
         ValueList list = frame.interpreter_state->alloc.heap_lists.make();
-        list->values.resize(range);
-        for (int64_t i = 0; i < range; ++i) {
+        list->values.resize((stop - start) / step_size + 1);
+        for (int64_t i = start; i < stop; i += step_size) {
             list->values[i] = i;
         }
-        return list;
-    }).to_pycfunction();
+        frame.value_stack.push_back(list);
+    });
 
+    (*ns)["str"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {
+        if (args.size() != 1) {
+            throw pyerror("ArgError: string takes 1 argument");
+        }
+        frame.value_stack.push_back(
+            std::make_shared<std::string>(std::move(std::visit(value_helper::visitor_str(), args[0])))
+        );
+    });
+
+    (*ns)["len"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& _args) {
+        arg_decoder<ValueList> args(_args);
+        ValueList list = args.get<0>();
+
+        frame.value_stack.push_back(
+            (int64_t)list->values.size()
+        );
+    });
 
     // Returns a proxy object
     (*ns)["super"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {

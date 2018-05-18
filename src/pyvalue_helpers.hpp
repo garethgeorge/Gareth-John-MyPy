@@ -118,7 +118,6 @@ struct numeric_visitor {
     }
     
     void operator()(ValuePyObject& v1, ValuePyObject& v2) const {
-        std::cout << "CALL NUMERIC VISITOR 1" << std::endl;
         /// Get the attribute for it
         std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(v1,std::string(T::l_attr));
         if(std::get<1>(res)){
@@ -141,7 +140,6 @@ struct numeric_visitor {
 
     template<typename OT>
     void operator()(ValuePyObject& v1, OT& v2) const {
-        std::cout << "CALL NUMERIC VISITOR 2" << std::endl;
         // Get the attribute for it
         std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(v1,std::string(T::l_attr));
         if(std::get<1>(res)){
@@ -163,7 +161,6 @@ struct numeric_visitor {
 
     template<typename OT2>
     void operator()(OT2& v1, ValuePyObject& v2) const {
-        std::cout << "CALL NUMERIC VISITOR 3" << std::endl;
         // Get the attribute for it
         std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(v2,std::string(T::r_attr));
         if(std::get<1>(res)){

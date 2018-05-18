@@ -93,6 +93,10 @@ namespace value_helper {
                 << *(std::get<ValueString>((*(arg->static_attrs->attrs))["__qualname__"])) << ")";
         }
 
+        void operator()(ValuePyGenerator arg) {
+            stream << "ValuePyGenerator";
+        }
+
         void operator()(ValueList list) {
             stream << "[";
             for (auto& value : list->values) {
