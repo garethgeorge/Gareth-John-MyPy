@@ -18,14 +18,12 @@ def print_msg_store(msg):
 
 weird = 10
 
-class Ah:
+class Ah():
     val = weird
     def getfunc(self,something):
-        def b():
+        def bar():
             return(self.val + something)
-        return b
-
-
+        return bar
 
 a = print_msg(100)
 print(a())
