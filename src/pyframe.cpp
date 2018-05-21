@@ -530,6 +530,12 @@ void FrameState::initialize_from_pyfunc(ValuePyFunction func, ArgList& args){
     // compute the index of the first argument that should be treated as a
     // default argument parameter
 
+    bool has_implicit_arg = func->flags & (value::CLASS_METHOD | value::INSTANCE_METHOD);
+    if (has_implicit_arg) {
+        DEBUG_ADV("calling a class method! binding func->self as thisArg");
+        args.bind(func->self);
+    }
+
 
     if (args.size() < this->code->co_argcount - func->def_args->size()) {
         int missing_num = (this->code->co_argcount - func->def_args->size()) - args.size();
@@ -540,21 +546,16 @@ void FrameState::initialize_from_pyfunc(ValuePyFunction func, ArgList& args){
         throw pyerror(ss.str());
     }
 
-    bool has_implicit_arg = func->flags & (value::CLASS_METHOD | value::INSTANCE_METHOD);
-    if (has_implicit_arg) {
-        DEBUG_ADV("calling a class method! binding func->self as thisArg");
-        args.bind(func->self);
-    }
-
     DEBUG_ADV("Useful values to keep in mind:" 
         << "\n\thas_implicit_arg: " << has_implicit_arg 
         << "\n\targcount: " << argcount
         << "\n\tco_argcount: " << this->code->co_argcount
-        << "\n\tdef_args->size(): " << func->def_args->size());
+        << "\n\tdef_args->size(): " << func->def_args->size()
+        << "\n\tfunc flags: " << func->flags);
 
     
 
-    bool have_cells = !(this->code->co_cellvars.size() == 0);
+    bool have_cells = this->code->co_cellvars.size() > 0;
     this->cells.resize(this->code->co_cellvars.size());
 
     DEBUG_ADV("Determined we have " << this->code->co_cellvars.size());

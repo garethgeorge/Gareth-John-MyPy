@@ -15,17 +15,15 @@ def print_msg(msg):
     return printer
 
 a = print_msg(100)
-a()
-        )");
 /*check_int1(a())
 b = print_msg(200)
 check_int2(b())
 check_int3(a())
-        )");*/
+        )");
         InterpreterState state(code);
-        //(*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)8);
-        //(*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)8);
-        //(*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)8);
+        (*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)8);
+        (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)8);
+        (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)8);
         state.eval();
     }
 }
