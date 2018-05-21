@@ -554,7 +554,7 @@ void FrameState::initialize_from_pyfunc(ValuePyFunction func, ArgList& args){
 
     
 
-    bool have_cells = this->code->co_cellvars.size() == 0;
+    bool have_cells = !(this->code->co_cellvars.size() == 0);
     this->cells.resize(this->code->co_cellvars.size());
 
     DEBUG_ADV("Determined we have " << this->code->co_cellvars.size());
@@ -566,10 +566,9 @@ void FrameState::initialize_from_pyfunc(ValuePyFunction func, ArgList& args){
 
         DEBUG_ADV("\t" << i << ") assigning '" << varname << "' = '" << v << "'");
 
-        if (have_cells && this->code->co_cellmap.find(varname) != this->code->co_cellmap.end()) {
+        if (have_cells && (this->code->co_cellmap.find(varname) != this->code->co_cellmap.end())) {
             ValuePyObject new_cell = value_helper::create_cell(v);
             this->ns_local->emplace(varname, new_cell);
-
             this->cells[i] = new_cell;
         } else {
             this->ns_local->emplace(varname, v);
@@ -902,7 +901,7 @@ inline void FrameState::eval_next() {
                 );
             } else {
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
-                DEBUG_ADV("Here are some thing: "   
+                DEBUG_ADV("Here are some things: "   
                     << which_frame->curr_func << ","
                     << which_frame->curr_func->__closure__ << ","
                     << which_frame->curr_func->__closure__->values[arg] << ","

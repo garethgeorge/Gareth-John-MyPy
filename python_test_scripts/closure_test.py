@@ -1,6 +1,6 @@
 def print_msg(msg):
     def printer():
-        print(msg)
+        return msg
     return printer
 
 def ret_msg(msg):
@@ -11,9 +11,9 @@ def ret_msg(msg):
     return printer(msg)
 
 def print_msg_store(msg):
-    msg = "hmm"
+    msg = -1
     def printer():
-        print(msg)
+        return msg
     return printer
 
 weird = 10
@@ -27,17 +27,17 @@ class Ah:
 
 
 
-a = print_msg("fun")
-a()
-b = print_msg("ooo")
-b()
+a = print_msg(100)
+print(a())
+b = print_msg(200)
+print(b())
 c = ret_msg(1)
 print(c())
 d = ret_msg(5.5)
 print(d())
-a()
-e = print_msg_store("oh!")
-e()
+print(a())
+e = print_msg_store(300)
+print(e())
 f = Ah()
 g = f.getfunc(10)
 print(g())
