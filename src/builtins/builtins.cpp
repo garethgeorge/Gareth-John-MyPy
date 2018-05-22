@@ -46,7 +46,7 @@ extern void inject_builtins(Namespace& ns) {
         int64_t stop = args.get<0>();
         int64_t step_size = args.get<2>((int64_t)1);
 
-        ValueList list = frame.interpreter_state->alloc.heap_lists.make();
+        ValueList list = alloc.heap_list.make();
         list->values.resize((stop - start) / step_size + 1);
         for (int64_t i = start; i < stop; i += step_size) {
             list->values[i] = i;
@@ -59,7 +59,7 @@ extern void inject_builtins(Namespace& ns) {
             throw pyerror("ArgError: string takes 1 argument");
         }
         frame.value_stack.push_back(
-            std::make_shared<std::string>(std::move(std::visit(value_helper::visitor_str(), args[0])))
+            alloc.heap_string.make(std::visit(value_helper::visitor_str(), args[0]))
         );
     });
 

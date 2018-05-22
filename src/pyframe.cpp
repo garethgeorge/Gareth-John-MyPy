@@ -387,8 +387,10 @@ namespace eval_helpers {
 
         add_visitor(FrameState &frame) : numeric_visitor<op_add>(frame) { };
         
-        void operator()(const std::shared_ptr<std::string>& v1, const std::shared_ptr<std::string> &v2) const {
-            frame.value_stack.push_back(std::make_shared<std::string>(*v1 + *v2));
+        void operator()(const gc_ptr<std::string>& v1, const gc_ptr<std::string> &v2) const {
+            frame.value_stack.push_back(
+                alloc.heap_string.make(*v1 + *v2)
+            );
         }
     };
 
@@ -927,7 +929,7 @@ inline void FrameState::eval_next() {
                 // If the function does not have a closure yet, give it one
                 if(this->curr_func){
                     if(this->curr_func->__closure__ == nullptr){
-                        this->curr_func->__closure__ = this->interpreter_state->alloc.heap_lists.make();
+                        this->curr_func->__closure__ = alloc.heap_list.make();
                     }
                     while(this->curr_func->__closure__->values.size() <= arg){
                         this->curr_func->__closure__->values.push_back(
@@ -1462,7 +1464,7 @@ inline void FrameState::eval_next() {
             this->check_stack_size(arg);
 
             // Pop the arguments to turn into a list.
-            ValueList newList = this->interpreter_state->alloc.heap_lists.make();
+            ValueList newList = alloc.heap_list.make();
 
             newList->values.assign(this->value_stack.end() - arg, this->value_stack.end());
             this->value_stack.resize(this->value_stack.size() - arg);

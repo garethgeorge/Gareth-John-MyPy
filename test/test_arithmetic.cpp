@@ -2,6 +2,8 @@
 
 #include "include/test_helpers.hpp"
 
+#include "../src/pyallocator.hpp"
+
 TEST_CASE("should be able to perform arithmetic", "[arithmetic]") {
     SECTION( "adding two values" ) {
         auto code = build_string(R"(
@@ -47,7 +49,11 @@ check_string(x + " test")
 )";
         auto code = build_string(theCode);
         InterpreterState state(code);
-        (*(state.ns_builtins))["check_string"] = make_builtin_check_value(make_shared<string>("test test"));
+        // TODO: fix this, it actually is leaking memory! that is pretty bad :S 
+        gc_ptr<std::string> str = alloc.heap_string.make("test test");
+        gc_root_ptr<std::string> string(str, alloc.heap_string);
+        (*(state.ns_builtins))["my_string"] = string; // prevent it from getting garbage collected
+        (*(state.ns_builtins))["check_string"] = make_builtin_check_value((gc_ptr<std::string>)string);
         state.eval();
     }
 

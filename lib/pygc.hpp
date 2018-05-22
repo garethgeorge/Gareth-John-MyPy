@@ -17,17 +17,12 @@ template<typename T>
 struct gc_heap;
 
 template<typename T>
-struct gc_test_ptr {
-    T* object;
-
-    gc_test_ptr(T *object) : object(object) {
-    }
-};
+struct gc_root_ptr;
 
 
 template<typename T>
 class gc_ptr {
-private:
+protected:
     static const uint8_t FLAG_MARKED = 1;
 
     struct gc_object {
@@ -92,6 +87,7 @@ public:
     }
 
     friend class gc_heap<T>;
+    friend class gc_root_ptr<T>;
 };
 
 
@@ -104,6 +100,7 @@ private:
 
     // the objects array is effectively the heap
     std::list<gc_object> objects;
+    std::list<gc_object*> rootset;
 
 public:
     template < typename... Args> 
@@ -112,7 +109,6 @@ public:
             objects.emplace(objects.begin(), std::forward<Args>(args)...);
         return ptr_t(*object_itr);
     }
-
 
     size_t size() {
         return objects.size();
@@ -129,7 +125,31 @@ public:
             }
         }
     }
+
+    friend class gc_root_ptr<T>;
 };
+
+template<typename T>
+struct gc_root_ptr : public gc_ptr<T> {
+private:
+    using gc_object = typename gc_heap<T>::gc_object;
+    gc_heap<T>* heap;
+    typename std::list<gc_object*>::iterator iter;
+public:
+    gc_root_ptr(gc_ptr<T> ptr, gc_heap<T>& heap) {
+        this->object = ptr.object;
+        this->heap = &heap;
+        this->iter = this->heap->rootset.emplace(&(this->object));
+    }
+
+    ~gc_root_ptr() {
+        this->heap->rootset->erase(this->iter);
+    }
+    auto operator = (gc_root_ptr& other) = delete;
+
+    friend class gc_heap<T>;
+};
+
 
 }
 

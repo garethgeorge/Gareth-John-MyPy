@@ -12,6 +12,7 @@
 
 #include "pycode.hpp"
 #include "oplist.hpp"
+#include "pyallocator.hpp"
 #include "pyvalue.hpp"
 #include "../lib/base64.hpp"
 // #define DEBUG_ON
@@ -131,7 +132,7 @@ Code::Code(const json& tree) {
             if (real_type == "<class 'str'>") {
                 DEBUG("constant at index %lu is string", this->co_consts.size());
                 this->co_consts.push_back(
-                    std::make_shared<std::string>(element.at("value").get<std::string>())
+                    alloc.heap_string.make(element.at("value").get<std::string>())
                 );
             } else if (real_type == "<class 'int'>") {
                 DEBUG("constant at index %lu is int", this->co_consts.size());

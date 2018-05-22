@@ -285,7 +285,7 @@ value::PyClass::PyClass(){
 }
 
 value::PyClass::PyClass(std::string&& qualname) : PyClass() {
-    (*(this->attrs))["__qualname__"] = std::make_shared<std::string>(std::string(qualname));
+    (*(this->attrs))["__qualname__"] = alloc.heap_string.make(qualname);
 }
 
 value::PyClass::PyClass(std::vector<ValuePyClass>& ps) : PyClass() {

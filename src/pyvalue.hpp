@@ -49,6 +49,10 @@ namespace value {
     struct PyFunc;
     struct PyGenerator {
         std::shared_ptr<FrameState> frame;
+
+        inline bool operator == (const PyGenerator& other) const {
+            return frame == other.frame;
+        }
     };
 
     // The internal representation of a class
@@ -62,7 +66,7 @@ namespace value {
 // larger value types should be wrapped by a shared_ptr,
 // this is because we want to keep the size of our std::variant class small,
 // it also allows sharing string objects between multiple values whenever possible
-using ValueString = std::shared_ptr<std::string>;
+using ValueString = gc_ptr<std::string>;
 using ValueCode = std::shared_ptr<const Code>;
 using ValueCFunction = std::shared_ptr<value::CFunction>;
 using ValueCMethod = std::shared_ptr<value::CMethod>;
@@ -71,7 +75,7 @@ using ValuePyObject = std::shared_ptr<value::PyObject>;
 using ValuePyGenerator = value::PyGenerator;
 
 // I think PyClasses (the thing that holds the statics of a class) can be deallocated.
-// Need to confirm this tho
+// Need to confirm this thoa
 // THIS NEEDS TO CHANGE TO A GC_PTR (or do i?)
 using ValuePyClass = std::shared_ptr<value::PyClass>;
 using ValueList = gc_ptr<value::List>;
