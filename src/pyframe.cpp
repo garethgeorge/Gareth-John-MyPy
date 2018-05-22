@@ -21,7 +21,15 @@
     #define CASE(arg) case op::arg:\
                       arg:
 
-    #define BREAK break
+    #define BREAK \
+    this->r_pc++;\
+    instruction = code->instructions[this->r_pc];\
+    bytecode = instruction.bytecode;\
+    arg = instruction.arg;\
+    DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])\
+    goto *jmp_table[bytecode];\
+    break;
+
 #else
     #define BREAK break
     #define BREAK_CONTEXT_SWITCH break
@@ -778,8 +786,8 @@ inline void FrameState::eval_next() {
     }
 
     Code::Instruction instruction = code->instructions[this->r_pc];
-    const Code::ByteCode bytecode = instruction.bytecode;
-    const uint64_t arg = instruction.arg;
+    Code::ByteCode bytecode = instruction.bytecode;
+    uint64_t arg = instruction.arg;
 
     DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])
     switch (bytecode) {
@@ -1357,7 +1365,7 @@ inline void FrameState::eval_next() {
             // Pop the name and code
             Value name = std::move(value_stack.back());
             this->value_stack.pop_back();
-            Value code = std::move(value_stack.back());
+            Value closure_code = std::move(value_stack.back());
             this->value_stack.pop_back();
             //ValueList closure = std::move(std::get<ValueList>(value_stack.back()));
             ValueList closure = std::get<ValueList>(value_stack.back());
@@ -1374,14 +1382,14 @@ inline void FrameState::eval_next() {
             // Error here if the wrong types
             try {
                 ValuePyFunction nv = std::make_shared<value::PyFunc>(
-                    value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(code), v}
+                    value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(closure_code), v}
                 );
                 // CHange to a tuple!
                 nv->__closure__ = closure;
                 this->value_stack.push_back(nv);
             } catch (std::bad_variant_access&) {
                 std::stringstream ss;
-                ss << "MAKE FUNCTION called with name '" << name << "' and code block: " << code;
+                ss << "MAKE FUNCTION called with name '" << name << "' and code block: " << closure_code;
                 ss << ", but make function expects string and code object";
                 throw pyerror(ss.str());
             }
@@ -1396,11 +1404,11 @@ inline void FrameState::eval_next() {
 
             // Pop the name and code
             ValueString name;
-            ValueCode code;
+            ValueCode func_code;
             try {
                 name = std::move(std::get<ValueString>(value_stack.back()));
                 this->value_stack.pop_back();
-                code = std::move(std::get<ValueCode>(value_stack.back()));
+                func_code = std::move(std::get<ValueCode>(value_stack.back()));
                 this->value_stack.pop_back();
             } catch (std::bad_variant_access& err) {
                 std::stringstream ss;
@@ -1424,7 +1432,7 @@ inline void FrameState::eval_next() {
 
             this->value_stack.push_back(
                 std::make_shared<value::PyFunc>(
-                    value::PyFunc {name, code, v}
+                    value::PyFunc {name, func_code, v}
                 )
             );
             BREAK;
