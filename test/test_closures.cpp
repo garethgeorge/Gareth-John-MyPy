@@ -63,7 +63,7 @@ check_int1(e())
         state.eval();
     }
 
-    SECTION( "and correct changes as classes do or dont" ){
+    /*SECTION( "and correct changes as classes do or dont" ){
         auto code = build_string(R"(
 weird = 10
 class Ah:
@@ -72,7 +72,7 @@ class Ah:
         def bar():
             return(self.val + something)
         return bar
-    )");
+    )");*/
 /*
 f = Ah()
 g = f.getfunc(10)
@@ -85,11 +85,11 @@ check_int3(i())
 weird = 90
 check_int4(i())
         )");*/
-        InterpreterState state(code);
+        //InterpreterState state(code);
         //(*(state.ns_builtins))["check_int1"] = make_builtin_check_value((int64_t)-1);
         //(*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)-1);
         //(*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)-1);
         //(*(state.ns_builtins))["check_int4"] = make_builtin_check_value((int64_t)-1);
-        state.eval();
-    }
+       // state.eval();
+    //}
 }

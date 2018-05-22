@@ -668,7 +668,8 @@ void FrameState::add_to_ns_local(const std::string& name, Value&& v){
 void FrameState::print_value(Value& val) {
     std::visit(value_helper::overloaded {
             [](auto&& arg) { 
-                throw pyerror(string("unimplemented stack printer for stack value: ") + typeid(arg).name());
+                //throw pyerror(string("unimplemented stack printer for stack value: ") + typeid(arg).name());
+               std::cerr << (string("unimplemented stack printer for stack value: ") + typeid(arg).name());
             },
             [](double arg) { std::cerr << "double(" << arg << ")"; },
             [](int64_t arg) { std::cerr << "int64(" << arg << ")"; },
