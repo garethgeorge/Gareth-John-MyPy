@@ -16,15 +16,17 @@
 
 #define DIRECT_THREADED
 #ifdef DIRECT_THREADED
-    #define BREAK_CONTEXT_SWITCH break
+    #define CONTEXT_SWITCH break
     // Add a label after each case
     #define CASE(arg) case op::arg:\
                       arg:
     // The hint below means we expect to always be the top frame
     // That's not great at all, but this leaves things like BINARY_ADD
     // untouched (they onyl create a new frame when they happen to call an overload in a class)
-    #define BREAK \
-    if(__builtin_expect(!(this->interpreter_state->cur_frame.get() == this),0)) break;\
+    #define CONTEXT_SWITCH_IF_NEEDED \
+        if(__builtin_expect(!(this->interpreter_state->cur_frame.get() == this),0)) break;
+
+    #define GOTO_NEXT_OP \
     this->r_pc++;\
     instruction = code->instructions[this->r_pc];\
     bytecode = instruction.bytecode;\
@@ -34,8 +36,9 @@
     break;
 
 #else
-    #define BREAK break
-    #define BREAK_CONTEXT_SWITCH break
+    #define GOTO_NEXT_OP break
+    #define CONTEXT_SWITCH break
+    #define CONTEXT_SWITCH_IF_NEEDED
     #define CASE(arg) case op::arg:
 #endif
 
@@ -795,7 +798,7 @@ inline void FrameState::eval_next() {
     DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])
     switch (bytecode) {
         CASE(NOP)
-            BREAK;
+            GOTO_NEXT_OP;
         CASE(LOAD_GLOBAL)
             try {
                 // Look for which name we are loading
@@ -808,7 +811,7 @@ inline void FrameState::eval_next() {
                 if (itr_local != this->interpreter_state->ns_globals->end()) {
                     DEBUG("op::LOAD_GLOBAL ('%s') loaded a global", name.c_str());
                     this->value_stack.push_back(itr_local->second);
-                    BREAK;
+                    GOTO_NEXT_OP;
                 }
                 
                 // Try builtins
@@ -816,14 +819,14 @@ inline void FrameState::eval_next() {
                 if (itr_local_b != this->interpreter_state->ns_builtins->end()){
                     DEBUG("op::LOAD_GLOBAL ('%s') loaded a builtin", name.c_str());
                     this->value_stack.push_back(itr_local_b->second);
-                    BREAK;
+                    GOTO_NEXT_OP;
                 }
 
                  throw pyerror(string("op::LOAD_GLOBAL name not found: ") + name);
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_FAST tried to load name out of range");
             }
-            BREAK ;
+            GOTO_NEXT_OP ;
         CASE(LOAD_FAST)
             try {
                 // Look for which name we are loading
@@ -842,7 +845,7 @@ inline void FrameState::eval_next() {
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_FAST tried to load name out of range");
             }
-            BREAK ;
+            GOTO_NEXT_OP ;
         CASE(LOAD_CLOSURE)
             try {
                 std::string name;
@@ -875,7 +878,7 @@ inline void FrameState::eval_next() {
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_CLOSURE tried to load name out of range");
             }
-            BREAK;
+            GOTO_NEXT_OP;
         CASE(LOAD_CLASSDEREF)
         {
             // First check the locals, otherwise fall through into LOAD_DEREF
@@ -891,7 +894,7 @@ inline void FrameState::eval_next() {
                     DEBUG("op::LOAD_CLASSDEREF ('%s') loaded a local", name.c_str());
                     // This is expected to be a cell
                     this->value_stack.push_back(itr_local->second);
-                    BREAK ;
+                    GOTO_NEXT_OP ;
                 } else {
                     DEBUG("op::LOAD_CLASSDEREF did not find ('%s') locally, falling through...", name.c_str());
                 }
@@ -945,7 +948,7 @@ inline void FrameState::eval_next() {
                     std::get<ValuePyObject>(which_frame->curr_func->__closure__->values[arg])->attrs->at("contents")
                 );
             }
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(STORE_DEREF)
         {
@@ -974,7 +977,7 @@ inline void FrameState::eval_next() {
                                                                     = std::move(this->value_stack.back());
                 this->value_stack.pop_back();  
             }
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(LOAD_NAME)
         {
@@ -986,26 +989,26 @@ inline void FrameState::eval_next() {
                 if (itr_local != this->ns_local->end()) {
                     DEBUG("op::LOAD_NAME ('%s') loaded a local", name.c_str());
                     this->value_stack.push_back(itr_local->second);
-                    BREAK ;
+                    GOTO_NEXT_OP ;
                 } 
                 auto itr_global = globals->find(name);
                 if (itr_global != globals->end()) {
                     DEBUG("op::LOAD_NAME ('%s') loaded a global", name.c_str());
                     this->value_stack.push_back(itr_global->second);
-                    BREAK ;
+                    GOTO_NEXT_OP ;
                 } 
                 auto itr_builtin = builtins->find(name);
                 if (itr_builtin != builtins->end()) {
                     DEBUG("op::LOAD_NAME ('%s') loaded a builtin", name.c_str());
                     this->value_stack.push_back(itr_builtin->second);
-                    BREAK ;
+                    GOTO_NEXT_OP ;
                 } 
                 
                 throw pyerror(string("op::LOAD_NAME name not found: ") + name);
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_NAME tried to load name out of range");
             }
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(STORE_GLOBAL)
             this->check_stack_size(1);
@@ -1018,7 +1021,7 @@ inline void FrameState::eval_next() {
             } catch (std::out_of_range& err) {
                 throw pyerror("op::STORE_GLOBAL tried to store name out of range");
             }
-            BREAK;
+            GOTO_NEXT_OP;
         CASE(STORE_FAST)
             this->check_stack_size(1);
             try {
@@ -1031,7 +1034,7 @@ inline void FrameState::eval_next() {
             } catch (std::out_of_range& err) {
                 throw pyerror("op::STORE_FAST tried to store name out of range");
             }
-            BREAK;
+            GOTO_NEXT_OP;
         CASE(STORE_NAME)
         {   
             this->check_stack_size(1);
@@ -1043,7 +1046,7 @@ inline void FrameState::eval_next() {
             } catch (std::out_of_range& err) {
                 throw pyerror("op::STORE_NAME tried to store name out of range");
             }
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(LOAD_CONST)
         {
@@ -1055,7 +1058,7 @@ inline void FrameState::eval_next() {
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_CONST tried to load constant out of range");
             }
-            BREAK ;
+            GOTO_NEXT_OP ;
         }
         CASE(CALL_FUNCTION)
         {
@@ -1080,19 +1083,19 @@ inline void FrameState::eval_next() {
                 func
             );
 
-            BREAK_CONTEXT_SWITCH ;
+            CONTEXT_SWITCH ;
         }
         CASE(POP_TOP)
         {
             this->check_stack_size(1);
             this->value_stack.pop_back();
-            BREAK ;
+            GOTO_NEXT_OP ;
         }
         CASE(ROT_TWO)
         {
             this->check_stack_size(2);
             std::swap(*(this->value_stack.end()), *(this->value_stack.end() - 1));
-            BREAK ;
+            GOTO_NEXT_OP ;
         }
         CASE(COMPARE_OP)
         {
@@ -1137,13 +1140,17 @@ inline void FrameState::eval_next() {
                     throw pyerror(string("operator ") + op::cmp::name[arg] + " not implemented.");
             }
             DEBUG("AFTER COMPARISON STACK SIZE: %d",this->value_stack.size());
-            BREAK;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP;
         }
         CASE(INPLACE_ADD)
             this->check_stack_size(2);
         // see https://stackoverflow.com/questions/15376509/when-is-i-x-different-from-i-i-x-in-python
         // INPLACE_ADD should call __iadd__ method on full objects, falls back to __add__ if not available.
-            if(attempt_inplace_op(*this,"__iadd__")){ BREAK };
+            if(attempt_inplace_op(*this,"__iadd__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_ADD)
         {
             this->check_stack_size(2);
@@ -1151,11 +1158,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::add_visitor(*this),v1,v2);
-            BREAK ;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP ;
         }
         CASE(INPLACE_SUBTRACT)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__isub__")){ BREAK };
+            if(attempt_inplace_op(*this,"__isub__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_SUBTRACT)
         {
             this->check_stack_size(2);
@@ -1163,11 +1174,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_sub>(*this),v1,v2);
-            BREAK ;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP ;
         }
         CASE(INPLACE_FLOOR_DIVIDE)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__ifloordiv__")){ BREAK };
+            if(attempt_inplace_op(*this,"__ifloordiv__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_FLOOR_DIVIDE)
         {
             this->check_stack_size(2);
@@ -1175,11 +1190,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_divide>(*this),v1,v2);
-            BREAK ;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP ;
         }
         CASE(INPLACE_MULTIPLY)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__imul__")){ BREAK };
+            if(attempt_inplace_op(*this,"__imul__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_MULTIPLY)
         {
             this->check_stack_size(2);
@@ -1187,11 +1206,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_mult>(*this),v1,v2);
-            BREAK ;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP ;
         }
         CASE(INPLACE_MODULO)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__imod__")){ BREAK };
+            if(attempt_inplace_op(*this,"__imod__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_MODULO)
         {
             this->check_stack_size(2);
@@ -1199,11 +1222,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_modulo>(*this),v1,v2);
-            BREAK ;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP ;
         }
         CASE(INPLACE_POWER)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__ipow__")){ BREAK };
+            if(attempt_inplace_op(*this,"__ipow__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_POWER)
         {
             this->check_stack_size(2);
@@ -1211,11 +1238,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_pow>(*this),v1,v2);
-            BREAK ;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP ;
         }
         CASE(INPLACE_TRUE_DIVIDE)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__itruediv__")){ BREAK };
+            if(attempt_inplace_op(*this,"__itruediv__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_TRUE_DIVIDE)
         {
             this->check_stack_size(2);
@@ -1223,11 +1254,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_true_div>(*this),v1,v2);
-            BREAK ;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP ;
         }
         CASE(INPLACE_LSHIFT)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__ilshift__")){ BREAK };
+            if(attempt_inplace_op(*this,"__ilshift__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_LSHIFT)
         {
             this->check_stack_size(2);
@@ -1235,11 +1270,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_lshift>(*this),v1,v2);
-            BREAK ;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP ;
         }
         CASE(INPLACE_RSHIFT)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__irshift__")){ BREAK };
+            if(attempt_inplace_op(*this,"__irshift__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_RSHIFT)
         {
             this->check_stack_size(2);
@@ -1247,11 +1286,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_rshift>(*this),v1,v2);
-            BREAK;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP;
         }
         CASE(INPLACE_AND)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__iand__")){ BREAK };
+            if(attempt_inplace_op(*this,"__iand__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_AND)
         {
             this->check_stack_size(2);
@@ -1259,11 +1302,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_and>(*this),v1,v2);
-            BREAK;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP;
         }
         CASE(INPLACE_XOR)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__ixor__")){ BREAK };
+            if(attempt_inplace_op(*this,"__ixor__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_XOR)
         {
             this->check_stack_size(2);
@@ -1271,11 +1318,15 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_xor>(*this),v1,v2);
-            BREAK;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP;
         }
         CASE(INPLACE_OR)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__ior__")){ BREAK };
+            if(attempt_inplace_op(*this,"__ior__")){ 
+                CONTEXT_SWITCH_IF_NEEDED;
+                GOTO_NEXT_OP;
+            }
         CASE(BINARY_OR)
         {
             this->check_stack_size(2);
@@ -1283,7 +1334,8 @@ inline void FrameState::eval_next() {
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
             std::visit(eval_helpers::numeric_visitor<eval_helpers::op_or>(*this),v1,v2);
-            BREAK;
+            CONTEXT_SWITCH_IF_NEEDED;
+            GOTO_NEXT_OP;
         }
         CASE(RETURN_VALUE)
         {
@@ -1322,7 +1374,7 @@ inline void FrameState::eval_next() {
             newBlock.pc_delta = arg;
             this->block_stack.push(newBlock);
             DEBUG("new block stack height: %lu", this->block_stack.size())
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(BREAK_LOOP)
         {
@@ -1338,7 +1390,7 @@ inline void FrameState::eval_next() {
         }
         CASE(POP_BLOCK)
             this->block_stack.pop();
-            BREAK;
+            GOTO_NEXT_OP;
         CASE(POP_JUMP_IF_FALSE)
         {
             this->check_stack_size(1);
@@ -1350,7 +1402,7 @@ inline void FrameState::eval_next() {
                 this->r_pc = arg;
                 return ;
             }
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(JUMP_ABSOLUTE)
             this->r_pc = arg;
@@ -1396,7 +1448,7 @@ inline void FrameState::eval_next() {
                 ss << ", but make function expects string and code object";
                 throw pyerror(ss.str());
             }
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(MAKE_FUNCTION)
         {
@@ -1438,14 +1490,14 @@ inline void FrameState::eval_next() {
                     value::PyFunc {name, func_code, v}
                 )
             );
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(LOAD_BUILD_CLASS)
         {
             // Push the build class builtin onto the stack
             J_DEBUG("Preparing to build a class");
             this->value_stack.push_back((*(this->interpreter_state->ns_builtins))["__build_class__"]);
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(LOAD_ATTR)
         {
@@ -1459,7 +1511,7 @@ inline void FrameState::eval_next() {
                 value_helper::load_attr_visitor(*this,this->code->co_names[arg]),
                 val
             );
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(STORE_ATTR)
         {
@@ -1476,17 +1528,17 @@ inline void FrameState::eval_next() {
             auto vpo = std::get_if<ValuePyObject>(&tos);
             if(vpo != NULL){
                 (*vpo)->store_attr(this->code->co_names[arg],val);
-                BREAK;
+                GOTO_NEXT_OP;
             }
             auto vpc = std::get_if<ValuePyClass>(&tos);
             if(vpc != NULL){
                 (*vpc)->store_attr(this->code->co_names[arg],val);
-                BREAK;
+                GOTO_NEXT_OP;
             }
 
             // We should never get here
             throw pyerror(std::string("STORE_ATTR called with bad stack!"));
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(BUILD_TUPLE)
         CASE(BUILD_LIST)
@@ -1501,7 +1553,7 @@ inline void FrameState::eval_next() {
             
             this->value_stack.push_back(newList);
 
-            BREAK;
+            GOTO_NEXT_OP;
         }
         CASE(BINARY_SUBSCR)
         {
@@ -1517,12 +1569,12 @@ inline void FrameState::eval_next() {
                 )
             );
 
-            BREAK ;
+            GOTO_NEXT_OP ;
         }
         CASE(GET_ITER)
         {
             DEBUG_ADV("GET_ITER IS A NULL OP FOR NOW, WHEN LIST ITERATION IS IMPLEMENTED IT WILL WORK");
-            BREAK ;
+            GOTO_NEXT_OP ;
         }
         CASE(FOR_ITER)
         {
@@ -1544,7 +1596,7 @@ inline void FrameState::eval_next() {
                 this->parent_frame->value_stack.push_back(true);
                 this->interpreter_state->pop_frame();
 
-                BREAK_CONTEXT_SWITCH;
+                CONTEXT_SWITCH;
             } else {
                 this->set_flag(FrameState::FLAG_IS_GENERATOR_FUNCTION);
                 DEBUG_ADV("\tENCOUNTERED op::YIELD_VALUE in function -- treating it as a generator"
@@ -1582,7 +1634,7 @@ inline void FrameState::eval_next() {
             this->value_stack.pop_back();
 
             std::visit(eval_helpers::store_subscr_visitor {key, value}, self);
-            BREAK ;
+            GOTO_NEXT_OP ;
         }
         
         CASE(ROT_THREE)
