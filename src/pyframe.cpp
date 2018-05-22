@@ -1140,7 +1140,7 @@ inline void FrameState::eval_next() {
             this->check_stack_size(2);
         // see https://stackoverflow.com/questions/15376509/when-is-i-x-different-from-i-i-x-in-python
         // INPLACE_ADD should call __iadd__ method on full objects, falls back to __add__ if not available.
-            if(attempt_inplace_op(*this,"__iadd__")) BREAK;
+            if(attempt_inplace_op(*this,"__iadd__")){ BREAK };
         CASE(BINARY_ADD)
         {
             this->check_stack_size(2);
@@ -1152,7 +1152,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_SUBTRACT)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__isub__")) BREAK;
+            if(attempt_inplace_op(*this,"__isub__")){ BREAK };
         CASE(BINARY_SUBTRACT)
         {
             this->check_stack_size(2);
@@ -1164,7 +1164,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_FLOOR_DIVIDE)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__ifloordiv__")) BREAK;
+            if(attempt_inplace_op(*this,"__ifloordiv__")){ BREAK };
         CASE(BINARY_FLOOR_DIVIDE)
         {
             this->check_stack_size(2);
@@ -1176,7 +1176,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_MULTIPLY)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__imul__")) BREAK;
+            if(attempt_inplace_op(*this,"__imul__")){ BREAK };
         CASE(BINARY_MULTIPLY)
         {
             this->check_stack_size(2);
@@ -1188,7 +1188,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_MODULO)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__imod__")) BREAK;
+            if(attempt_inplace_op(*this,"__imod__")){ BREAK };
         CASE(BINARY_MODULO)
         {
             this->check_stack_size(2);
@@ -1200,7 +1200,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_POWER)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__ipow__")) BREAK;
+            if(attempt_inplace_op(*this,"__ipow__")){ BREAK };
         CASE(BINARY_POWER)
         {
             this->check_stack_size(2);
@@ -1212,7 +1212,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_TRUE_DIVIDE)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__itruediv__")) BREAK;
+            if(attempt_inplace_op(*this,"__itruediv__")){ BREAK };
         CASE(BINARY_TRUE_DIVIDE)
         {
             this->check_stack_size(2);
@@ -1224,7 +1224,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_LSHIFT)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__ilshift__")) BREAK;
+            if(attempt_inplace_op(*this,"__ilshift__")){ BREAK };
         CASE(BINARY_LSHIFT)
         {
             this->check_stack_size(2);
@@ -1236,7 +1236,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_RSHIFT)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__irshift__")) BREAK;
+            if(attempt_inplace_op(*this,"__irshift__")){ BREAK };
         CASE(BINARY_RSHIFT)
         {
             this->check_stack_size(2);
@@ -1248,7 +1248,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_AND)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__iand__")) BREAK;
+            if(attempt_inplace_op(*this,"__iand__")){ BREAK };
         CASE(BINARY_AND)
         {
             this->check_stack_size(2);
@@ -1260,7 +1260,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_XOR)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__ixor__")) BREAK;
+            if(attempt_inplace_op(*this,"__ixor__")){ BREAK };
         CASE(BINARY_XOR)
         {
             this->check_stack_size(2);
@@ -1272,7 +1272,7 @@ inline void FrameState::eval_next() {
         }
         CASE(INPLACE_OR)
             this->check_stack_size(2);
-            if(attempt_inplace_op(*this,"__ior__")) BREAK;
+            if(attempt_inplace_op(*this,"__ior__")){ BREAK };
         CASE(BINARY_OR)
         {
             this->check_stack_size(2);
