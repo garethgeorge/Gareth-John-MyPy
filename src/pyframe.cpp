@@ -14,13 +14,14 @@
 // #define DEBUG_ON
 #include "../lib/debug.hpp"
 
-//#define DIRECT_THREADED
+#define DIRECT_THREADED
 #ifdef DIRECT_THREADED
-    #define BREAK break
     #define BREAK_CONTEXT_SWITCH break
     // Add a label after each case
     #define CASE(arg) case op::arg:\
                       arg:
+
+    #define BREAK break
 #else
     #define BREAK break
     #define BREAK_CONTEXT_SWITCH break
@@ -766,6 +767,132 @@ void FrameState::print_stack() const {
 }
 
 inline void FrameState::eval_next() {
+
+    // If direct threading, this holds the table of jumps!
+#ifdef DIRECT_THREADED
+    static void* jmp_table[] = {
+        &&POP_TOP,
+        &&ROT_TWO,
+        &&ROT_THREE,
+        &&DUP_TOP,
+        &&DUP_TOP_TWO,
+        &&NOP,
+        &&UNARY_POSITIVE,
+        &&UNARY_NEGATIVE,
+        &&UNARY_NOT,
+        &&UNARY_INVERT,
+        &&BINARY_MATRIX_MULTIPLY,
+        &&INPLACE_MATRIX_MULTIPLY,
+        &&BINARY_POWER,
+        &&BINARY_MULTIPLY,
+        &&BINARY_MODULO,
+        &&BINARY_ADD,
+        &&BINARY_SUBTRACT,
+        &&BINARY_SUBSCR,
+        &&BINARY_FLOOR_DIVIDE,
+        &&BINARY_TRUE_DIVIDE,
+        &&INPLACE_FLOOR_DIVIDE,
+        &&INPLACE_TRUE_DIVIDE,
+        &&GET_AITER,
+        &&GET_ANEXT,
+        &&BEFORE_ASYNC_WITH,
+        &&INPLACE_ADD,
+        &&INPLACE_SUBTRACT,
+        &&INPLACE_MULTIPLY,
+        &&INPLACE_MODULO,
+        &&STORE_SUBSCR,
+        &&DELETE_SUBSCR,
+        &&BINARY_LSHIFT,
+        &&BINARY_RSHIFT,
+        &&BINARY_AND,
+        &&BINARY_XOR,
+        &&BINARY_OR,
+        &&INPLACE_POWER,
+        &&GET_ITER,
+        &&GET_YIELD_FROM_ITER,
+        &&PRINT_EXPR,
+        &&LOAD_BUILD_CLASS,
+        &&YIELD_FROM,
+        &&GET_AWAITABLE,
+        &&INPLACE_LSHIFT,
+        &&INPLACE_RSHIFT,
+        &&INPLACE_AND,
+        &&INPLACE_XOR,
+        &&INPLACE_OR,
+        &&BREAK_LOOP,
+        &&WITH_CLEANUP_START,
+        &&WITH_CLEANUP_FINISH,
+        &&RETURN_VALUE,
+        &&IMPORT_STAR,
+        &&SETUP_ANNOTATIONS,
+        &&YIELD_VALUE,
+        &&POP_BLOCK,
+        &&END_FINALLY,
+        &&POP_EXCEPT,
+        &&STORE_NAME,
+        &&DELETE_NAME,
+        &&UNPACK_SEQUENCE,
+        &&FOR_ITER,
+        &&UNPACK_EX,
+        &&STORE_ATTR,
+        &&DELETE_ATTR,
+        &&STORE_GLOBAL,
+        &&DELETE_GLOBAL,
+        &&LOAD_CONST,
+        &&LOAD_NAME,
+        &&BUILD_TUPLE,
+        &&BUILD_LIST,
+        &&BUILD_SET,
+        &&BUILD_MAP,
+        &&LOAD_ATTR,
+        &&COMPARE_OP,
+        &&IMPORT_NAME,
+        &&IMPORT_FROM,
+        &&JUMP_FORWARD,
+        &&JUMP_IF_FALSE_OR_POP,
+        &&JUMP_IF_TRUE_OR_POP,
+        &&JUMP_ABSOLUTE,
+        &&POP_JUMP_IF_FALSE,
+        &&POP_JUMP_IF_TRUE,
+        &&LOAD_GLOBAL,
+        &&CONTINUE_LOOP,
+        &&SETUP_LOOP,
+        &&SETUP_EXCEPT,
+        &&SETUP_FINALLY,
+        &&LOAD_FAST,
+        &&STORE_FAST,
+        &&DELETE_FAST,
+        &&STORE_ANNOTATION,
+        &&RAISE_VARARGS,
+        &&CALL_FUNCTION,
+        &&MAKE_FUNCTION,
+        &&BUILD_SLICE,
+        &&MAKE_CLOSURE,
+        &&LOAD_CLOSURE,
+        &&LOAD_DEREF,
+        &&STORE_DEREF,
+        &&DELETE_DEREF,
+        &&CALL_FUNCTION_KW,
+        &&CALL_FUNCTION_EX,
+        &&SETUP_WITH,
+        &&EXTENDED_ARG,
+        &&LIST_APPEND,
+        &&SET_ADD,
+        &&MAP_ADD,
+        &&LOAD_CLASSDEREF,
+        &&BUILD_LIST_UNPACK,
+        &&BUILD_MAP_UNPACK,
+        &&BUILD_MAP_UNPACK_WITH_CALL,
+        &&BUILD_TUPLE_UNPACK,
+        &&BUILD_SET_UNPACK,
+        &&SETUP_ASYNC_WITH,
+        &&FORMAT_VALUE,
+        &&BUILD_CONST_KEY_MAP,
+        &&BUILD_STRING,
+        &&BUILD_TUPLE_UNPACK_WITH_CALL
+    };
+#endif
+
     if (this->r_pc >= code->instructions.size()) {
         throw pyerror("overflowed instructions vector, no code here to run.");
     }
@@ -1567,6 +1694,66 @@ inline void FrameState::eval_next() {
             BREAK ;
         }
         
+        CASE(ROT_THREE)
+        CASE(DUP_TOP)
+        CASE(DUP_TOP_TWO)
+        CASE(UNARY_POSITIVE)
+        CASE(UNARY_NEGATIVE)
+        CASE(UNARY_NOT)
+        CASE(UNARY_INVERT)
+        CASE(BINARY_MATRIX_MULTIPLY)
+        CASE(INPLACE_MATRIX_MULTIPLY)
+        CASE(GET_AITER)
+        CASE(GET_ANEXT)
+        CASE(BEFORE_ASYNC_WITH)
+        CASE(DELETE_SUBSCR)
+        CASE(GET_YIELD_FROM_ITER)
+        CASE(PRINT_EXPR)
+        CASE(YIELD_FROM)
+        CASE(GET_AWAITABLE)
+        CASE(WITH_CLEANUP_START)
+        CASE(WITH_CLEANUP_FINISH)
+        CASE(IMPORT_STAR)
+        CASE(SETUP_ANNOTATIONS)
+        CASE(END_FINALLY)
+        CASE(POP_EXCEPT)
+        CASE(DELETE_NAME)
+        CASE(UNPACK_SEQUENCE)
+        CASE(UNPACK_EX)
+        CASE(DELETE_ATTR)
+        CASE(DELETE_GLOBAL)
+        CASE(BUILD_SET)
+        CASE(BUILD_MAP)
+        CASE(IMPORT_NAME)
+        CASE(IMPORT_FROM)
+        CASE(JUMP_IF_FALSE_OR_POP)
+        CASE(JUMP_IF_TRUE_OR_POP)
+        CASE(POP_JUMP_IF_TRUE)
+        CASE(CONTINUE_LOOP)
+        CASE(SETUP_EXCEPT)
+        CASE(SETUP_FINALLY)
+        CASE(DELETE_FAST)
+        CASE(STORE_ANNOTATION)
+        CASE(RAISE_VARARGS)
+        CASE(BUILD_SLICE)
+        CASE(DELETE_DEREF)
+        CASE(CALL_FUNCTION_KW)
+        CASE(CALL_FUNCTION_EX)
+        CASE(SETUP_WITH)
+        CASE(EXTENDED_ARG)
+        CASE(LIST_APPEND)
+        CASE(SET_ADD)
+        CASE(MAP_ADD)
+        CASE(BUILD_LIST_UNPACK)
+        CASE(BUILD_MAP_UNPACK)
+        CASE(BUILD_MAP_UNPACK_WITH_CALL)
+        CASE(BUILD_TUPLE_UNPACK)
+        CASE(BUILD_SET_UNPACK)
+        CASE(SETUP_ASYNC_WITH)
+        CASE(FORMAT_VALUE)
+        CASE(BUILD_CONST_KEY_MAP)
+        CASE(BUILD_STRING)
+        CASE(BUILD_TUPLE_UNPACK_WITH_CALL)
         default:
         {
             std::stringstream ss;
