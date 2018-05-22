@@ -20,8 +20,11 @@
     // Add a label after each case
     #define CASE(arg) case op::arg:\
                       arg:
-
+    // The hint below means we expect to always be the top frame
+    // That's not great at all, but this leaves things like BINARY_ADD
+    // untouched (they onyl create a new frame when they happen to call an overload in a class)
     #define BREAK \
+    if(__builtin_expect(!(this->interpreter_state->cur_frame.get() == this),0)) break;\
     this->r_pc++;\
     instruction = code->instructions[this->r_pc];\
     bytecode = instruction.bytecode;\
