@@ -16,7 +16,8 @@
 
 #define DIRECT_THREADED
 #ifdef DIRECT_THREADED
-    #define CONTEXT_SWITCH break
+    #define CONTEXT_SWITCH break;
+    #define CONTEXT_SWITCH_KEEP_PC return;
     // Add a label after each case
     #define CASE(arg) case op::arg:\
                       arg:
@@ -32,12 +33,21 @@
     bytecode = instruction.bytecode;\
     arg = instruction.arg;\
     DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])\
-    goto *jmp_table[bytecode];\
-    break;
+    goto *jmp_table[bytecode];
+
+    // Basically the same, but without incrementing pc
+    #define GOTO_TARGET_OP \
+    instruction = code->instructions[this->r_pc];\
+    bytecode = instruction.bytecode;\
+    arg = instruction.arg;\
+    DEBUG("%03llu EVALUATE BYTECODE AFTER JUMP: %s", this->r_pc, op::name[bytecode])\
+    goto *jmp_table[bytecode];
 
 #else
-    #define GOTO_NEXT_OP break
-    #define CONTEXT_SWITCH break
+    #define GOTO_NEXT_OP break;
+    #define GOTO_TARGET_OP return;
+    #define CONTEXT_SWITCH break;
+    #define CONTEXT_SWITCH_KEEP_PC return;
     #define CONTEXT_SWITCH_IF_NEEDED
     #define CASE(arg) case op::arg:
 #endif
@@ -1386,7 +1396,7 @@ inline void FrameState::eval_next() {
             }
 
             this->r_pc = jumpTo;
-            return;
+            GOTO_TARGET_OP;
         }
         CASE(POP_BLOCK)
             this->block_stack.pop();
@@ -1400,16 +1410,16 @@ inline void FrameState::eval_next() {
 
             if (!std::visit(value_helper::visitor_is_truthy(), top)) {
                 this->r_pc = arg;
-                return ;
+                GOTO_TARGET_OP;
             }
             GOTO_NEXT_OP;
         }
         CASE(JUMP_ABSOLUTE)
             this->r_pc = arg;
-            return ;
+            GOTO_TARGET_OP;
         CASE(JUMP_FORWARD)
             this->r_pc += arg;
-            return ;
+            GOTO_TARGET_OP;
         CASE(MAKE_CLOSURE)
         {
             // Loooots of copy/paste here
@@ -1580,7 +1590,7 @@ inline void FrameState::eval_next() {
         {
             DEBUG_ADV("\tJUMP OFFSET FOR ITERATOR: " << arg);
             std::visit(eval_helpers::for_iter_visitor {*this, arg}, this->value_stack.back());
-            return ;
+            CONTEXT_SWITCH_KEEP_PC;
         }
         CASE(YIELD_VALUE)
         {
@@ -1619,7 +1629,7 @@ inline void FrameState::eval_next() {
                 );
                 DEBUG_ADV("\tframe was successfully completely moved from the callstack.");
 
-                return ; // return so that this op will be run again.
+                CONTEXT_SWITCH_KEEP_PC; // return so that this op will be run again.
             }
         }
 
