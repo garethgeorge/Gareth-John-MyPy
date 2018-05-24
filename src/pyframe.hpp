@@ -42,7 +42,7 @@ public:
     constexpr const static uint8_t FLAG_DONT_RETURN = 16;
 
     uint64_t r_pc = 0; // program counter
-    std::shared_ptr<FrameState> parent_frame = nullptr;
+    gc_ptr<FrameState> parent_frame = nullptr;
     InterpreterState *interpreter_state = nullptr; 
 
     ValueCode code;

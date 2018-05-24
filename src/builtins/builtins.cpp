@@ -141,7 +141,7 @@ extern void inject_builtins(Namespace& ns) {
         // Push the static initializer frame ontop the stack
         // The static initializer code block is the first argument
         frame.interpreter_state->push_frame(
-            std::make_shared<FrameState>(init_code, new_class)
+            alloc.heap_frame.make(init_code, new_class)
         );
 
         // Add it's name to it's local namespace

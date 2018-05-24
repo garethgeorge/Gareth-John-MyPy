@@ -20,7 +20,7 @@ struct Code;
 using Namespace = std::shared_ptr<std::unordered_map<std::string, Value>>;
 
 struct InterpreterState {
-    std::shared_ptr<FrameState> cur_frame = nullptr;
+    gc_ptr<FrameState> cur_frame = nullptr;
     Namespace ns_globals; // ns_globals is just ns_local of the very bottom FrameState
     Namespace ns_builtins;
     ValueCode main_code;
@@ -31,15 +31,11 @@ struct InterpreterState {
 
     void eval();
 
-    inline void push_frame(std::shared_ptr<FrameState>& frame) {
+    inline void push_frame(gc_ptr<FrameState> frame) {
         // TBD: does frame->parent_name need to be changed to a std::shared_ptr?
         frame->parent_frame = this->cur_frame;
         frame->interpreter_state = this;
         this->cur_frame = frame;
-    }
-
-    inline void push_frame(std::shared_ptr<FrameState>&& frame) {
-        this->push_frame(frame);
     }
 
     inline void pop_frame() {

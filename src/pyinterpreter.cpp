@@ -11,7 +11,7 @@ InterpreterState::InterpreterState(ValueCode code) {
     this->ns_builtins = std::make_shared<std::unordered_map<std::string, Value>>();
 
     this->push_frame(
-        std::make_shared<FrameState>(code)
+        alloc.heap_frame.make(code)
     );
 
     // make ns_globals refer to the bottom's locals

@@ -48,8 +48,8 @@ namespace value {
     // A function of python code
     struct PyFunc;
     struct PyGenerator {
-        std::shared_ptr<FrameState> frame;
-
+        gc_ptr<FrameState> frame;
+        
         inline bool operator == (const PyGenerator& other) const {
             return frame == other.frame;
         }

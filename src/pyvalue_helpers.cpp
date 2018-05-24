@@ -1,8 +1,10 @@
-#include "pyvalue_helpers.hpp"
-#include "builtins/builtins.hpp"
 #include <iostream>
 #include <sstream>
 #include <stdio.h>
+
+#include "pyvalue_helpers.hpp"
+#include "builtins/builtins.hpp"
+#include "pyallocator.hpp"
 
 namespace py {
 namespace value_helper {
@@ -180,7 +182,7 @@ namespace value_helper {
 
         // Push a new FrameState
         frame.interpreter_state->push_frame(
-            std::make_shared<FrameState>(func->code)
+            alloc.heap_frame.make(func->code)
         );
         frame.interpreter_state->cur_frame->initialize_from_pyfunc(func, args);
     }
