@@ -23,7 +23,13 @@ struct gc_root_ptr;
 template<typename T>
 class gc_ptr {
 protected:
-    static const uint8_t FLAG_MARKED = 1;
+    // the last bit is used to hold a marked flag
+    static const uint8_t FLAG_MARKED = 1 << 7;
+    // the rest of the bits are used to store a reference count
+    // used when C scripts want to retain a value
+    static const uint8_t MASK_REFCOUNT = ~FLAG_MARKED;
+    // it remains very cheap to check if an object should be gc'd since
+    // the gc state is simply when obj.flags = 0
 
     struct gc_object {
         uint8_t flags;
@@ -88,6 +94,17 @@ public:
 
     friend class gc_heap<T>;
     friend class gc_root_ptr<T>;
+
+    // WARNING: maximum reference count is 127, greater than this and things
+    // break horribly, and there is no checking.
+    auto retain() -> decltype(*this) {
+        this->object->flags += 1;
+        return *this;
+    }
+
+    void release() {
+        this->object->flags -= 1;
+    }
 };
 
 
@@ -117,7 +134,7 @@ public:
     void sweep() {
         for (auto itr = this->objects.begin(); itr != this->objects.end();) {
             auto &obj = *itr;
-            if (!(obj.flags & ptr_t::FLAG_MARKED)) {
+            if (!obj.flags) { // object.flags must be all 0's for us to clear it :)
                 objects.erase(itr++);
             } else {
                 (*itr).flags &= ~(ptr_t::FLAG_MARKED);
@@ -129,26 +146,6 @@ public:
     friend class gc_root_ptr<T>;
 };
 
-template<typename T>
-struct gc_root_ptr : public gc_ptr<T> {
-private:
-    using gc_object = typename gc_heap<T>::gc_object;
-    gc_heap<T>* heap;
-    typename std::list<gc_object*>::iterator iter;
-public:
-    gc_root_ptr(gc_ptr<T> ptr, gc_heap<T>& heap) {
-        this->object = ptr.object;
-        this->heap = &heap;
-        this->iter = this->heap->rootset.emplace(&(this->object));
-    }
-
-    ~gc_root_ptr() {
-        this->heap->rootset->erase(this->iter);
-    }
-    auto operator = (gc_root_ptr& other) = delete;
-
-    friend class gc_heap<T>;
-};
 
 
 }
