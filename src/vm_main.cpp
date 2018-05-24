@@ -15,6 +15,7 @@
 
 using std::string;
 using namespace py;
+using namespace py::builtins;
 
 #define STATS_ON
 
@@ -25,6 +26,12 @@ int main(const int argc, const char *argv[])
     std::cout << "\tsize of 'Value' union struct: " << sizeof(py::Value) << std::endl;
     std::cout << "\tsize of 'Frame': " << sizeof(py::FrameState) << std::endl;
 #endif
+
+    initialize_slice_class();
+    initialize_list_class();
+    initialize_cell_class();
+
+    alloc.retain_all();
 
     // const char *source_code = "{\"type\": \"code\", \"co_code\": \"ZABTAA==\", \"co_lnotab\": \"\", \"co_consts\": [{\"type\": \"literal\", \"real_type\": \"<class 'NoneType'>\", \"value\": null}], \"co_name\": \"<module>\", \"co_filename\": \"sys.stdin.py\", \"co_argcount\": 0, \"co_kwonlyargcount\": 0, \"co_nlocals\": 0, \"co_stacksize\": 1, \"co_names\": null, \"co_varnames\": null, \"co_freevars\": null, \"co_cellvars\": null}";
     // json obj = json::parse(source_code);

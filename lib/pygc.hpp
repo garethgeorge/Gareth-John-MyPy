@@ -7,6 +7,10 @@
 #include <memory>
 #include <stdint.h>
 
+#define DEBUG_ON
+#include <debug.hpp>
+#undef DEBUG_ON
+
 // we will have to implement a custom allocator that allows us to track the memory
 // that is being used, and free'd by our 'MyPy' implementation 
 // see https://www.codeproject.com/Articles/4795/C-Standard-Allocator-An-Introduction-and-Implement
@@ -112,12 +116,16 @@ public:
     // WARNING: maximum reference count is 127, greater than this and things
     // break horribly, and there is no checking.
     inline gc_ptr<T> retain() {
-        this->object->flags += 1;
+        if (this->object->flags < 127) {
+            this->object->flags += 1;
+        }
         return *this;
     }
 
     void release() {
-        this->object->flags -= 1;
+        if (this->object->flags != 127) {
+            this->object->flags -= 1;
+        }
     }
 };
 
@@ -136,6 +144,7 @@ private:
 public:
     template < typename... Args> 
     ptr_t make(Args&&... args) {
+        DEBUG("we tried to allocate an object!");
         typename std::list<gc_object>::iterator object_itr = 
             objects.emplace(objects.begin(), std::forward<Args>(args)...);
         return ptr_t(*object_itr);
@@ -161,6 +170,11 @@ public:
         }
     }
 
+    void retain_all() {
+        for (auto& object : this->objects) {
+            object.flags |= 1;
+        }
+    }
 };
 
 

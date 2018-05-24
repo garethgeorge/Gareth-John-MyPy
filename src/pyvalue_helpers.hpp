@@ -22,8 +22,6 @@ extern std::ostream& operator << (std::ostream& stream, const gc_ptr<T> value) {
     return stream << Value(value);
 }
 
-extern ValuePyClass cell_class;
-
 namespace value_helper {
 
 // helper function for creating a class with overloads

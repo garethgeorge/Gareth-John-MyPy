@@ -43,6 +43,8 @@ namespace py {
         void print_debug_info();
         void mark_live_objects(InterpreterState& interp);
         void collect_garbage(InterpreterState& interp);
+
+        void retain_all();
     };
 
     extern Allocator alloc;
