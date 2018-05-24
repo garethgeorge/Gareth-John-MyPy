@@ -36,6 +36,7 @@
     goto *jmp_table[bytecode];
 
     // Basically the same, but without incrementing pc
+    // Used in jumps
     #define GOTO_TARGET_OP \
     instruction = code->instructions[this->r_pc];\
     bytecode = instruction.bytecode;\
