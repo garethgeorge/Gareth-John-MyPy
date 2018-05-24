@@ -130,7 +130,7 @@ extern void inject_builtins(Namespace& ns) {
         }
 
         // Allocate the class
-        ValuePyClass new_class = std::make_shared<value::PyClass>(tmp_vect);
+        ValuePyClass new_class = alloc.heap_pyclass.make(tmp_vect);
 
         // Allocate the class and push it to the top of the stack
         // Args now holds the list of parents

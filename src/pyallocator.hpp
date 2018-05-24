@@ -19,6 +19,8 @@ namespace py {
         gc_heap<Code> heap_code;
         gc_heap<FrameState> heap_frame;
         gc_heap<value::PyFunc> heap_pyfunc;
+        gc_heap<value::PyObject> heap_pyobject;
+        gc_heap<value::PyClass> heap_pyclass;
     };
 
     extern Allocator alloc;

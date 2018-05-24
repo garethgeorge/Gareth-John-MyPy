@@ -89,13 +89,13 @@ struct call_visitor {
     }
 
     // A PyClass was called like a function, therein creating a PyObject
-    void operator()(const ValuePyClass& cls) const;
+    void operator()(ValuePyClass& cls) const;
 
     void operator()(const ValuePyFunction& func) const;
 
     // An object was called like a function
     // Look for it'a __call__ overload and run that
-    void operator()(const ValuePyObject& obj) const;
+    void operator()(ValuePyObject& obj) const;
     
     template<typename T>
     void operator()(T) const {

@@ -71,13 +71,13 @@ using ValueCode = gc_ptr<Code>;
 using ValueCFunction = std::shared_ptr<value::CFunction>;
 using ValueCMethod = std::shared_ptr<value::CMethod>;
 using ValuePyFunction = gc_ptr<value::PyFunc>;
-using ValuePyObject = std::shared_ptr<value::PyObject>;
+using ValuePyObject = gc_ptr<value::PyObject>;
 using ValuePyGenerator = value::PyGenerator;
 
 // I think PyClasses (the thing that holds the statics of a class) can be deallocated.
 // Need to confirm this thoa
 // THIS NEEDS TO CHANGE TO A GC_PTR (or do i?)
-using ValuePyClass = std::shared_ptr<value::PyClass>;
+using ValuePyClass = gc_ptr<value::PyClass>;
 using ValueList = gc_ptr<value::List>;
 
 using Value = std::variant<
@@ -272,7 +272,7 @@ namespace value {
                                 );
 
         // Store an attribute into attrs
-        void store_attr(const std::string& str,Value& val){
+        void store_attr(const std::string& str, Value val){
             (*attrs)[str] = val;
         }
     };
@@ -295,14 +295,14 @@ namespace value {
         };
 
         // Store an attribute into attrs
-        void store_attr(const std::string& str,Value& val){
+        void store_attr(const std::string& str, Value val){
             (*attrs)[str] = val;
         }
 
         // Defined in FrameState
         // This should REALLY be changed to a not static method but that will happen soon
         static std::tuple<Value,bool> find_attr_in_obj(
-                            const ValuePyObject& obj,
+                            ValuePyObject& obj,
                             const std::string& attr
                         );
     };

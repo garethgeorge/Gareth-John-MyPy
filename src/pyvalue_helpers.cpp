@@ -117,7 +117,7 @@ namespace value_helper {
 
     ValuePyObject create_cell(Value contents){
         DEBUG_ADV("Creating cell for " << contents << "\n");
-        ValuePyObject nobj = std::make_shared<value::PyObject>(value::PyObject(cell_class));
+        ValuePyObject nobj = alloc.heap_pyobject.make(cell_class);
         nobj->store_attr("contents",contents);
         return nobj;
     }
@@ -127,7 +127,7 @@ namespace value_helper {
         call_visitor methods
     */
 
-    void call_visitor::operator()(const ValuePyClass& cls) const {
+    void call_visitor::operator()(ValuePyClass& cls) const {
         DEBUG("Constructing a '%s' Object",std::get<ValueString>(
             (*(cls->attrs))["__qualname__"]
         )->c_str());
@@ -136,9 +136,7 @@ namespace value_helper {
             frame.print_value(it->second);
             printf("\n");
         }*/
-        ValuePyObject npo = std::make_shared<value::PyObject>(
-            value::PyObject(cls)
-        );
+        ValuePyObject npo = alloc.heap_pyobject.make(cls);
 
 
         // Check the class if it has an init function
@@ -187,7 +185,7 @@ namespace value_helper {
         frame.interpreter_state->cur_frame->initialize_from_pyfunc(func, args);
     }
 
-    void call_visitor::operator()(const ValuePyObject& obj) const {
+    void call_visitor::operator()(ValuePyObject& obj) const {
         DEBUG("call_visitor dispatching on a PyObject");
 
         std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(obj,"__call__");
@@ -213,7 +211,7 @@ std::ostream& operator << (std::ostream& stream, const Value value) {
 }
 
 // This is needed to allow the create_cell function
-ValuePyClass cell_class = std::make_shared<value::PyClass>(value::PyClass("CELL_CLASS"));
+ValuePyClass cell_class = alloc.heap_pyclass.make("CELL_CLASS");
 
 // PyClass --------------------------------------------------------------------------------------
 

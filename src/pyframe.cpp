@@ -63,9 +63,9 @@ std::tuple<Value,bool> value::PyClass::find_attr_in_parents(
 }
 
 std::tuple<Value,bool> value::PyObject::find_attr_in_obj(
-                                            const ValuePyObject& obj,
-                                            const std::string& attr
-){
+    ValuePyObject& obj,
+    const std::string& attr
+) {
     auto itr = obj->attrs->find(attr);
     if(itr != obj->attrs->end()){
         return std::tuple<Value,bool>(itr->second,true);
@@ -108,7 +108,7 @@ std::tuple<Value,bool> value::PyObject::find_attr_in_obj(
                         value::INSTANCE_METHOD
                     }
                 );
-                obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
+                obj->store_attr(attr, npf); // Does this create a shared_ptr cycle
                 return std::tuple<Value,bool>(npf,true);
             }
         } else {
