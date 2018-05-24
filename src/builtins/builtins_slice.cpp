@@ -26,6 +26,7 @@ ValuePyObject builtins_slice_get_slice_object(Value start, Value stop, Value ste
     obj->store_attr("start",start);
     obj->store_attr("stop",stop);
     obj->store_attr("step",step);
+    return obj;
 }
 
 }

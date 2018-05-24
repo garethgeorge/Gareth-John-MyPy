@@ -455,10 +455,93 @@ namespace eval_helpers {
             return values[index];
         }
 
+        Value operator()(ValueList& list, ValuePyObject& slice){
+            try {
+                // Extract info from slice
+                // Any of thes must either be NoneType or int
+                Value vstart = slice->attrs->at("start");
+                Value vstop = slice->attrs->at("stop");
+                Value vstep = slice->attrs->at("step");
+
+                auto start_check = std::get_if<value::NoneType>(&vstart);
+                int64_t start = (start_check == NULL ? std::get<int64_t>(vstart) : 0);
+
+                auto stop_check = std::get_if<value::NoneType>(&vstop);
+                int64_t stop = (stop_check == NULL ? std::get<int64_t>(vstop) : list->size());
+
+                auto step_check = std::get_if<value::NoneType>(&vstep);
+                int64_t step = (step_check == NULL ? std::get<int64_t>(vstep) : 1);
+
+
+                if(step == 0){
+                    throw pyerror("Slice step size cannot be 0");
+                }
+
+                DEBUG_ADV("BINARY_SUBSCR was given a slice: " << start << ", " << stop << ", " << step);
+
+                ValueList newList = alloc.heap_list.make();
+                for(auto valit = list->begin() + start; 
+                    valit < list->end() && valit < (stop < 0 ? list->end() + stop : list->begin() + stop);
+                    valit += step
+                ){
+                    newList->values.push_back(*valit);
+                }
+
+                return newList;
+
+            } catch (std::out_of_range& err) {
+                throw pyerror("BINARY_SUBSCR called with invalid slice class");
+            } catch (std::bad_variant_access& err) {
+                throw pyerror("SLICE_CLASS attributes must of type int64_t");
+            }
+        }
+
+        Value operator()(ValueString& str, ValuePyObject& slice){
+            try {
+                // Extract info from slice
+                // Any of thes must either be NoneType or int
+                Value vstart = slice->attrs->at("start");
+                Value vstop = slice->attrs->at("stop");
+                Value vstep = slice->attrs->at("step");
+
+                auto start_check = std::get_if<value::NoneType>(&vstart);
+                int64_t start = (start_check == NULL ? std::get<int64_t>(vstart) : 0);
+
+                auto stop_check = std::get_if<value::NoneType>(&vstop);
+                int64_t stop = (stop_check == NULL ? std::get<int64_t>(vstop) : str->length());
+
+                auto step_check = std::get_if<value::NoneType>(&vstep);
+                int64_t step = (step_check == NULL ? std::get<int64_t>(vstep) : 1);
+
+
+                if(step == 0){
+                    throw pyerror("Slice step size cannot be 0");
+                }
+
+                DEBUG_ADV("BINARY_SUBSCR was given a slice: " << start << ", " << stop << ", " << step);
+
+                std::string build_str = "";
+                for(auto strit = str->begin() + start; 
+                    strit < str->end() && strit < (stop < 0 ? str->end() + stop : str->begin() + stop);
+                    strit += step
+                ){
+                    build_str += (*strit);
+                }
+
+                return alloc.heap_string.make(build_str);
+
+            } catch (std::out_of_range& err) {
+                throw pyerror("BINARY_SUBSCR called with invalid slice class");
+            } catch (std::bad_variant_access& err) {
+                throw pyerror("SLICE_CLASS attributes must of type int64_t");
+            }
+        }
+
         template<typename A, typename B>
         Value operator()(A a , B b) {
+            //throw pyerror("BAD!");
             std::stringstream ss;
-            ss << "attempted to subscript " << a << "[" << b << "] - types not valid for subscript operator";
+            ss << "attempted to subscript " << typeid(a).name() << "[" << typeid(b).name() << "] - types not valid for subscript operator";
 
             throw pyerror(ss.str());
         }

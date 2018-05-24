@@ -144,7 +144,7 @@ private:
 public:
     template < typename... Args> 
     ptr_t make(Args&&... args) {
-        DEBUG("we tried to allocate an object!");
+        //DEBUG("we tried to allocate an object!");
         typename std::list<gc_object>::iterator object_itr = 
             objects.emplace(objects.begin(), std::forward<Args>(args)...);
         return ptr_t(*object_itr);
