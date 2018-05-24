@@ -21,7 +21,8 @@ namespace py {
 FrameState::FrameState(const ValueCode code) 
 {
     DEBUG("constructed a new frame");
-    this->ns_local = std::make_shared<std::unordered_map<std::string, Value>>();
+    // this->ns_local = std::make_shared<std::unordered_map<std::string, Value>>();
+    this->ns_local = alloc.heap_namespace.make();
     this->code = code;
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
     this->value_stack.reserve(code->co_stacksize);
@@ -42,11 +43,13 @@ FrameState::FrameState(const ValueCode code, ValuePyClass& init_class)
 
 // Find an attribute in the parents of a class
 std::tuple<Value,bool> value::PyClass::find_attr_in_parents(
-                                    const ValuePyClass& cls,
+                                    ValuePyClass& cls,
                                     const std::string& attr
 ) {
+    const auto& qualname = (*(cls->attrs))["__qualname__"];
+
     DEBUG_ADV("Searching parents of class '" 
-        << (*(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))).c_str()
+        << (*(std::get<ValueString>(qualname))).c_str()
         << "' for attr '" << attr);
     // Method Resolution Order already stored in the order parents are stored in
     for(int i = 0;i < cls->parents.size();i++){
@@ -680,9 +683,9 @@ void FrameState::print_value(Value& val) {
             [](const ValueCMethod arg) {std::cerr << "CMethod()"; },
             [](const ValueCode arg) {std::cerr << "Code()"; },
             [](const ValuePyFunction arg) {std::cerr << "Python Function()"; },
-            [](const ValuePyClass arg) {std::cerr << "ValuePyClass ("
+            [](ValuePyClass arg) {std::cerr << "ValuePyClass ("
                 << *(std::get<ValueString>((*(arg->attrs))["__qualname__"])) << ")"; },
-            [](const ValuePyObject arg) {std::cerr << "ValuePyObject of class ("
+            [](ValuePyObject arg) {std::cerr << "ValuePyObject of class ("
                 << *(std::get<ValueString>((*(arg->static_attrs->attrs))["__qualname__"])) << ")"; },
             [](value::NoneType) {std::cerr << "None"; },
             [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; },

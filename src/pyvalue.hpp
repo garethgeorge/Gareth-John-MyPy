@@ -97,7 +97,7 @@ using Value = std::variant<
 >;
 
 // Bad copy/paste from pyinterpreter.hpp
-using Namespace = std::shared_ptr<std::unordered_map<std::string, Value>>;
+using Namespace = gc_ptr<std::unordered_map<std::string, Value>>;
 
 // Arg List definition
 struct ArgList {
@@ -267,7 +267,7 @@ namespace value {
 
         // Defined in FrameState
         static std::tuple<Value,bool> find_attr_in_parents(
-                                    const ValuePyClass& cls,
+                                    ValuePyClass& cls,
                                     const std::string& attr
                                 );
 
@@ -283,16 +283,14 @@ namespace value {
     // Should I make PyObject just a derived class of PyClass?
     struct PyObject {
         // A pointer back to static stuff
-        const ValuePyClass static_attrs;
+        ValuePyClass static_attrs;
         
         // My attributes
         Namespace attrs;
 
         // When first creating this, all it needs do is reference it's static class
         // __init__ will be called later if necessary
-        PyObject(const ValuePyClass& cls) : static_attrs(cls) {
-            this->attrs = std::make_shared<std::unordered_map<std::string, Value>>();
-        };
+        PyObject(ValuePyClass cls);
 
         // Store an attribute into attrs
         void store_attr(const std::string& str, Value val){

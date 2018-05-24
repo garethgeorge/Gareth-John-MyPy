@@ -8,7 +8,7 @@ namespace py {
 InterpreterState::InterpreterState(ValueCode code) {
     //code->print_bytecode();
 
-    this->ns_builtins = std::make_shared<std::unordered_map<std::string, Value>>();
+    this->ns_builtins = alloc.heap_namespace.make();
 
     this->push_frame(
         alloc.heap_frame.make(code)

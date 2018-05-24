@@ -200,12 +200,13 @@ struct load_attr_visitor {
 
     load_attr_visitor(FrameState& frame, const std::string& attr) : frame(frame), attr(attr) {}
     
-    void operator()(const ValuePyClass& cls){
+    void operator()(ValuePyClass& cls){
         try {
             frame.value_stack.push_back(cls->attrs->at(attr));
         } catch (const std::out_of_range& oor) {
+            auto& attrs = *(cls->attrs);
             throw pyerror(std::string(
-                *(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))
+                *(std::get<ValueString>( (attrs)["__qualname__"]))
                 + " has no attribute " + attr
             ));
         }
@@ -220,9 +221,10 @@ struct load_attr_visitor {
             frame.value_stack.push_back(std::get<0>(res));
         } else {
             // Nothing found, throw error!
+            auto& attrs = (*(obj->static_attrs->attrs));
             throw pyerror(std::string(
                 // Should this be __name__??
-                *(std::get<ValueString>( (*(obj->static_attrs->attrs))["__qualname__"]))
+                *(std::get<ValueString>(attrs["__qualname__"]))
                 + " has no attribute " + attr
             ));
         }

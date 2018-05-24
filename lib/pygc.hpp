@@ -17,10 +17,6 @@ template<typename T>
 struct gc_heap;
 
 template<typename T>
-struct gc_root_ptr;
-
-
-template<typename T>
 class gc_ptr {
 protected:
     // the last bit is used to hold a marked flag
@@ -102,8 +98,13 @@ public:
         return &(object->object);
     }
 
+    const T* get() const {
+        if (object == nullptr)
+            return nullptr;
+        return &(object->object);
+    }
+
     friend class gc_heap<T>;
-    friend class gc_root_ptr<T>;
 
     // WARNING: maximum reference count is 127, greater than this and things
     // break horribly, and there is no checking.
@@ -140,6 +141,10 @@ public:
     size_t size() {
         return objects.size();
     }
+
+    size_t memory_footprint() {
+        return size() * sizeof(T);
+    }
     
     void sweep() {
         for (auto itr = this->objects.begin(); itr != this->objects.end();) {
@@ -153,7 +158,6 @@ public:
         }
     }
 
-    friend class gc_root_ptr<T>;
 };
 
 

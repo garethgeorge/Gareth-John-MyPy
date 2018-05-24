@@ -281,7 +281,7 @@ void value::PyClass::remove_from_linearizations(
 
 value::PyClass::PyClass(){
     // Allocate the attributes namespace
-    this->attrs = std::make_shared<std::unordered_map<std::string, Value>>();
+    this->attrs = alloc.heap_namespace.make();
 }
 
 value::PyClass::PyClass(std::string&& qualname) : PyClass() {

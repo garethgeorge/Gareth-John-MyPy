@@ -15,7 +15,7 @@
 
 namespace py {
 
-using Namespace = std::shared_ptr<std::unordered_map<std::string, Value>>;
+using Namespace = gc_ptr<std::unordered_map<std::string, Value>>;
 
 struct Code;
 struct InterpreterState;
