@@ -158,7 +158,8 @@ Code::Code(const json& tree) {
                 throw pyerror(std::string("unrecognized type of constant: ") + real_type);
             }
         } else if (type == "code") {
-            this->co_consts.push_back(std::make_shared<Code>(element));
+            gc_ptr<Code> code = alloc.heap_code.make(Code(element));
+            this->co_consts.push_back(code);
         } else {
             throw pyerror(std::string("unrecognized type of constant: ") + type);
         }
@@ -226,7 +227,7 @@ Code::Code(const json& tree) {
 Code::~Code() {
 }
 
-std::shared_ptr<Code> Code::from_program(const std::string& python, const std::string& compilePyPath) {
+gc_ptr<Code> Code::from_program(const std::string& python, const std::string& compilePyPath) {
     procxx::process compilePyProc{"python3", compilePyPath.c_str()};
     
     DEBUG("execing compile python process");
@@ -252,7 +253,7 @@ std::shared_ptr<Code> Code::from_program(const std::string& python, const std::s
         throw err;
     }
     DEBUG("read successful.");
-    return std::make_shared<Code>(tree);
+    return alloc.heap_code.make(tree);
 }
 
 }

@@ -27,7 +27,7 @@ struct InterpreterState {
     
     Allocator alloc;
 
-    InterpreterState(std::shared_ptr<Code>& code);
+    InterpreterState(ValueCode code);
 
     void eval();
 

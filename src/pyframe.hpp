@@ -62,8 +62,8 @@ public:
     ValuePyFunction curr_func; // The function of this current frame stat
     std::vector<ValuePyObject> cells; // Cells that happen to be in my local namespace
 
-    FrameState(const ValueCode& code);
-    FrameState(const ValueCode& code, ValuePyClass& init_class);
+    FrameState(const ValueCode code);
+    FrameState(const ValueCode code, ValuePyClass& init_class);
 
     void eval_next();
 

@@ -5,9 +5,7 @@ namespace py {
 /* 
     INTERPRETER STATE
 */
-InterpreterState::InterpreterState(
-    std::shared_ptr<Code>& code) {
-    
+InterpreterState::InterpreterState(ValueCode code) {
     //code->print_bytecode();
 
     this->ns_builtins = std::make_shared<std::unordered_map<std::string, Value>>();

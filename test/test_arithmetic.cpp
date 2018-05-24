@@ -51,9 +51,8 @@ check_string(x + " test")
         InterpreterState state(code);
         // TODO: fix this, it actually is leaking memory! that is pretty bad :S 
         gc_ptr<std::string> str = alloc.heap_string.make("test test");
-        gc_root_ptr<std::string> string(str, alloc.heap_string);
-        (*(state.ns_builtins))["my_string"] = string; // prevent it from getting garbage collected
-        (*(state.ns_builtins))["check_string"] = make_builtin_check_value((gc_ptr<std::string>)string);
+        str.retain();
+        (*(state.ns_builtins))["check_string"] = make_builtin_check_value(str);
         state.eval();
     }
 

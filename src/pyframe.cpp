@@ -18,7 +18,7 @@ using std::string;
 
 namespace py {
 
-FrameState::FrameState(const ValueCode& code) 
+FrameState::FrameState(const ValueCode code) 
 {
     DEBUG("constructed a new frame");
     this->ns_local = std::make_shared<std::unordered_map<std::string, Value>>();
@@ -28,7 +28,7 @@ FrameState::FrameState(const ValueCode& code)
 }
 
 // Construct a framestate meant to initialize everything static about a class
-FrameState::FrameState(const ValueCode& code, ValuePyClass& init_class)
+FrameState::FrameState(const ValueCode code, ValuePyClass& init_class)
 {
     DEBUG("constructed a new frame for statically initializing a class");
     // Everything is mostly the same, but our local namespace is also the class's

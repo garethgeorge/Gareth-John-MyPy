@@ -49,7 +49,7 @@ struct Code {
     Code(const json& tree);
     ~Code();
     
-    static std::shared_ptr<Code> from_program(const std::string& python, const std::string& compilePyPath);
+    static gc_ptr<Code> from_program(const std::string& python, const std::string& compilePyPath);
 
     // flag getters and setters
     inline bool get_flag(const uint8_t flag) const {

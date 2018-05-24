@@ -67,7 +67,7 @@ namespace value {
 // this is because we want to keep the size of our std::variant class small,
 // it also allows sharing string objects between multiple values whenever possible
 using ValueString = gc_ptr<std::string>;
-using ValueCode = std::shared_ptr<const Code>;
+using ValueCode = gc_ptr<Code>;
 using ValueCFunction = std::shared_ptr<value::CFunction>;
 using ValueCMethod = std::shared_ptr<value::CMethod>;
 using ValuePyFunction = std::shared_ptr<value::PyFunc>;

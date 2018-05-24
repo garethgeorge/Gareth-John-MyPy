@@ -13,8 +13,8 @@
 using namespace std;
 using namespace py;
 
-extern std::shared_ptr<Code> build_file(const string&);
-extern std::shared_ptr<Code> build_string(const string&);
+extern gc_ptr<Code> build_file(const string&);
+extern gc_ptr<Code> build_string(const string&);
 
 // when we have a shared pointer, we use a different method of comparing the 
 // wrapped values
