@@ -28,7 +28,7 @@ protected:
     // the gc state is simply when obj.flags = 0
 
     struct gc_object {
-        uint8_t flags;
+        uint8_t flags = 0;
         T object;
 
         template < typename... Args> 
@@ -57,15 +57,11 @@ public:
         return &(this->object->object);
     }
 
-    constexpr inline const T* operator->() const {
+    constexpr inline T* operator->() const {
         return &(this->object->object);
     }
 
-    constexpr inline T& operator*() {
-        return object->object;
-    }
-
-    constexpr inline const T& operator*() const {
+    constexpr inline T& operator*() const {
         return object->object;
     }
 
@@ -157,7 +153,8 @@ public:
         for (auto itr = this->objects.begin(); itr != this->objects.end();) {
             auto &obj = *itr;
             if (!obj.flags) { // object.flags must be all 0's for us to clear it :)
-                objects.erase(itr++);
+                objects.erase(itr);
+                ++itr;
             } else {
                 (*itr).flags &= ~(ptr_t::FLAG_MARKED);
                 ++itr;

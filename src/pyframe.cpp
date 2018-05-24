@@ -391,7 +391,7 @@ namespace eval_helpers {
 
         add_visitor(FrameState &frame) : numeric_visitor<op_add>(frame) { };
         
-        void operator()(const gc_ptr<std::string>& v1, const gc_ptr<std::string> &v2) const {
+        void operator()(const gc_ptr<const std::string>& v1, const gc_ptr<const std::string> &v2) const {
             frame.value_stack.push_back(
                 alloc.heap_string.make(*v1 + *v2)
             );

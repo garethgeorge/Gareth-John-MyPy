@@ -18,14 +18,14 @@ namespace py {
         size_t size_at_last_gc = 32; // 32 bytes or something like that.
 
         gc_heap<value::List> heap_list;
-        gc_heap<std::string> heap_string;
+        gc_heap<const std::string> heap_string;
         gc_heap<Code> heap_code;
         gc_heap<FrameState> heap_frame;
         gc_heap<value::PyFunc> heap_pyfunc;
         gc_heap<value::PyObject> heap_pyobject;
         gc_heap<value::PyClass> heap_pyclass;
         gc_heap<std::unordered_map<std::string, Value>> heap_namespace;
-
+        
         inline size_t memory_footprint() {
             return heap_list.memory_footprint() + 
                 heap_string.memory_footprint() + 
@@ -40,6 +40,8 @@ namespace py {
             return this->memory_footprint() >= size_at_last_gc * 2;
         }
 
+        void print_debug_info();
+        void mark_live_objects(InterpreterState& interp);
         void collect_garbage(InterpreterState& interp);
     };
 

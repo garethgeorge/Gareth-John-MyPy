@@ -126,20 +126,45 @@ namespace gc {
 
 namespace py {
 
-void Allocator::collect_garbage(InterpreterState& interp) {
-    DEBUG_ADV("COLLECTING GARBAGE");
+void Allocator::mark_live_objects(InterpreterState& interp) {
+    DEBUG_ADV("MARKING LIVE OBJECTS");
 
     interp.cur_frame.mark();
     
-    mark_children(interp.ns_globals);
+    interp.ns_globals.mark();
+    interp.main_code.mark();
+}
 
-    // heap_list.sweep();
-    // heap_string.sweep();
-    // heap_code.sweep();
-    // heap_frame.sweep();
-    // heap_pyfunc.sweep();
-    // heap_pyobject.sweep();
-    // heap_pyclass.sweep();
+void Allocator::print_debug_info() {
+    DEBUG_ADV("\tSIZE OF HEAP_LIST: " << heap_list.memory_footprint() << " - " << heap_list.size());
+    DEBUG_ADV("\tSIZE OF HEAP_STRING: " << heap_string.memory_footprint() << " - " << heap_string.size());
+    DEBUG_ADV("\tSIZE OF HEAP_CODE: " << heap_code.memory_footprint() << " - " << heap_code.size());
+    DEBUG_ADV("\tSIZE OF HEAP_FRAME: " << heap_frame.memory_footprint() << " - " << heap_frame.size());
+    DEBUG_ADV("\tSIZE OF HEAP_PYFUNC: " << heap_pyfunc.memory_footprint() << " - " << heap_pyfunc.size());
+    DEBUG_ADV("\tSIZE OF HEAP_PYOBJECT " << heap_pyobject.memory_footprint() << " - " << heap_pyobject.size());
+    DEBUG_ADV("\tSIZE OF HEAP_PYCLASS: " << heap_pyclass.memory_footprint() << " - " << heap_pyclass.size());
+    DEBUG_ADV("\tSIZE OF HEAP_NAMESPACE: " << heap_namespace.memory_footprint() << " - " << heap_namespace.size());
+}
+
+void Allocator::collect_garbage(InterpreterState& interp) {
+    this->mark_live_objects(interp);
+
+    size_t size_before = this->memory_footprint();
+    DEBUG_ADV("SWEEPING THE HEAP, CURRENT SIZE: " << size_before);
+    print_debug_info();
+    heap_list.sweep();
+    heap_string.sweep();
+    heap_code.sweep();
+    heap_frame.sweep();
+    heap_pyfunc.sweep();
+    heap_pyobject.sweep();
+    heap_pyclass.sweep();
+    heap_namespace.sweep();
+
+    size_t new_size = this->memory_footprint();
+    DEBUG_ADV("CLEANED UP " << size_before - new_size << " BYTES, NEW SIZE: " << new_size);
+    print_debug_info();
+
 }
 
 }

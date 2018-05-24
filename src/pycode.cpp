@@ -14,8 +14,10 @@
 #include "oplist.hpp"
 #include "pyallocator.hpp"
 #include "pyvalue.hpp"
+
+#undef DEBUG_ON
+
 #include "../lib/base64.hpp"
-// #define DEBUG_ON
 #include "../lib/debug.hpp"
 #include "../lib/json.hpp"
 
@@ -207,7 +209,7 @@ Code::Code(const json& tree) {
 
     // load lnotab 
     for (const json& linenumber : tree.at("lnotab")) {
-        DEBUG("loaded line number %d", linenumber);
+        DEBUG("loaded line number %d", linenumber.at(0).get<uint64_t>());
         this->lnotab.push_back(
             LineNoMapping {linenumber.at(0).get<uint64_t>(), linenumber.at(1).get<uint64_t>()}
         );
