@@ -1,8 +1,10 @@
-#include "pyvalue_helpers.hpp"
-#include "builtins/builtins.hpp"
 #include <iostream>
 #include <sstream>
 #include <stdio.h>
+
+#include "pyvalue_helpers.hpp"
+#include "builtins/builtins.hpp"
+#include "pyallocator.hpp"
 
 namespace py {
 namespace value_helper {
@@ -115,7 +117,7 @@ namespace value_helper {
 
     ValuePyObject create_cell(Value contents){
         DEBUG_ADV("Creating cell for " << contents << "\n");
-        ValuePyObject nobj = std::make_shared<value::PyObject>(value::PyObject(cell_class));
+        ValuePyObject nobj = alloc.heap_pyobject.make(cell_class);
         nobj->store_attr("contents",contents);
         return nobj;
     }
@@ -125,7 +127,7 @@ namespace value_helper {
         call_visitor methods
     */
 
-    void call_visitor::operator()(const ValuePyClass& cls) const {
+    void call_visitor::operator()(ValuePyClass& cls) const {
         DEBUG("Constructing a '%s' Object",std::get<ValueString>(
             (*(cls->attrs))["__qualname__"]
         )->c_str());
@@ -134,9 +136,7 @@ namespace value_helper {
             frame.print_value(it->second);
             printf("\n");
         }*/
-        ValuePyObject npo = std::make_shared<value::PyObject>(
-            value::PyObject(cls)
-        );
+        ValuePyObject npo = alloc.heap_pyobject.make(cls);
 
 
         // Check the class if it has an init function
@@ -180,12 +180,12 @@ namespace value_helper {
 
         // Push a new FrameState
         frame.interpreter_state->push_frame(
-            std::make_shared<FrameState>(func->code)
+            alloc.heap_frame.make(func->code)
         );
         frame.interpreter_state->cur_frame->initialize_from_pyfunc(func, args);
     }
 
-    void call_visitor::operator()(const ValuePyObject& obj) const {
+    void call_visitor::operator()(ValuePyObject& obj) const {
         DEBUG("call_visitor dispatching on a PyObject");
 
         std::tuple<Value,bool> res = value::PyObject::find_attr_in_obj(obj,"__call__");
@@ -211,7 +211,7 @@ std::ostream& operator << (std::ostream& stream, const Value value) {
 }
 
 // This is needed to allow the create_cell function
-ValuePyClass cell_class = std::make_shared<value::PyClass>(value::PyClass("CELL_CLASS"));
+ValuePyClass cell_class = alloc.heap_pyclass.make("CELL_CLASS").retain();
 
 // PyClass --------------------------------------------------------------------------------------
 
@@ -281,11 +281,11 @@ void value::PyClass::remove_from_linearizations(
 
 value::PyClass::PyClass(){
     // Allocate the attributes namespace
-    this->attrs = std::make_shared<std::unordered_map<std::string, Value>>();
+    this->attrs = alloc.heap_namespace.make();
 }
 
 value::PyClass::PyClass(std::string&& qualname) : PyClass() {
-    (*(this->attrs))["__qualname__"] = std::make_shared<std::string>(std::string(qualname));
+    (*(this->attrs))["__qualname__"] = alloc.heap_string.make(qualname);
 }
 
 value::PyClass::PyClass(std::vector<ValuePyClass>& ps) : PyClass() {

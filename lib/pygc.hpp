@@ -17,21 +17,18 @@ template<typename T>
 struct gc_heap;
 
 template<typename T>
-struct gc_test_ptr {
-    T* object;
-
-    gc_test_ptr(T *object) : object(object) {
-    }
-};
-
-
-template<typename T>
 class gc_ptr {
-private:
-    static const uint8_t FLAG_MARKED = 1;
+protected:
+    // the last bit is used to hold a marked flag
+    static const uint8_t FLAG_MARKED = 1 << 7;
+    // the rest of the bits are used to store a reference count
+    // used when C scripts want to retain a value
+    static const uint8_t MASK_REFCOUNT = ~FLAG_MARKED;
+    // it remains very cheap to check if an object should be gc'd since
+    // the gc state is simply when obj.flags = 0
 
     struct gc_object {
-        uint8_t flags;
+        uint8_t flags = 0;
         T object;
 
         template < typename... Args> 
@@ -52,38 +49,45 @@ public:
         object = nullptr;
     }
 
+    inline operator bool() const {
+        return object != nullptr;
+    }
+
     constexpr inline T* operator->() {
         return &(this->object->object);
     }
 
-    constexpr inline const T* operator->() const {
+    constexpr inline T* operator->() const {
         return &(this->object->object);
     }
 
-    constexpr inline T& operator*() {
+    constexpr inline T& operator*() const {
         return object->object;
     }
 
-    constexpr inline const T& operator*() const {
-        return object->object;
-    }
-
-    constexpr bool operator == (const gc_ptr<T>& other) {
+    constexpr bool operator == (const gc_ptr<T> other) const {
         return object == other.object;
     }
     
-    constexpr bool operator == (const std::nullptr_t) {
+    constexpr bool operator == (const std::nullptr_t) const {
         return object == nullptr;
     }
 
-    constexpr bool operator != (const gc_ptr<T>& other) {
+    constexpr bool operator != (const gc_ptr<T> other) const {
         return object != other.object;
     }
 
-    constexpr bool operator != (const std::nullptr_t) {
+    constexpr bool operator != (const std::nullptr_t) const {
         return object != nullptr;
     }
     
+    void mark() const {
+        if (!(this->object->flags & FLAG_MARKED)) {
+            this->object->flags |= FLAG_MARKED;
+            mark_children(*this);
+        }
+    }
+
     void mark() {
         if (!(this->object->flags & FLAG_MARKED)) {
             this->object->flags |= FLAG_MARKED;
@@ -91,7 +95,30 @@ public:
         }
     }
 
+    T* get() {
+        if (object == nullptr)
+            return nullptr;
+        return &(object->object);
+    }
+
+    const T* get() const {
+        if (object == nullptr)
+            return nullptr;
+        return &(object->object);
+    }
+
     friend class gc_heap<T>;
+
+    // WARNING: maximum reference count is 127, greater than this and things
+    // break horribly, and there is no checking.
+    inline gc_ptr<T> retain() {
+        this->object->flags += 1;
+        return *this;
+    }
+
+    void release() {
+        this->object->flags -= 1;
+    }
 };
 
 
@@ -104,6 +131,7 @@ private:
 
     // the objects array is effectively the heap
     std::list<gc_object> objects;
+    std::list<gc_object*> rootset;
 
 public:
     template < typename... Args> 
@@ -113,23 +141,29 @@ public:
         return ptr_t(*object_itr);
     }
 
-
     size_t size() {
         return objects.size();
+    }
+
+    size_t memory_footprint() {
+        return size() * sizeof(T);
     }
     
     void sweep() {
         for (auto itr = this->objects.begin(); itr != this->objects.end();) {
             auto &obj = *itr;
-            if (!(obj.flags & ptr_t::FLAG_MARKED)) {
-                objects.erase(itr++);
+            if (!obj.flags) { // object.flags must be all 0's for us to clear it :)
+                itr = objects.erase(itr);
             } else {
                 (*itr).flags &= ~(ptr_t::FLAG_MARKED);
                 ++itr;
             }
         }
     }
+
 };
+
+
 
 }
 

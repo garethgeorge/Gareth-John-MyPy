@@ -17,6 +17,11 @@ namespace py {
 
 struct Code;
 extern std::ostream& operator << (std::ostream& stream, const Value value);
+template<typename T>
+extern std::ostream& operator << (std::ostream& stream, const gc_ptr<T> value) {
+    return stream << Value(value);
+}
+
 extern ValuePyClass cell_class;
 
 namespace value_helper {
@@ -84,13 +89,13 @@ struct call_visitor {
     }
 
     // A PyClass was called like a function, therein creating a PyObject
-    void operator()(const ValuePyClass& cls) const;
+    void operator()(ValuePyClass& cls) const;
 
     void operator()(const ValuePyFunction& func) const;
 
     // An object was called like a function
     // Look for it'a __call__ overload and run that
-    void operator()(const ValuePyObject& obj) const;
+    void operator()(ValuePyObject& obj) const;
     
     template<typename T>
     void operator()(T) const {
@@ -195,12 +200,13 @@ struct load_attr_visitor {
 
     load_attr_visitor(FrameState& frame, const std::string& attr) : frame(frame), attr(attr) {}
     
-    void operator()(const ValuePyClass& cls){
+    void operator()(ValuePyClass& cls){
         try {
             frame.value_stack.push_back(cls->attrs->at(attr));
         } catch (const std::out_of_range& oor) {
+            auto& attrs = *(cls->attrs);
             throw pyerror(std::string(
-                *(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))
+                *(std::get<ValueString>( (attrs)["__qualname__"]))
                 + " has no attribute " + attr
             ));
         }
@@ -215,9 +221,10 @@ struct load_attr_visitor {
             frame.value_stack.push_back(std::get<0>(res));
         } else {
             // Nothing found, throw error!
+            auto& attrs = (*(obj->static_attrs->attrs));
             throw pyerror(std::string(
                 // Should this be __name__??
-                *(std::get<ValueString>( (*(obj->static_attrs->attrs))["__qualname__"]))
+                *(std::get<ValueString>(attrs["__qualname__"]))
                 + " has no attribute " + attr
             ));
         }

@@ -82,7 +82,6 @@ TEST_CASE("should be able to do garbage collection", "[arithmetic]") {
     }
 
     SECTION("complex case -- variant of just ints") {
-        
         gc_heap<Baz> bazzes;
         MyType foo = bazzes.make();
     }

@@ -31,7 +31,7 @@ int main(const int argc, const char *argv[])
     // std::cout << std::setw(4) << obj << std::endl;
 
     // this is the new default case, take raw source code as input
-    std::shared_ptr<Code> code = nullptr;
+    gc_ptr<Code> code = nullptr;
 
     std::istreambuf_iterator<char> eos;
     if (argc > 1 && argv[1] != nullptr) {

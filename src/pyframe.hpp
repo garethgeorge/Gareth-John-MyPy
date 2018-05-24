@@ -15,7 +15,7 @@
 
 namespace py {
 
-using Namespace = std::shared_ptr<std::unordered_map<std::string, Value>>;
+using Namespace = gc_ptr<std::unordered_map<std::string, Value>>;
 
 struct Code;
 struct InterpreterState;
@@ -42,7 +42,7 @@ public:
     constexpr const static uint8_t FLAG_DONT_RETURN = 16;
 
     uint64_t r_pc = 0; // program counter
-    std::shared_ptr<FrameState> parent_frame = nullptr;
+    gc_ptr<FrameState> parent_frame = nullptr;
     InterpreterState *interpreter_state = nullptr; 
 
     ValueCode code;
@@ -62,8 +62,8 @@ public:
     ValuePyFunction curr_func; // The function of this current frame stat
     std::vector<ValuePyObject> cells; // Cells that happen to be in my local namespace
 
-    FrameState(const ValueCode& code);
-    FrameState(const ValueCode& code, ValuePyClass& init_class);
+    FrameState(const ValueCode code);
+    FrameState(const ValueCode code, ValuePyClass& init_class);
 
     void eval_next();
 

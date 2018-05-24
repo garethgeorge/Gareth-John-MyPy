@@ -5,15 +5,13 @@ namespace py {
 /* 
     INTERPRETER STATE
 */
-InterpreterState::InterpreterState(
-    std::shared_ptr<Code>& code) {
-    
+InterpreterState::InterpreterState(ValueCode code) {
     //code->print_bytecode();
 
-    this->ns_builtins = std::make_shared<std::unordered_map<std::string, Value>>();
+    this->ns_builtins = alloc.heap_namespace.make();
 
     this->push_frame(
-        std::make_shared<FrameState>(code)
+        alloc.heap_frame.make(code)
     );
 
     // make ns_globals refer to the bottom's locals

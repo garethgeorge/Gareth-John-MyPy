@@ -12,9 +12,12 @@
 
 #include "pycode.hpp"
 #include "oplist.hpp"
+#include "pyallocator.hpp"
 #include "pyvalue.hpp"
+
+#undef DEBUG_ON
+
 #include "../lib/base64.hpp"
-// #define DEBUG_ON
 #include "../lib/debug.hpp"
 #include "../lib/json.hpp"
 
@@ -131,7 +134,7 @@ Code::Code(const json& tree) {
             if (real_type == "<class 'str'>") {
                 DEBUG("constant at index %lu is string", this->co_consts.size());
                 this->co_consts.push_back(
-                    std::make_shared<std::string>(element.at("value").get<std::string>())
+                    alloc.heap_string.make(element.at("value").get<std::string>())
                 );
             } else if (real_type == "<class 'int'>") {
                 DEBUG("constant at index %lu is int", this->co_consts.size());
@@ -157,7 +160,8 @@ Code::Code(const json& tree) {
                 throw pyerror(std::string("unrecognized type of constant: ") + real_type);
             }
         } else if (type == "code") {
-            this->co_consts.push_back(std::make_shared<Code>(element));
+            gc_ptr<Code> code = alloc.heap_code.make(Code(element));
+            this->co_consts.push_back(code);
         } else {
             throw pyerror(std::string("unrecognized type of constant: ") + type);
         }
@@ -205,7 +209,7 @@ Code::Code(const json& tree) {
 
     // load lnotab 
     for (const json& linenumber : tree.at("lnotab")) {
-        DEBUG("loaded line number %d", linenumber);
+        DEBUG("loaded line number %d", linenumber.at(0).get<uint64_t>());
         this->lnotab.push_back(
             LineNoMapping {linenumber.at(0).get<uint64_t>(), linenumber.at(1).get<uint64_t>()}
         );
@@ -225,7 +229,7 @@ Code::Code(const json& tree) {
 Code::~Code() {
 }
 
-std::shared_ptr<Code> Code::from_program(const std::string& python, const std::string& compilePyPath) {
+gc_ptr<Code> Code::from_program(const std::string& python, const std::string& compilePyPath) {
     procxx::process compilePyProc{"python3", compilePyPath.c_str()};
     
     DEBUG("execing compile python process");
@@ -251,7 +255,7 @@ std::shared_ptr<Code> Code::from_program(const std::string& python, const std::s
         throw err;
     }
     DEBUG("read successful.");
-    return std::make_shared<Code>(tree);
+    return alloc.heap_code.make(tree);
 }
 
 }

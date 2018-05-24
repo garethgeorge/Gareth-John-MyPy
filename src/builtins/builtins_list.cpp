@@ -40,18 +40,6 @@ struct builtin_list_attributes_initializer {
             frame.value_stack.push_back(value::NoneType());
         });
 
-        builtin_list_attributes["extend"] = std::make_shared<value::CMethod>([](FrameState& frame, ArgList& _args) {
-            arg_decoder<ValueList, ValueList> args(_args);
-            ValueList list = args.get<0>();
-            
-            for (auto& val : args.get<1>()->values) {
-                list->values.push_back(val);
-            }
-
-            frame.value_stack.push_back(value::NoneType());
-        });
-
-
         builtin_list_attributes["insert"] = std::make_shared<value::CMethod>([](FrameState& frame, ArgList& _args) {
             arg_decoder<ValueList, int64_t> args(_args);
 
@@ -71,6 +59,8 @@ struct builtin_list_attributes_initializer {
 
             frame.value_stack.push_back(value::NoneType());
         });
+
+        
 
     }
 };

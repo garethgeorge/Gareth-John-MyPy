@@ -18,17 +18,18 @@ using std::string;
 
 namespace py {
 
-FrameState::FrameState(const ValueCode& code) 
+FrameState::FrameState(const ValueCode code) 
 {
     DEBUG("constructed a new frame");
-    this->ns_local = std::make_shared<std::unordered_map<std::string, Value>>();
+    // this->ns_local = std::make_shared<std::unordered_map<std::string, Value>>();
+    this->ns_local = alloc.heap_namespace.make();
     this->code = code;
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
     this->value_stack.reserve(code->co_stacksize);
 }
 
 // Construct a framestate meant to initialize everything static about a class
-FrameState::FrameState(const ValueCode& code, ValuePyClass& init_class)
+FrameState::FrameState(const ValueCode code, ValuePyClass& init_class)
 {
     DEBUG("constructed a new frame for statically initializing a class");
     // Everything is mostly the same, but our local namespace is also the class's
@@ -42,11 +43,13 @@ FrameState::FrameState(const ValueCode& code, ValuePyClass& init_class)
 
 // Find an attribute in the parents of a class
 std::tuple<Value,bool> value::PyClass::find_attr_in_parents(
-                                    const ValuePyClass& cls,
+                                    ValuePyClass& cls,
                                     const std::string& attr
 ) {
+    const auto& qualname = (*(cls->attrs))["__qualname__"];
+
     DEBUG_ADV("Searching parents of class '" 
-        << (*(std::get<ValueString>( (*(cls->attrs))["__qualname__"]))).c_str()
+        << (*(std::get<ValueString>(qualname))).c_str()
         << "' for attr '" << attr);
     // Method Resolution Order already stored in the order parents are stored in
     for(int i = 0;i < cls->parents.size();i++){
@@ -63,9 +66,9 @@ std::tuple<Value,bool> value::PyClass::find_attr_in_parents(
 }
 
 std::tuple<Value,bool> value::PyObject::find_attr_in_obj(
-                                            const ValuePyObject& obj,
-                                            const std::string& attr
-){
+    ValuePyObject& obj,
+    const std::string& attr
+) {
     auto itr = obj->attrs->find(attr);
     if(itr != obj->attrs->end()){
         return std::tuple<Value,bool>(itr->second,true);
@@ -99,15 +102,16 @@ std::tuple<Value,bool> value::PyObject::find_attr_in_obj(
             } else {
                 DEBUG("Instantiating instance method");
                 // Create an instance method
-                Value npf = std::make_shared<value::PyFunc>(
+                Value npf = alloc.heap_pyfunc.make(
                     value::PyFunc {
                         (*pf)->name,
                         (*pf)->code,
                         (*pf)->def_args,
                         obj, // Instance method's self
-                        value::INSTANCE_METHOD}
+                        value::INSTANCE_METHOD
+                    }
                 );
-                obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
+                obj->store_attr(attr, npf); // Does this create a shared_ptr cycle
                 return std::tuple<Value,bool>(npf,true);
             }
         } else {
@@ -387,8 +391,10 @@ namespace eval_helpers {
 
         add_visitor(FrameState &frame) : numeric_visitor<op_add>(frame) { };
         
-        void operator()(const std::shared_ptr<std::string>& v1, const std::shared_ptr<std::string> &v2) const {
-            frame.value_stack.push_back(std::make_shared<std::string>(*v1 + *v2));
+        void operator()(const gc_ptr<const std::string>& v1, const gc_ptr<const std::string> &v2) const {
+            frame.value_stack.push_back(
+                alloc.heap_string.make(*v1 + *v2)
+            );
         }
     };
 
@@ -677,9 +683,9 @@ void FrameState::print_value(Value& val) {
             [](const ValueCMethod arg) {std::cerr << "CMethod()"; },
             [](const ValueCode arg) {std::cerr << "Code()"; },
             [](const ValuePyFunction arg) {std::cerr << "Python Function()"; },
-            [](const ValuePyClass arg) {std::cerr << "ValuePyClass ("
+            [](ValuePyClass arg) {std::cerr << "ValuePyClass ("
                 << *(std::get<ValueString>((*(arg->attrs))["__qualname__"])) << ")"; },
-            [](const ValuePyObject arg) {std::cerr << "ValuePyObject of class ("
+            [](ValuePyObject arg) {std::cerr << "ValuePyObject of class ("
                 << *(std::get<ValueString>((*(arg->static_attrs->attrs))["__qualname__"])) << ")"; },
             [](value::NoneType) {std::cerr << "None"; },
             [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; },
@@ -927,7 +933,7 @@ inline void FrameState::eval_next() {
                 // If the function does not have a closure yet, give it one
                 if(this->curr_func){
                     if(this->curr_func->__closure__ == nullptr){
-                        this->curr_func->__closure__ = this->interpreter_state->alloc.heap_lists.make();
+                        this->curr_func->__closure__ = alloc.heap_list.make();
                     }
                     while(this->curr_func->__closure__->values.size() <= arg){
                         this->curr_func->__closure__->values.push_back(
@@ -1279,6 +1285,12 @@ inline void FrameState::eval_next() {
             }
 
             this->interpreter_state->pop_frame();
+
+            // NOTE: this can not be used past this point
+            if (alloc.check_if_gc_needed()) {
+                alloc.collect_garbage(*(this->interpreter_state));
+            }
+
             return ;
         }
         case op::SETUP_LOOP:
@@ -1322,9 +1334,15 @@ inline void FrameState::eval_next() {
         }
         case op::JUMP_ABSOLUTE:
             this->r_pc = arg;
+            if (alloc.check_if_gc_needed()) {
+                alloc.collect_garbage(*(this->interpreter_state));
+            }
             return ;
         case op::JUMP_FORWARD:
             this->r_pc += arg;
+            if (alloc.check_if_gc_needed()) {
+                alloc.collect_garbage(*(this->interpreter_state));
+            }
             return ;
         case op::MAKE_CLOSURE:
         {
@@ -1343,8 +1361,8 @@ inline void FrameState::eval_next() {
             this->value_stack.pop_back();
 
             // Create a shared pointer to a vector from the args
-            std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(
-                std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end())
+            ValueList v = alloc.heap_list.make(
+                this->value_stack.end() - arg, this->value_stack.end()
             );
             
             // Remove the args from the value stack
@@ -1352,7 +1370,7 @@ inline void FrameState::eval_next() {
             // Create the function object
             // Error here if the wrong types
             try {
-                ValuePyFunction nv = std::make_shared<value::PyFunc>(
+                ValuePyFunction nv = alloc.heap_pyfunc.make(
                     value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(code), v}
                 );
                 // CHange to a tuple!
@@ -1389,7 +1407,7 @@ inline void FrameState::eval_next() {
             }
 
             // Create a shared pointer to a vector from the args
-            std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(
+            ValueList v = alloc.heap_list.make(
                 std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end())
             );
             this->value_stack.resize(this->value_stack.size() - arg);
@@ -1402,7 +1420,7 @@ inline void FrameState::eval_next() {
             #endif
 
             this->value_stack.push_back(
-                std::make_shared<value::PyFunc>(
+                alloc.heap_pyfunc.make(
                     value::PyFunc {name, code, v}
                 )
             );
@@ -1462,7 +1480,7 @@ inline void FrameState::eval_next() {
             this->check_stack_size(arg);
 
             // Pop the arguments to turn into a list.
-            ValueList newList = this->interpreter_state->alloc.heap_lists.make();
+            ValueList newList = alloc.heap_list.make();
 
             newList->values.assign(this->value_stack.end() - arg, this->value_stack.end());
             this->value_stack.resize(this->value_stack.size() - arg);

@@ -4,7 +4,7 @@
 #include "../../lib/debug.hpp"
 #include "test_helpers.hpp"
 
-extern std::shared_ptr<Code> build_file(const string& fname) {
+extern gc_ptr<Code> build_file(const string& fname) {
     std::istreambuf_iterator<char> eos;
     
     DEBUG("loading python source from file");
@@ -13,6 +13,6 @@ extern std::shared_ptr<Code> build_file(const string& fname) {
     return Code::from_program(s, "../pytools/compile.py");
 }
 
-extern std::shared_ptr<Code> build_string(const string& code) {
+extern gc_ptr<Code> build_string(const string& code) {
     return Code::from_program(code, "../pytools/compile.py");
 }
