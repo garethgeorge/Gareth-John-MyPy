@@ -17,7 +17,11 @@ namespace py {
 namespace builtins {
 
 extern void inject_builtins(Namespace& ns) {
-    
+
+    // Initialize a builting class
+    initialize_slice_class();
+
+
     // inject the global print builtin
     // TODO: add argument count support
     (*ns)["print"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {
@@ -248,6 +252,24 @@ extern void inject_builtins(Namespace& ns) {
             );
         } catch (const std::bad_variant_access& e) {
             throw pyerror("staticmethod called on a non function type");
+        }
+    });
+
+    (*ns)["slice"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {
+        if(args.size() == 2){
+            frame.value_stack.push_back(
+                builtins_slice_get_slice_object(args[0],args[1],value::NoneType())
+            );
+        } else if(args.size() == 3){
+            frame.value_stack.push_back(
+                builtins_slice_get_slice_object(args[0],args[1],args[2])
+            );
+        } else {
+            throw pyerror(
+                std::string(
+                    "slice called with " + std::to_string(args.size()) + " args, should be 2 or 3"
+                )
+            );
         }
     });
 }

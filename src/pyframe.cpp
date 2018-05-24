@@ -1647,7 +1647,18 @@ inline void FrameState::eval_next() {
             std::visit(eval_helpers::store_subscr_visitor {key, value}, self);
             GOTO_NEXT_OP ;
         }
-        
+        CASE(BUILD_SLICE)
+        {
+            this->check_stack_size(arg);
+            ArgList args(
+                this->value_stack.end() - arg,
+                this->value_stack.end());
+            this->value_stack.resize(this->value_stack.size() - arg);
+            (std::get<ValueCFunction>(
+                (*(this->interpreter_state->ns_builtins))["slice"]
+            ))->action((*this),args);
+            GOTO_NEXT_OP;
+        }
         CASE(ROT_THREE)
         CASE(DUP_TOP)
         CASE(DUP_TOP_TWO)
@@ -1689,7 +1700,6 @@ inline void FrameState::eval_next() {
         CASE(DELETE_FAST)
         CASE(STORE_ANNOTATION)
         CASE(RAISE_VARARGS)
-        CASE(BUILD_SLICE)
         CASE(DELETE_DEREF)
         CASE(CALL_FUNCTION_KW)
         CASE(CALL_FUNCTION_EX)
