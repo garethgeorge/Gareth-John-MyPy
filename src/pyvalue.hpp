@@ -220,13 +220,13 @@ namespace value {
     
     struct PyFunc {
         // Its name
-        const ValueString name;
+        ValueString name;
         
         // Its code
-        const ValueCode code;
+        ValueCode code;
 
         // Its default argument
-        const ValueList def_args;
+        ValueList def_args;
 
         // A pointer to self for if this is an instance function or class function
         Value self = value::NoneType();

@@ -77,6 +77,11 @@ extern void inject_builtins(Namespace& ns) {
        DEBUG_ADV("Super called with args " << args[0] << ", " << ((args.size() > 1) ? args[1] : "") << "\n");
     });
 
+    (*ns)["collect_garbage"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {
+        alloc.collect_garbage(*(frame.interpreter_state));
+        frame.value_stack.push_back(value::NoneType());
+    });
+
 
 
     // Build a re[resentation of a class

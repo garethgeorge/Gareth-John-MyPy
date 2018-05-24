@@ -49,7 +49,7 @@ public:
         object = nullptr;
     }
 
-    operator bool() const {
+    inline operator bool() const {
         return object != nullptr;
     }
 
@@ -85,6 +85,13 @@ public:
         return object != nullptr;
     }
     
+    void mark() const {
+        if (!(this->object->flags & FLAG_MARKED)) {
+            this->object->flags |= FLAG_MARKED;
+            mark_children(*this);
+        }
+    }
+
     void mark() {
         if (!(this->object->flags & FLAG_MARKED)) {
             this->object->flags |= FLAG_MARKED;

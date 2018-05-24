@@ -40,7 +40,7 @@ namespace py {
             return this->memory_footprint() >= size_at_last_gc * 2;
         }
 
-        void collect_garbage(InterpreterState* interp);
+        void collect_garbage(InterpreterState& interp);
     };
 
     extern Allocator alloc;
