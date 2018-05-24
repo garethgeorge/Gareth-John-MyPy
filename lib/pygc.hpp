@@ -69,19 +69,19 @@ public:
         return object->object;
     }
 
-    constexpr bool operator == (const gc_ptr<T>& other) {
+    constexpr bool operator == (const gc_ptr<T> other) const {
         return object == other.object;
     }
     
-    constexpr bool operator == (const std::nullptr_t) {
+    constexpr bool operator == (const std::nullptr_t) const {
         return object == nullptr;
     }
 
-    constexpr bool operator != (const gc_ptr<T>& other) {
+    constexpr bool operator != (const gc_ptr<T> other) const {
         return object != other.object;
     }
 
-    constexpr bool operator != (const std::nullptr_t) {
+    constexpr bool operator != (const std::nullptr_t) const {
         return object != nullptr;
     }
     
@@ -90,6 +90,12 @@ public:
             this->object->flags |= FLAG_MARKED;
             mark_children(*this);
         }
+    }
+
+    T* get() {
+        if (object == nullptr)
+            return nullptr;
+        return &(object->object);
     }
 
     friend class gc_heap<T>;
