@@ -211,7 +211,7 @@ std::ostream& operator << (std::ostream& stream, const Value value) {
 }
 
 // This is needed to allow the create_cell function
-ValuePyClass cell_class = alloc.heap_pyclass.make("CELL_CLASS");
+ValuePyClass cell_class = alloc.heap_pyclass.make("CELL_CLASS").retain();
 
 // PyClass --------------------------------------------------------------------------------------
 

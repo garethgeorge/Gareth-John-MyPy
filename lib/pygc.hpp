@@ -111,7 +111,7 @@ public:
 
     // WARNING: maximum reference count is 127, greater than this and things
     // break horribly, and there is no checking.
-    auto retain() -> decltype(*this) {
+    inline gc_ptr<T> retain() {
         this->object->flags += 1;
         return *this;
     }
