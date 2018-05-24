@@ -129,8 +129,9 @@ namespace py {
 void Allocator::mark_live_objects(InterpreterState& interp) {
     DEBUG_ADV("MARKING LIVE OBJECTS");
 
-    interp.cur_frame.mark();
-    
+    if (interp.cur_frame != nullptr) {
+        interp.cur_frame.mark();
+    }
     interp.ns_globals.mark();
     interp.main_code.mark();
 }
@@ -152,19 +153,29 @@ void Allocator::collect_garbage(InterpreterState& interp) {
     size_t size_before = this->memory_footprint();
     DEBUG_ADV("SWEEPING THE HEAP, CURRENT SIZE: " << size_before);
     print_debug_info();
+    
+    DEBUG_ADV("\tCLEANING LISTS");
     heap_list.sweep();
+    DEBUG_ADV("\tCLEANING STRINGS");
     heap_string.sweep();
+    DEBUG_ADV("\tCLEANING CODE");
     heap_code.sweep();
+    DEBUG_ADV("\tCLEANING FRAME");
     heap_frame.sweep();
+    DEBUG_ADV("\tCLEANING PYFUNCS");
     heap_pyfunc.sweep();
+    DEBUG_ADV("\tCLEANING PYOBJECTS");
     heap_pyobject.sweep();
+    DEBUG_ADV("\tCLEANING PYCLASSES");
     heap_pyclass.sweep();
+    DEBUG_ADV("\tCLEANING NAMESPACES");
     heap_namespace.sweep();
 
     size_t new_size = this->memory_footprint();
     DEBUG_ADV("CLEANED UP " << size_before - new_size << " BYTES, NEW SIZE: " << new_size);
     print_debug_info();
 
+    this->size_at_last_gc = new_size;
 }
 
 }

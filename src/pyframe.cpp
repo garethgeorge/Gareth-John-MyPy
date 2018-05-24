@@ -1285,6 +1285,12 @@ inline void FrameState::eval_next() {
             }
 
             this->interpreter_state->pop_frame();
+
+            // NOTE: this can not be used past this point
+            if (alloc.check_if_gc_needed()) {
+                alloc.collect_garbage(*(this->interpreter_state));
+            }
+
             return ;
         }
         case op::SETUP_LOOP:
@@ -1328,9 +1334,15 @@ inline void FrameState::eval_next() {
         }
         case op::JUMP_ABSOLUTE:
             this->r_pc = arg;
+            if (alloc.check_if_gc_needed()) {
+                alloc.collect_garbage(*(this->interpreter_state));
+            }
             return ;
         case op::JUMP_FORWARD:
             this->r_pc += arg;
+            if (alloc.check_if_gc_needed()) {
+                alloc.collect_garbage(*(this->interpreter_state));
+            }
             return ;
         case op::MAKE_CLOSURE:
         {

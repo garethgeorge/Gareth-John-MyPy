@@ -153,8 +153,7 @@ public:
         for (auto itr = this->objects.begin(); itr != this->objects.end();) {
             auto &obj = *itr;
             if (!obj.flags) { // object.flags must be all 0's for us to clear it :)
-                objects.erase(itr);
-                ++itr;
+                itr = objects.erase(itr);
             } else {
                 (*itr).flags &= ~(ptr_t::FLAG_MARKED);
                 ++itr;
