@@ -99,13 +99,14 @@ std::tuple<Value,bool> value::PyObject::find_attr_in_obj(
             } else {
                 DEBUG("Instantiating instance method");
                 // Create an instance method
-                Value npf = std::make_shared<value::PyFunc>(
+                Value npf = alloc.heap_pyfunc.make(
                     value::PyFunc {
                         (*pf)->name,
                         (*pf)->code,
                         (*pf)->def_args,
                         obj, // Instance method's self
-                        value::INSTANCE_METHOD}
+                        value::INSTANCE_METHOD
+                    }
                 );
                 obj->store_attr(attr,npf); // Does this create a shared_ptr cycle
                 return std::tuple<Value,bool>(npf,true);
@@ -1345,8 +1346,8 @@ inline void FrameState::eval_next() {
             this->value_stack.pop_back();
 
             // Create a shared pointer to a vector from the args
-            std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(
-                std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end())
+            ValueList v = alloc.heap_list.make(
+                this->value_stack.end() - arg, this->value_stack.end()
             );
             
             // Remove the args from the value stack
@@ -1354,7 +1355,7 @@ inline void FrameState::eval_next() {
             // Create the function object
             // Error here if the wrong types
             try {
-                ValuePyFunction nv = std::make_shared<value::PyFunc>(
+                ValuePyFunction nv = alloc.heap_pyfunc.make(
                     value::PyFunc {std::get<ValueString>(name), std::get<ValueCode>(code), v}
                 );
                 // CHange to a tuple!
@@ -1391,7 +1392,7 @@ inline void FrameState::eval_next() {
             }
 
             // Create a shared pointer to a vector from the args
-            std::shared_ptr<std::vector<Value>> v = std::make_shared<std::vector<Value>>(
+            ValueList v = alloc.heap_list.make(
                 std::vector<Value>(this->value_stack.end() - arg, this->value_stack.end())
             );
             this->value_stack.resize(this->value_stack.size() - arg);
@@ -1404,7 +1405,7 @@ inline void FrameState::eval_next() {
             #endif
 
             this->value_stack.push_back(
-                std::make_shared<value::PyFunc>(
+                alloc.heap_pyfunc.make(
                     value::PyFunc {name, code, v}
                 )
             );

@@ -187,32 +187,28 @@ extern void inject_builtins(Namespace& ns) {
             if(vpo != NULL){
                 // Create a function with self one level deeper
                 frame.value_stack.push_back(
-                    std::move(
-                        std::make_shared<value::PyFunc>( 
-                            value::PyFunc {
-                                vpf->name, 
-                                vpf->code, 
-                                vpf->def_args, 
-                                (*vpo)->static_attrs, // self
-                                value::CLASS_METHOD
-                            }
-                        )
+                    alloc.heap_pyfunc.make( 
+                        value::PyFunc {
+                            vpf->name, 
+                            vpf->code, 
+                            vpf->def_args, 
+                            (*vpo)->static_attrs, // self
+                            value::CLASS_METHOD
+                        }
                     )
                 );
             } else {
                 if(frame.init_class){
                     // Read the class from the framestate
                     frame.value_stack.push_back(
-                        std::move(
-                            std::make_shared<value::PyFunc>( 
-                                value::PyFunc {
-                                    vpf->name,
-                                    vpf->code,
-                                    vpf->def_args,
-                                    frame.init_class, //self
-                                    value::CLASS_METHOD
-                                } 
-                            )
+                        alloc.heap_pyfunc.make( 
+                            value::PyFunc {
+                                vpf->name,
+                                vpf->code,
+                                vpf->def_args,
+                                frame.init_class, //self
+                                value::CLASS_METHOD
+                            } 
                         )
                     );
                 } else {
@@ -233,17 +229,15 @@ extern void inject_builtins(Namespace& ns) {
         try {
             ValuePyFunction& vpf = std::get<ValuePyFunction>(args[0]);
             frame.value_stack.push_back(
-                std::move(
-                    std::make_shared<value::PyFunc> ( 
-                        // Throw one up on the stack with static flag set
-                        value::PyFunc {
-                            vpf->name,
-                            vpf->code,
-                            vpf->def_args,
-                            vpf->self,
-                            value::STATIC_METHOD
-                        }
-                    )
+                alloc.heap_pyfunc.make( 
+                    // Throw one up on the stack with static flag set
+                    value::PyFunc {
+                        vpf->name,
+                        vpf->code,
+                        vpf->def_args,
+                        vpf->self,
+                        value::STATIC_METHOD
+                    }
                 )
             );
         } catch (const std::bad_variant_access& e) {

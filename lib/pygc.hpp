@@ -53,6 +53,10 @@ public:
         object = nullptr;
     }
 
+    operator bool() const {
+        return object != nullptr;
+    }
+
     constexpr inline T* operator->() {
         return &(this->object->object);
     }

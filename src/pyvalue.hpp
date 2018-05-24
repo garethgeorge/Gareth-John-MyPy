@@ -70,7 +70,7 @@ using ValueString = gc_ptr<std::string>;
 using ValueCode = gc_ptr<Code>;
 using ValueCFunction = std::shared_ptr<value::CFunction>;
 using ValueCMethod = std::shared_ptr<value::CMethod>;
-using ValuePyFunction = std::shared_ptr<value::PyFunc>;
+using ValuePyFunction = gc_ptr<value::PyFunc>;
 using ValuePyObject = std::shared_ptr<value::PyObject>;
 using ValuePyGenerator = value::PyGenerator;
 
@@ -176,6 +176,38 @@ namespace value {
         // and more importantly the size of py::Value, is not available at the time of its creation
         // (before it needs to be included in the std::variant)
         std::vector<Value> values;
+
+        template < typename... Args> 
+        List(Args&&... args) : values(std::forward<Args>(args)...) {
+        };
+
+        auto begin() {
+            return values.begin();
+        }
+
+        auto begin() const {
+            return values.begin();
+        }
+
+        auto end() {
+            return values.end();
+        }
+
+        auto end() const {
+            return values.end();
+        }
+
+        auto& operator[](size_t index) {
+            return values[index];
+        }
+
+        const auto& operator[](size_t index) const {
+            return values[index];
+        }
+
+        size_t size() const {
+            return values.size();
+        }
     };
     
     // struct Set {
@@ -185,20 +217,16 @@ namespace value {
     // struct Map {
     //     unordered_map<Value, Value> values;
     // }
-}
-
-// A struct that holds a python function
-namespace value {
     
     struct PyFunc {
-        // It's name
+        // Its name
         const ValueString name;
         
-        // It's code
+        // Its code
         const ValueCode code;
 
-        // It's default argument
-        const std::shared_ptr<std::vector<Value>> def_args;
+        // Its default argument
+        const ValueList def_args;
 
         // A pointer to self for if this is an instance function or class function
         Value self = value::NoneType();
