@@ -1,12 +1,13 @@
-#define DEBUG_ON
-
-#include <debug.hpp>
 #include <variant>
 #include <iostream>
 
 #include "pyallocator.hpp"
 #include "pyinterpreter.hpp"
 #include "pyvalue_helpers.hpp"
+
+#define DEBUG_ON
+
+#include <debug.hpp>
 
 namespace py {
 
@@ -176,6 +177,17 @@ void Allocator::collect_garbage(InterpreterState& interp) {
     print_debug_info();
 
     this->size_at_last_gc = new_size;
+}
+
+void Allocator::retain_all() {
+    heap_list.retain_all();
+    heap_string.retain_all();
+    heap_code.retain_all();
+    heap_frame.retain_all();
+    heap_pyfunc.retain_all();
+    heap_pyobject.retain_all();
+    heap_pyclass.retain_all();
+    heap_namespace.retain_all();
 }
 
 }

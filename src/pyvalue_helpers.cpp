@@ -117,7 +117,7 @@ namespace value_helper {
 
     ValuePyObject create_cell(Value contents){
         DEBUG_ADV("Creating cell for " << contents << "\n");
-        ValuePyObject nobj = alloc.heap_pyobject.make(cell_class);
+        ValuePyObject nobj = alloc.heap_pyobject.make(builtins::cell_class);
         nobj->store_attr("contents",contents);
         return nobj;
     }
@@ -209,9 +209,6 @@ std::ostream& operator << (std::ostream& stream, const Value value) {
     std::visit(value_helper::visitor_debug_repr(stream), value);
     return stream;
 }
-
-// This is needed to allow the create_cell function
-ValuePyClass cell_class = alloc.heap_pyclass.make("CELL_CLASS").retain();
 
 // PyClass --------------------------------------------------------------------------------------
 

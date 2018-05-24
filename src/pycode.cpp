@@ -15,7 +15,8 @@
 #include "pyallocator.hpp"
 #include "pyvalue.hpp"
 
-#undef DEBUG_ON
+// #undef DEBUG_ON
+#define DEBUG_ON
 
 #include "../lib/base64.hpp"
 #include "../lib/debug.hpp"
@@ -203,6 +204,7 @@ Code::Code(const json& tree) {
     {
         size_t index = 0;
         for (std::string& cellvarname : this->co_cellvars) {
+            DEBUG_ADV("Code " << this->co_name << " has a cell named " << cellvarname);
             this->co_cellmap[cellvarname] = index++;
         }
     }

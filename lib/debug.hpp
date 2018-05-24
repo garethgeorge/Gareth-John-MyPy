@@ -1,6 +1,3 @@
-#ifndef DEBUG_H
-#define DEBUG_H 
-
 #ifdef DEBUG_ON
 
 #include <cstring>
@@ -38,7 +35,5 @@
 #else 
 
 #define J_DEBUG(...)
-
-#endif
 
 #endif
