@@ -306,6 +306,16 @@ namespace value {
     };
 }
 
+
+/*
+    useful operator overloads on py::Value
+*/
+extern std::ostream& operator << (std::ostream& stream, const Value value);
+template<typename T>
+extern std::ostream& operator << (std::ostream& stream, const gc_ptr<T> value) {
+    return stream << Value(value);
+}
+
 }
 
 #endif

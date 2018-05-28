@@ -1,3 +1,8 @@
+#ifdef DEBUG 
+#undef DEBUG 
+#undef DEBUG_ADV
+#endif
+
 #ifdef DEBUG_ON
 
 #include <cstring>

@@ -16,11 +16,6 @@ using std::string;
 namespace py {
 
 struct Code;
-extern std::ostream& operator << (std::ostream& stream, const Value value);
-template<typename T>
-extern std::ostream& operator << (std::ostream& stream, const gc_ptr<T> value) {
-    return stream << Value(value);
-}
 
 namespace value_helper {
 
