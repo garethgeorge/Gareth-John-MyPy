@@ -7,9 +7,7 @@
 #include <memory>
 #include <stdint.h>
 
-#define DEBUG_ON
 #include <debug.hpp>
-#undef DEBUG_ON
 
 // we will have to implement a custom allocator that allows us to track the memory
 // that is being used, and free'd by our 'MyPy' implementation 

@@ -182,7 +182,7 @@ struct for_iter_visitor {
         std::optional<Value> retval = generator->next();
         if (retval) {
             DEBUG_ADV("\titerator gave us value: " << *retval);
-            frame.value_stack.push_back(*retval);
+            frame.value_stack.push_back(std::move(*retval));
             frame.r_pc++;
         } else {
             DEBUG_ADV("\tno more values from iterator");
@@ -1112,9 +1112,9 @@ inline void FrameState::eval_next() {
         }
         CASE(JUMP_ABSOLUTE)
             this->r_pc = arg;
-            if (alloc.check_if_gc_needed()) {
-                alloc.collect_garbage(*(this->interpreter_state));
-            }
+            // if (alloc.check_if_gc_needed()) {
+            //     alloc.collect_garbage(*(this->interpreter_state));
+            // }
             GOTO_TARGET_OP;
         CASE(JUMP_FORWARD)
             this->r_pc += arg;
@@ -1164,7 +1164,6 @@ inline void FrameState::eval_next() {
         }
         CASE(MAKE_FUNCTION)
         {
-
             // DONT FORGET TO CHANGE MAKE_CLOSURE TOO WHEN YOU CHANGE HOW ARG IS USED HERE
 
             this->check_stack_size(arg + 2);

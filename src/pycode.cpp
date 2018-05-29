@@ -16,7 +16,7 @@
 #include "pyvalue.hpp"
 
 // #undef DEBUG_ON
-#define DEBUG_ON
+// #define DEBUG_ON
 
 #include "../lib/base64.hpp"
 #include "../lib/debug.hpp"
