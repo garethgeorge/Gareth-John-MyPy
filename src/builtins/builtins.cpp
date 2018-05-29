@@ -16,6 +16,35 @@ using std::string;
 namespace py {
 namespace builtins {
 
+
+struct float_visitor {
+    double operator()(int64_t value) {
+        return (double)value;
+    }
+
+    double operator()(double value) {
+        return (double)value;
+    }
+
+    double operator()(auto value) {
+        throw pyerror("Can not convert value to int");
+    }
+};
+
+struct int_visitor {
+    int64_t operator()(int64_t value) {
+        return value;
+    }
+
+    int64_t operator()(double value) {
+        return (int64_t)value;
+    }
+
+    int64_t operator()(auto value) {
+        throw pyerror("Can not convert value to int");
+    }
+};
+
 extern void inject_builtins(Namespace& ns) {
 
     // inject the global print builtin
@@ -69,6 +98,25 @@ extern void inject_builtins(Namespace& ns) {
 
         frame.value_stack.push_back(
             (int64_t)list->values.size()
+        );
+    });
+
+    (*ns)["int"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& _args) {
+        if (_args.size() != 1) {
+            throw pyerror("ArgError: int takes 1 argument");
+        }
+
+        int64_t intValue = std::visit(int_visitor(), _args[0]);
+        frame.value_stack.push_back(intValue);
+    });
+
+    (*ns)["float"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& _args) {
+        if (_args.size() != 1) {
+            throw pyerror("ArgError: float takes 1 argument");
+        }
+
+        frame.value_stack.push_back(
+            std::visit(float_visitor(), _args[0])
         );
     });
 
@@ -255,10 +303,12 @@ extern void inject_builtins(Namespace& ns) {
             frame.value_stack.push_back(
                 builtins_slice_get_slice_object(args[0],args[1],value::NoneType())
             );
+            DEBUG_ADV("pushed the slice: " << frame.value_stack.back());
         } else if(args.size() == 3){
             frame.value_stack.push_back(
                 builtins_slice_get_slice_object(args[0],args[1],args[2])
             );
+            DEBUG_ADV("pushed the slice: " << frame.value_stack.back());
         } else {
             throw pyerror(
                 std::string(

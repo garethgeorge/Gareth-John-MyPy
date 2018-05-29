@@ -3,8 +3,8 @@
 #include "pyframe.hpp"
 #include "../lib/oplist.hpp"
 #include "../lib/debug.hpp"
-
 #include "pyophelpers.hpp"
+#include "optflags.hpp"
 
 #ifdef DIRECT_THREADED
     #define CONTEXT_SWITCH break;
@@ -360,9 +360,14 @@ void FrameState::print_value(Value& val) {
             [](bool val) {if (val) std::cerr << "bool(true)"; else std::cout << "bool(false)"; },
             [](ValueList value) {
                 std::cerr << "[";
+                size_t i = 0;
                 for (Value& value : value->values) {
                     FrameState::print_value(value);
                     std::cerr << ",";
+                    if (i++ > 100) {
+                        std::cerr << "...";
+                        break ;
+                    }
                 }
                 std::cerr << "]";
             }
@@ -851,7 +856,7 @@ inline void FrameState::eval_next() {
             Value v2 = std::move(this->value_stack[this->value_stack.size() - 1]);
             Value v1 = std::move(this->value_stack[this->value_stack.size() - 2]);
             this->value_stack.resize(this->value_stack.size() - 2);
-            std::visit(eval_helpers::numeric_visitor<eval_helpers::op_mult>(*this),v1,v2);
+            std::visit(eval_helpers::mult_visitor(*this),v1,v2);
             CONTEXT_SWITCH_IF_NEEDED;
             GOTO_NEXT_OP ;
         }
@@ -1216,15 +1221,13 @@ inline void FrameState::eval_next() {
         CASE(BINARY_SUBSCR)
         {
             this->check_stack_size(2);
-            Value index = std::move(this->value_stack.back());
+            Value index = this->value_stack.back();
             this->value_stack.pop_back();
-            Value list = std::move(this->value_stack.back());
+            Value list = this->value_stack.back();
             this->value_stack.pop_back();
 
             this->value_stack.push_back(
-                std::move(
-                    std::visit(eval_helpers::binary_subscr_visitor(), list, index)
-                )
+                std::visit(eval_helpers::binary_subscr_visitor(), list, index)
             );
 
             GOTO_NEXT_OP ;
@@ -1284,14 +1287,17 @@ inline void FrameState::eval_next() {
         CASE(STORE_SUBSCR)
         {
             this->check_stack_size(3);
-            Value key = std::move(this->value_stack.back());
+            Value key = this->value_stack.back();
             this->value_stack.pop_back();
-            Value self = std::move(this->value_stack.back());
+            Value self = this->value_stack.back();
             this->value_stack.pop_back();
-            Value value = std::move(this->value_stack.back());
+            Value value = this->value_stack.back();
             this->value_stack.pop_back();
 
-            std::visit(eval_helpers::store_subscr_visitor {key, value}, self);
+            DEBUG_ADV("Trying to run store_subscr_visitor");
+            eval_helpers::store_subscr_visitor visitor { value };
+            std::visit(visitor, self, key);
+            DEBUG_ADV("Finished running store_subscr_visitor");
             GOTO_NEXT_OP ;
         }
         CASE(BUILD_SLICE)

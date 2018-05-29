@@ -303,6 +303,16 @@ namespace value {
                             ValuePyObject& obj,
                             const std::string& attr
                         );
+        
+        Value get_attr(const std::string& attr) {
+            // std::tuple<Value, bool> tuple = PyObject::find_attr_in_obj(*this, attr);
+            auto ptr = attrs->find(attr);
+            if (ptr != attrs->end()) {
+                return (ptr->second);
+            } else {
+                throw pyerror(std::string("Attribute " + attr + " not found in object."));
+            }
+        }
     };
 }
 

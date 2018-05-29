@@ -21,11 +21,13 @@ void initialize_slice_class(){
 
 ValuePyObject builtins_slice_get_slice_object(Value start, Value stop, Value step){
     DEBUG_ADV("Creating Slice: " << start << ", " << stop << ", " << step);
-
+    
     ValuePyObject obj = alloc.heap_pyobject.make(slice_class);
     obj->store_attr("start",start);
     obj->store_attr("stop",stop);
     obj->store_attr("step",step);
+    
+    return obj;
 }
 
 }

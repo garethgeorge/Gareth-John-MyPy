@@ -52,8 +52,14 @@ struct visitor_debug_repr {
     }
 
     void operator()(ValuePyObject arg) {
-        stream << "ValuePyObject of class ("
-            << *(std::get<ValueString>((*(arg->static_attrs->attrs))["__qualname__"])) << ")";
+        if (arg == nullptr) {
+            stream << "Null ValuePyObject";
+        } else if (arg->static_attrs == nullptr) {
+            stream << "ValuePyObject with null static_attrs";
+        } else {
+            stream << "ValuePyObject of class ("
+                << *(std::get<ValueString>((*(arg->static_attrs->attrs))["__qualname__"])) << ")";
+        }
     }
 
     void operator()(ValuePyGenerator arg) {
@@ -62,9 +68,14 @@ struct visitor_debug_repr {
 
     void operator()(ValueList list) {
         stream << "[";
+        size_t i = 0;
         for (auto& value : list->values) {
             std::visit(visitor_debug_repr(stream), value);
             stream << ", ";
+            if (i++ > 50) {
+                stream << "...";
+                break;
+            }
         }
         stream << "]";
     }

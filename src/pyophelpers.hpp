@@ -9,7 +9,9 @@
 #include <cassert>
 #include <sstream>
 #include <tuple>
+#include <variant>
 #include "../lib/debug.hpp"
+#include "../src/builtins/builtins.hpp"
 
 #include "pyinterpreter.hpp"
 #include "pyvalue_helpers.hpp"
@@ -293,6 +295,27 @@ struct add_visitor: public numeric_visitor<op_add> {
     }
 };
 
+struct mult_visitor: public numeric_visitor<op_mult> {
+    /*
+        the add visitor is simply a numeric_visitor with op_add but also
+        including one additional function for string addition
+    */
+    using numeric_visitor<op_mult>::operator();
+
+    mult_visitor(FrameState &frame) : numeric_visitor<op_mult>(frame) { };
+    
+    void operator()(ValueList v1, int64_t v2) const {
+        ValueList newList = alloc.heap_list.make();
+        auto& values = newList->values;
+        for (size_t i = 0; i < v2; ++i) {
+            for (auto& val : *v1) {
+                values.push_back(val);
+            }
+        }
+        frame.value_stack.push_back(newList);
+    }
+};
+
 struct binary_subscr_visitor {
     /*
         the binary subscript visitor is used to implement
@@ -307,9 +330,46 @@ struct binary_subscr_visitor {
             std::stringstream ss;
             ss << "attempted list access out of range LIST[" << index << "] but list only held " << values.size() << " elements.";
             throw pyerror(ss.str());
-        } 
+        }
 
         return values[index];
+    }
+
+    Value operator()(ValueList& list, ValuePyObject& object) {
+        if (object->static_attrs == builtins::slice_class) {
+            Value start = object->get_attr("start");
+            Value stop = object->get_attr("stop");
+            Value step = object->get_attr("step");
+
+            int64_t i_start;
+            if (auto pstart = std::get_if<int64_t>(&start)) {
+                i_start = *pstart;
+            } else 
+                i_start = 0;
+
+            int64_t i_stop;
+            if (auto pstop = std::get_if<int64_t>(&stop)) {
+                i_stop = *pstop;
+            } else 
+                i_stop = list->size();
+
+            int64_t i_step;
+            if (auto pstep = std::get_if<int64_t>(&step)) {
+                i_step = *pstep;
+            } else 
+                i_step = 1;
+
+            size_t sstart = i_start >= 0 ? i_start : list->size() + i_start;
+            size_t sstop = i_stop >= 0 ? i_stop : list->size() + i_stop;
+
+            ValueList newList = alloc.heap_list.make();
+            while (sstart < sstop) {
+                newList->values.push_back(list->values[sstart]);
+                sstart += i_step;
+            }
+        } else {
+            throw pyerror("List can only be indexed with subclasses of 'Slice'");
+        }
     }
 
     template<typename A, typename B>
@@ -317,6 +377,72 @@ struct binary_subscr_visitor {
         std::stringstream ss;
         ss << "attempted to subscript " << a << "[" << b << "] - types not valid for subscript operator";
 
+        throw pyerror(ss.str());
+    }
+};
+
+struct store_subscr_visitor {
+    Value value;
+
+    void operator()(ValueList list, int64_t k) const {
+        if (k < 0 || k > list->values.size()) {
+            throw pyerror("list index out of range");
+        }
+        list->values[k] = std::move(value);
+    }
+    
+    void operator()(ValueList& list, ValuePyObject object) const {
+        try {
+            if (object->static_attrs == builtins::slice_class) {
+                DEBUG_ADV("store subscript detected that the argument is a list slice");
+                ValueList listValue = std::get<ValueList>(value);
+                Value start = object->get_attr("start");
+                Value stop = object->get_attr("stop");
+                Value step = object->get_attr("step");
+
+                int64_t i_start;
+                if (auto pstart = std::get_if<int64_t>(&start)) {
+                    i_start = *pstart;
+                } else 
+                    i_start = 0;
+
+                int64_t i_stop;
+                if (auto pstop = std::get_if<int64_t>(&stop)) {
+                    i_stop = *pstop;
+                } else 
+                    i_stop = list->size();
+
+                int64_t i_step;
+                if (auto pstep = std::get_if<int64_t>(&step)) {
+                    i_step = *pstep;
+                } else 
+                    i_step = 1;
+
+                size_t sstart = i_start >= 0 ? i_start : list->size() + i_start;
+                size_t sstop = i_stop >= 0 ? i_stop : list->size() + i_stop;
+                DEBUG_ADV("detected start: " << sstart << " stop: " << sstop << " step size: " << i_step);
+
+                size_t index = 0;
+                while (sstart < sstop) {
+                    if (index >= listValue->size()) {
+                        throw pyerror("index out of range, no more values to assign in slice assignment");
+                    }
+                    list->values[sstart] = listValue->values[index++];
+                    sstart += i_step;
+                }
+            } else {
+                throw pyerror("List can only be indexed with subclasses of 'Slice'");
+            }
+        } catch (std::bad_variant_access& e) {
+            throw pyerror("Must be assigning a list of values");
+        }
+        
+    }
+
+    void operator()(auto value, auto key) const {
+        DEBUG_ADV("enocuntered an error");
+        std::stringstream ss;
+        ss << "store[] is not a valid operation on " << Value(value) << std::endl;
         throw pyerror(ss.str());
     }
 };
@@ -348,31 +474,6 @@ struct set_implicit_arg_visitor {
     template<typename T>
     void operator()(T) const {
         throw pyerror("can not set implicit arg on this type ");
-    }
-};
-
-struct store_subscr_visitor {
-    Value& key;
-    Value& value;
-
-    void operator()(ValueList& list) {
-        try {
-            int64_t k = std::get<int64_t>(key);
-            if (k < 0 || k > list->values.size()) {
-                throw pyerror("list index out of range");
-            }
-            list->values[k] = std::move(value);
-        } catch (std::bad_variant_access& err) {
-            throw pyerror("list key must be integer index");
-        }
-
-    }
-
-    template<typename T>
-    void operator()(T value) const {
-        std::stringstream ss;
-        ss << "store[] is not a valid operation on " << Value(value) << std::endl;
-        throw pyerror(ss.str());
     }
 };
 
