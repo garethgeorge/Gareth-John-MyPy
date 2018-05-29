@@ -175,12 +175,61 @@ struct for_iter_visitor {
             DEBUG_ADV("\tITERATOR EXHAUSTED, JUMPING TO END OF LOOP");
             frame.r_pc = frame.code->pc_map[frame.code->instructions[frame.r_pc].bytecode_index + arg] + 1;
         }
+    }
 
+    inline void operator()(ValueCGenerator generator) {
+        DEBUG_ADV("encountered CGenerator");
+        std::optional<Value> retval = generator->next();
+        if (retval) {
+            DEBUG_ADV("\titerator gave us value: " << *retval);
+            frame.value_stack.push_back(*retval);
+            frame.r_pc++;
+        } else {
+            DEBUG_ADV("\tno more values from iterator");
+            frame.r_pc = frame.code->pc_map[frame.code->instructions[frame.r_pc].bytecode_index + arg] + 1;
+        }
     }
 
     template<typename T>
     void operator () (T& ) {
         throw pyerror("FOR_ITER expects iterable");
+    }
+};
+
+struct get_iter_visitor {
+    FrameState& frame;
+
+    inline void operator()(ValueList list) {
+        DEBUG_ADV("building an iterator for the list");
+        struct list_iterator : public value::CGenerator {
+            ValueList theList;
+            size_t i = 0;
+
+            list_iterator(ValueList theList) {
+                this->theList = theList;
+                this->i = 0;
+                theList.retain();
+            }
+
+            virtual ~list_iterator() {
+                theList.release();
+            }
+
+            virtual std::optional<Value> next() {
+                if (i >= theList->size()) {
+                    return std::nullopt;
+                } else {
+                    return theList->values[i++];
+                }
+            }
+        };
+        
+        Value retval = std::make_shared<list_iterator>(list);
+        frame.value_stack.push_back(retval);
+    }
+
+    inline void operator()(auto top) {
+        DEBUG_ADV("GET_ITER is null op for most types including this one!");
     }
 };
 
@@ -1235,6 +1284,7 @@ inline void FrameState::eval_next() {
         CASE(GET_ITER)
         {
             DEBUG_ADV("GET_ITER IS A NULL OP FOR NOW, WHEN LIST ITERATION IS IMPLEMENTED IT WILL WORK");
+            std::visit(get_iter_visitor {*this}, this->value_stack.back());
             GOTO_NEXT_OP ;
         }
         CASE(FOR_ITER)

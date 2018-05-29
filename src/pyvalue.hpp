@@ -55,6 +55,8 @@ namespace value {
         }
     };
 
+    struct CGenerator;
+
     // The internal representation of a class
     // Created by the builtin __build_class__
     struct PyClass;
@@ -73,6 +75,7 @@ using ValueCMethod = std::shared_ptr<value::CMethod>;
 using ValuePyFunction = gc_ptr<value::PyFunc>;
 using ValuePyObject = gc_ptr<value::PyObject>;
 using ValuePyGenerator = value::PyGenerator;
+using ValueCGenerator = std::shared_ptr<value::CGenerator>;
 
 // I think PyClasses (the thing that holds the statics of a class) can be deallocated.
 // Need to confirm this thoa
@@ -93,7 +96,8 @@ using Value = std::variant<
     ValuePyClass,
     ValuePyObject,
     ValueList,
-    ValuePyGenerator
+    ValuePyGenerator,
+    ValueCGenerator
 >;
 
 // Bad copy/paste from pyinterpreter.hpp
@@ -169,6 +173,12 @@ namespace value {
         ValueCMethod bindThisArg(Value&& thisArg) {
             return std::make_shared<CMethod>(thisArg, action);
         }
+    };
+
+    struct CGenerator {
+        virtual std::optional<Value> next() = 0;
+        virtual void mark_children() { };
+        virtual ~CGenerator() { };
     };
     
     struct List { 
@@ -300,9 +310,9 @@ namespace value {
         // Defined in FrameState
         // This should REALLY be changed to a not static method but that will happen soon
         static std::tuple<Value,bool> find_attr_in_obj(
-                            ValuePyObject& obj,
-                            const std::string& attr
-                        );
+            ValuePyObject& obj,
+            const std::string& attr
+        );
         
         Value get_attr(const std::string& attr) {
             // std::tuple<Value, bool> tuple = PyObject::find_attr_in_obj(*this, attr);

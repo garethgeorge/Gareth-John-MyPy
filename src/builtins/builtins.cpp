@@ -71,16 +71,49 @@ extern void inject_builtins(Namespace& ns) {
 
     (*ns)["range"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& _args) {
         arg_decoder<int64_t, int64_t, int64_t> args(_args);
-        int64_t start = args.get<1>((int64_t)0);
-        int64_t stop = args.get<0>();
-        int64_t step_size = args.get<2>((int64_t)1);
 
-        ValueList list = alloc.heap_list.make();
-        list->values.resize((stop - start) / step_size + 1);
-        for (int64_t i = start; i < stop; i += step_size) {
-            list->values[i] = i;
+        int64_t start, stop, step_size;
+
+        step_size = 1;
+        if (_args.size() == 1) {
+            start = 0;
+            stop = args.get<0>();
+        } else if (_args.size() == 2) {
+            start = args.get<0>();
+            stop = args.get<1>();
+        } else if (_args.size() == 3) {
+            start = args.get<0>();
+            stop = args.get<1>();
+            step_size = args.get<2>();
+        } else {
+            throw pyerror("range takes at most 3 arguments");
         }
-        frame.value_stack.push_back(list);
+
+        struct range_generator : public value::CGenerator {
+            int64_t start;
+            int64_t stop;
+            int64_t step_size;
+
+            range_generator(int64_t start, int64_t stop, int64_t step_size) {
+                this->start = start;
+                this->stop = stop;
+                this->step_size = step_size;
+            }
+
+            virtual std::optional<Value> next() {
+                DEBUG_ADV("start: " << start << " stop: " << stop);
+                if (start < stop) {
+                    int64_t ret = start;
+                    start += step_size;
+                    return ret;
+                } else 
+                    return std::nullopt;
+            }
+        };
+        
+        Value retval = std::make_shared<range_generator>(start, stop, step_size);
+
+        frame.value_stack.push_back(retval);
     });
 
     (*ns)["str"] = std::make_shared<value::CFunction>([](FrameState& frame, ArgList& args) {
@@ -317,6 +350,7 @@ extern void inject_builtins(Namespace& ns) {
             );
         }
     });
+    
 }
 
 }
