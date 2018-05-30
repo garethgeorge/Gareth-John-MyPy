@@ -188,6 +188,7 @@ struct for_iter_visitor {
             frame.r_pc++;
         } else {
             DEBUG_ADV("\tno more values from iterator");
+            frame.value_stack.pop_back();
             frame.r_pc = frame.code->pc_map[frame.code->instructions[frame.r_pc].bytecode_index + arg] + 1;
         }
     }
@@ -246,6 +247,7 @@ void FrameState::initialize_from_pyfunc(ValuePyFunction func, ArgList& args){
         DEBUG_ADV("\t" << i << ") " << args[i]);
     }
     #endif
+    DEBUG_ADV("Done with arguments.");
 
 
     size_t argcount = this->code->co_argcount;
@@ -1296,7 +1298,6 @@ inline void FrameState::eval_next() {
         }
         CASE(GET_ITER)
         {
-            DEBUG_ADV("GET_ITER IS A NULL OP FOR NOW, WHEN LIST ITERATION IS IMPLEMENTED IT WILL WORK");
             std::visit(get_iter_visitor {*this}, this->value_stack.back());
             GOTO_NEXT_OP ;
         }
@@ -1386,13 +1387,13 @@ inline void FrameState::eval_next() {
         CASE(LIST_APPEND) 
         {
             try {
-                ValueList back = std::get<ValueList>(this->value_stack.back());
-                this->value_stack.pop_back();
-                back->values.push_back(std::move(this->value_stack.back()));
+                std::get<ValueList>(*(this->value_stack.end() - arg - 1))->values
+                    .push_back(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::bad_variant_access& e) {
                 throw pyerror("LIST_APPEND expects a list as its first argument");
             }
+            GOTO_NEXT_OP ;
         }
         CASE(ROT_THREE)
         CASE(DUP_TOP)

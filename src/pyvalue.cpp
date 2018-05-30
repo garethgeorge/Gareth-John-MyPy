@@ -80,6 +80,24 @@ struct visitor_debug_repr {
         stream << "]";
     }
 
+    void operator()(ValueTuple list) {
+        stream << "(";
+        size_t i = 0;
+        for (auto& value : list->values) {
+            std::visit(visitor_debug_repr(stream), value);
+            stream << ", ";
+            if (i++ > 50) {
+                stream << "...";
+                break;
+            }
+        }
+        stream << ")";
+    }
+
+    void operator()(ValueCGenerator generator) {
+        stream << "(Unknown C Generator)";
+    }
+
     template<typename T> 
     void operator()(T) {
         // TODO: use typetraits to generate this.
