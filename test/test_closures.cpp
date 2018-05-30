@@ -8,7 +8,7 @@ using namespace builtins;
 
 TEST_CASE("Closures should work", "[closures]") {
     SECTION( "in a basic case" ){
-        std::cout << "START LOOKING HERE, HERE IS A SPECIAL SEQUENCE TO SEARCH FOR: 1aenifpnneivafp" << std::endl;
+        //std::cout << "START LOOKING HERE, HERE IS A SPECIAL SEQUENCE TO SEARCH FOR: 1aenifpnneivafp" << std::endl;
         auto code = build_string(R"(
 def print_msg(msg):
     def printer():
@@ -27,7 +27,7 @@ check_int3(a())
         (*(state.ns_builtins))["check_int3"] = make_builtin_check_value((int64_t)100);
         state.eval();
 
-        std::cout << "STOP LOOKING HERE, THIS IS THAT SEQUENCE AGAIN: 1aenifpnneivafp" << std::endl;
+        //std::cout << "STOP LOOKING HERE, THIS IS THAT SEQUENCE AGAIN: 1aenifpnneivafp" << std::endl;
     }
 
     SECTION( "in a nested case" ){

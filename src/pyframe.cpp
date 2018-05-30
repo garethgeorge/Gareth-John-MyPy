@@ -1486,8 +1486,14 @@ void InterpreterState::eval() {
     try {
         while (this->cur_frame != nullptr) {
             this->cur_frame->eval_next();
-        }
+        } 
+        #ifdef PROFILING_ON
+            dump_and_clear_time_events();
+        #endif
     } catch (const pyerror& err) {
+        #ifdef PROFILING_ON
+            dump_and_clear_time_events();
+        #endif
         auto& frame = *(this->cur_frame);
         std::cerr << err.what() << std::endl;
         std::cerr << "FRAME TRACE: " << std::endl;

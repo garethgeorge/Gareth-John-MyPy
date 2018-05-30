@@ -5,7 +5,7 @@
 #include <stack>
 #include <unordered_map>
 #include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
 #include "pyerror.hpp"
 #include "pyvalue.hpp"
 #include "optflags.hpp"
@@ -46,14 +46,23 @@ struct InterpreterState {
 
 
 #ifdef PROFILING_ON
+    // For use in any profiling thign that needs a timespec to find out what right now is
+    timespec tmp_timespec;
+    // An array of uint64_t that are timestamped events
+    // Each is list of what happened (usually an OPCODE), some extra info, and when it happened
+    // Interpreted in dump_and_clear_time_events
+    std::vector<uint64_t> time_events;
     #ifdef PER_OPCODE_PROFILING
         FILE* opcode_data_file;
-        clock_t per_opcode_clk;
+        //clock_t per_opcode_clk;
+        struct timespec per_opcode_timespec;
         void emit_opcode_data(  const Code::Instruction& instruction,
                                 const Code::ByteCode& bytecode, 
                                 const uint64_t& arg
         );
     #endif
+
+    void dump_and_clear_time_events();
 #endif
 };
 
