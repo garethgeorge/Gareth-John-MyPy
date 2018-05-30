@@ -10,7 +10,7 @@
 #include <sstream>
 #include <tuple>
 #include <variant>
-#define DEBUG_ON
+//#define DEBUG_ON
 #include "../lib/debug.hpp"
 #include "../src/builtins/builtins.hpp"
 

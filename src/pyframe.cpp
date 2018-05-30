@@ -1,4 +1,4 @@
-#define DEBUG_ON
+//#define DEBUG_ON
 
 #include "pyinterpreter.hpp"
 #include "pyvalue_helpers.hpp"
@@ -7,6 +7,14 @@
 #include "../lib/debug.hpp"
 #include "pyophelpers.hpp"
 #include "optflags.hpp"
+
+#ifdef PROFILING_ON
+    #ifdef PER_OPCODE_PROFILING
+        #define EMIT_PER_OPCODE_TIME this->interpreter_state->emit_opcode_data(instruction,bytecode,arg);
+    #else
+        #define EMIT_PER_OPCODE_TIME
+    #endif
+#endif
 
 #ifdef DIRECT_THREADED
     #define CONTEXT_SWITCH break;
@@ -25,6 +33,7 @@
     instruction = code->instructions[this->r_pc];\
     bytecode = instruction.bytecode;\
     arg = instruction.arg;\
+    EMIT_PER_OPCODE_TIME\
     DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])\
     goto *jmp_table[bytecode];
 
@@ -34,6 +43,7 @@
     instruction = code->instructions[this->r_pc];\
     bytecode = instruction.bytecode;\
     arg = instruction.arg;\
+    EMIT_PER_OPCODE_TIME\
     DEBUG("%03llu EVALUATE BYTECODE AFTER JUMP: %s", this->r_pc, op::name[bytecode])\
     goto *jmp_table[bytecode];
 
@@ -512,6 +522,7 @@ inline void FrameState::eval_next() {
     Code::Instruction instruction = code->instructions[this->r_pc];
     Code::ByteCode bytecode = instruction.bytecode;
     uint64_t arg = instruction.arg;
+    EMIT_PER_OPCODE_TIME
 
     DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])
     switch (bytecode) {

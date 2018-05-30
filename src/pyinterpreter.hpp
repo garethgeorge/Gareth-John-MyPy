@@ -4,6 +4,8 @@
 
 #include <stack>
 #include <unordered_map>
+#include <stdio.h>
+#include <time.h>
 #include "pyerror.hpp"
 #include "pyvalue.hpp"
 #include "optflags.hpp"
@@ -41,6 +43,18 @@ struct InterpreterState {
     inline void pop_frame() {
         this->cur_frame = this->cur_frame->parent_frame;
     }
+
+
+#ifdef PROFILING_ON
+    #ifdef PER_OPCODE_PROFILING
+        FILE* opcode_data_file;
+        time_t per_opcode_curr_time;
+        void emit_opcode_data(  const Code::Instruction& instruction,
+                                const Code::ByteCode& bytecode, 
+                                const uint64_t& arg
+        );
+    #endif
+#endif
 };
 
 }
