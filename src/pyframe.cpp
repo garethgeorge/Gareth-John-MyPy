@@ -1,3 +1,5 @@
+#define DEBUG_ON
+
 #include "pyinterpreter.hpp"
 #include "pyvalue_helpers.hpp"
 #include "pyframe.hpp"
@@ -177,7 +179,7 @@ struct for_iter_visitor {
         }
     }
 
-    inline void operator()(ValueCGenerator generator) {
+    inline void operator()(ValueCGenerator& generator) {
         DEBUG_ADV("encountered CGenerator");
         std::optional<Value> retval = generator->next();
         if (retval) {
@@ -212,6 +214,7 @@ struct get_iter_visitor {
             }
 
             virtual ~list_iterator() {
+                // hopefully we corretly free the list here,
                 theList.release();
             }
 
@@ -411,6 +414,19 @@ void FrameState::print_value(Value& val) {
                 std::cerr << "[";
                 size_t i = 0;
                 for (Value& value : value->values) {
+                    FrameState::print_value(value);
+                    std::cerr << ",";
+                    if (i++ > 100) {
+                        std::cerr << "...";
+                        break ;
+                    }
+                }
+                std::cerr << "]";
+            },
+            [](ValueTuple value) {
+                std::cerr << "[";
+                size_t i = 0;
+                for (Value value : value->values) {
                     FrameState::print_value(value);
                     std::cerr << ",";
                     if (i++ > 100) {
@@ -1112,9 +1128,7 @@ inline void FrameState::eval_next() {
         }
         CASE(JUMP_ABSOLUTE)
             this->r_pc = arg;
-            // if (alloc.check_if_gc_needed()) {
-            //     alloc.collect_garbage(*(this->interpreter_state));
-            // }
+            // if (alloc.check_if_gc_needed()) FOR
             GOTO_TARGET_OP;
         CASE(JUMP_FORWARD)
             this->r_pc += arg;
@@ -1332,7 +1346,6 @@ inline void FrameState::eval_next() {
                 CONTEXT_SWITCH_KEEP_PC; // return so that this op will be run again.
             }
         }
-
         CASE(STORE_SUBSCR)
         {
             this->check_stack_size(3);
@@ -1347,7 +1360,7 @@ inline void FrameState::eval_next() {
             eval_helpers::store_subscr_visitor visitor { value };
             std::visit(visitor, self, key);
             DEBUG_ADV("Finished running store_subscr_visitor");
-            GOTO_NEXT_OP ;
+            GOTO_NEXT_OP;
         }
         CASE(BUILD_SLICE)
         {
@@ -1360,6 +1373,26 @@ inline void FrameState::eval_next() {
                 (*(this->interpreter_state->ns_builtins))["slice"]
             ))->action((*this),args);
             GOTO_NEXT_OP;
+        }
+        CASE(UNPACK_SEQUENCE) 
+        {
+            Value tos = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+            std::visit(eval_helpers::unpack_sequence_visitor {*this, arg}, tos);
+            
+
+            GOTO_NEXT_OP;
+        }
+        CASE(LIST_APPEND) 
+        {
+            try {
+                ValueList back = std::get<ValueList>(this->value_stack.back());
+                this->value_stack.pop_back();
+                back->values.push_back(std::move(this->value_stack.back()));
+                this->value_stack.pop_back();
+            } catch (std::bad_variant_access& e) {
+                throw pyerror("LIST_APPEND expects a list as its first argument");
+            }
         }
         CASE(ROT_THREE)
         CASE(DUP_TOP)
@@ -1385,7 +1418,6 @@ inline void FrameState::eval_next() {
         CASE(END_FINALLY)
         CASE(POP_EXCEPT)
         CASE(DELETE_NAME)
-        CASE(UNPACK_SEQUENCE)
         CASE(UNPACK_EX)
         CASE(DELETE_ATTR)
         CASE(DELETE_GLOBAL)
@@ -1407,7 +1439,6 @@ inline void FrameState::eval_next() {
         CASE(CALL_FUNCTION_EX)
         CASE(SETUP_WITH)
         CASE(EXTENDED_ARG)
-        CASE(LIST_APPEND)
         CASE(SET_ADD)
         CASE(MAP_ADD)
         CASE(BUILD_LIST_UNPACK)

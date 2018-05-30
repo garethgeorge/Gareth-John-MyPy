@@ -76,12 +76,9 @@ using ValuePyFunction = gc_ptr<value::PyFunc>;
 using ValuePyObject = gc_ptr<value::PyObject>;
 using ValuePyGenerator = value::PyGenerator;
 using ValueCGenerator = std::shared_ptr<value::CGenerator>;
-
-// I think PyClasses (the thing that holds the statics of a class) can be deallocated.
-// Need to confirm this thoa
-// THIS NEEDS TO CHANGE TO A GC_PTR (or do i?)
 using ValuePyClass = gc_ptr<value::PyClass>;
 using ValueList = gc_ptr<value::List>;
+using ValueTuple = gc_ptr<const value::Tuple>;
 
 using Value = std::variant<
     bool,
@@ -96,6 +93,7 @@ using Value = std::variant<
     ValuePyClass,
     ValuePyObject,
     ValueList,
+    ValueTuple,
     ValuePyGenerator,
     ValueCGenerator
 >;
@@ -217,6 +215,13 @@ namespace value {
 
         size_t size() const {
             return values.size();
+        }
+    };
+
+    struct Tuple : public List {
+        template<typename... Args>
+        Tuple(Args&&... args) : List(std::forward<Args>(args)...) {
+            
         }
     };
     

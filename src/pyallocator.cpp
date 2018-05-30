@@ -36,7 +36,7 @@ namespace gc {
 
     using namespace py;
 
-    void mark_children(std::vector<Value>& values) {
+    void mark_children(const std::vector<Value>& values) {
         DEBUG_ADV("\tMarking a vector");
         for (auto& value : values) {
             std::visit(gc_visitor(), value);
@@ -86,6 +86,11 @@ namespace gc {
 
     void mark_children(ValueList list) {
         DEBUG_ADV("\tMarking ValueList " << Value(list));
+        mark_children(list->values);
+    }
+
+    void mark_children(ValueTuple list) {
+        DEBUG_ADV("\tMarking ValueTuple " << Value(list));
         mark_children(list->values);
     }
 

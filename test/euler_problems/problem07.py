@@ -16,6 +16,7 @@ def enumerate(gen):
   x = 0
   for val in gen:
     yield x, val
+    x += 1
 
 
 def primeSieve(limit):
@@ -31,21 +32,29 @@ def primeSieve(limit):
     #hence sieve[0] is for 3,
     #      sieve[1] is for 5,
     #      sieve[2] is for 7, etc
-    
-
     #iterate over every prime <= sqrt limit
     maxint=int(limit**0.5)
+    print("max int is...", maxint)
     for i in range( (maxint - 1) // 2 ):
         if sieve[i]:
             prime = 2 * i + 3
             start = prime * (i + 1) + i
             sieve[start::prime] = [False] * ((size - start) // prime + 1)
-    return [2] + [2 * i + 3 for i, v in enumerate(sieve) if v]
+    print("we are ready to return a value!")
 
+    tmplist = []
+    for i, v in enumerate(sieve):
+        if v:
+            tmplist.append(2 * i + 3)
+
+    # tmplist = [2 * i + 3 for i, v in enumerate(sieve) if v]
+    # print("temp list is: ", tmplist)
+    return [2] + tmplist
 
 #the number of primes below N is assymptotic to N/ln(N)
 #125,000 in this formula results in 10650
 #this is just above 10,000 so 125,000 is a good limit for the prime sieve
-#primes=primeSieve(125000)
 primes=primeSieve(125000)
-print("Answer is",primes[10000])
+print(primes)
+# primes=primeSieve(125000)
+# print("Answer is",primes[10000])

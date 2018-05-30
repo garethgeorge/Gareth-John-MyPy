@@ -477,6 +477,37 @@ struct set_implicit_arg_visitor {
     }
 };
 
+struct unpack_sequence_visitor {
+    FrameState& frame;
+    uint64_t arg;
+    
+    void operator()(ValueList list) {
+        if (list->size() < arg) {
+            std::stringstream ss;
+            ss << "not enough values to unpack, expected: " << arg << " got: " << list->size();
+            throw pyerror(ss.str());
+        }
+        for (size_t i = 0; i < arg; ++i) {
+            frame.value_stack.push_back(list->values[i]);
+        }
+    }
+
+    void operator()(ValueTuple list) {
+        if (list->size() < arg) {
+            std::stringstream ss;
+            ss << "not enough values to unpack, expected: " << arg << " got: " << list->size();
+            throw pyerror(ss.str());
+        }
+        for (int64_t i = arg - 1; i > 0; --i) {
+            frame.value_stack.push_back(list->values[i]);
+        }
+    }
+
+    void operator()(auto value) {
+        throw pyerror("unpack_sequence_visitor not implemented for type");
+    }
+};
+
 
 }
 

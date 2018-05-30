@@ -11,8 +11,6 @@ namespace builtins {
 std::unordered_map<std::string, ValueCMethod> builtin_list_attributes;
 
 void initialize_list_class() {
-    std::cout << "INITIALIZING BUILTIN_LIST_ATTRIBUTES" << std::endl;
-
     // builtin_list_attributes["append"] = pycfunction_builder([](ValueList& list, Value val) -> void {
     //     list->values.push_back(val);
     // }).to_pycmethod();
@@ -58,8 +56,6 @@ void initialize_list_class() {
 
         frame.value_stack.push_back(value::NoneType());
     });
-
-    std::cout << "FINISHED INITIALIZING BUILTIN_LIST_ATTRIBUTES" << std::endl;
 
 }
 
