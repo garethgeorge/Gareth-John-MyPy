@@ -335,42 +335,87 @@ struct binary_subscr_visitor {
         return values[index];
     }
 
-    Value operator()(ValueList& list, ValuePyObject& object) {
-        if (object->static_attrs == builtins::slice_class) {
-            Value start = object->get_attr("start");
-            Value stop = object->get_attr("stop");
-            Value step = object->get_attr("step");
+    Value operator()(ValueList& list, ValuePyObject& slice){
+            try {
+                // Extract info from slice
+                // Any of thes must either be NoneType or int
+                Value vstart = slice->attrs->at("start");
+                Value vstop = slice->attrs->at("stop");
+                Value vstep = slice->attrs->at("step");
 
-            int64_t i_start;
-            if (auto pstart = std::get_if<int64_t>(&start)) {
-                i_start = *pstart;
-            } else 
-                i_start = 0;
+                auto start_check = std::get_if<value::NoneType>(&vstart);
+                int64_t start = (start_check == NULL ? std::get<int64_t>(vstart) : 0);
 
-            int64_t i_stop;
-            if (auto pstop = std::get_if<int64_t>(&stop)) {
-                i_stop = *pstop;
-            } else 
-                i_stop = list->size();
+                auto stop_check = std::get_if<value::NoneType>(&vstop);
+                int64_t stop = (stop_check == NULL ? std::get<int64_t>(vstop) : list->size());
 
-            int64_t i_step;
-            if (auto pstep = std::get_if<int64_t>(&step)) {
-                i_step = *pstep;
-            } else 
-                i_step = 1;
+                auto step_check = std::get_if<value::NoneType>(&vstep);
+                int64_t step = (step_check == NULL ? std::get<int64_t>(vstep) : 1);
 
-            size_t sstart = i_start >= 0 ? i_start : list->size() + i_start;
-            size_t sstop = i_stop >= 0 ? i_stop : list->size() + i_stop;
 
-            ValueList newList = alloc.heap_list.make();
-            while (sstart < sstop) {
-                newList->values.push_back(list->values[sstart]);
-                sstart += i_step;
+                if(step == 0){
+                    throw pyerror("Slice step size cannot be 0");
+                }
+
+                DEBUG_ADV("BINARY_SUBSCR was given a slice: " << start << ", " << stop << ", " << step);
+
+                ValueList newList = alloc.heap_list.make();
+                for(auto valit = list->begin() + start; 
+                    valit < list->end() && valit < (stop < 0 ? list->end() + stop : list->begin() + stop);
+                    valit += step
+                ){
+                    newList->values.push_back(*valit);
+                }
+
+                return newList;
+
+            } catch (std::out_of_range& err) {
+                throw pyerror("BINARY_SUBSCR called with invalid slice class");
+            } catch (std::bad_variant_access& err) {
+                throw pyerror("SLICE_CLASS attributes must of type int64_t");
             }
-        } else {
-            throw pyerror("List can only be indexed with subclasses of 'Slice'");
         }
-    }
+
+        Value operator()(ValueString& str, ValuePyObject& slice){
+            try {
+                // Extract info from slice
+                // Any of thes must either be NoneType or int
+                Value vstart = slice->attrs->at("start");
+                Value vstop = slice->attrs->at("stop");
+                Value vstep = slice->attrs->at("step");
+
+                auto start_check = std::get_if<value::NoneType>(&vstart);
+                int64_t start = (start_check == NULL ? std::get<int64_t>(vstart) : 0);
+
+                auto stop_check = std::get_if<value::NoneType>(&vstop);
+                int64_t stop = (stop_check == NULL ? std::get<int64_t>(vstop) : str->length());
+
+                auto step_check = std::get_if<value::NoneType>(&vstep);
+                int64_t step = (step_check == NULL ? std::get<int64_t>(vstep) : 1);
+
+
+                if(step == 0){
+                    throw pyerror("Slice step size cannot be 0");
+                }
+
+                DEBUG_ADV("BINARY_SUBSCR was given a slice: " << start << ", " << stop << ", " << step);
+
+                std::string build_str = "";
+                for(auto strit = str->begin() + start; 
+                    strit < str->end() && strit < (stop < 0 ? str->end() + stop : str->begin() + stop);
+                    strit += step
+                ){
+                    build_str += (*strit);
+                }
+
+                return alloc.heap_string.make(build_str);
+
+            } catch (std::out_of_range& err) {
+                throw pyerror("BINARY_SUBSCR called with invalid slice class");
+            } catch (std::bad_variant_access& err) {
+                throw pyerror("SLICE_CLASS attributes must of type int64_t");
+            }
+        }
 
     template<typename A, typename B>
     Value operator()(A a , B b) {
