@@ -48,7 +48,7 @@ struct InterpreterState {
 #ifdef PROFILING_ON
     #ifdef PER_OPCODE_PROFILING
         FILE* opcode_data_file;
-        time_t per_opcode_curr_time;
+        clock_t per_opcode_clk;
         void emit_opcode_data(  const Code::Instruction& instruction,
                                 const Code::ByteCode& bytecode, 
                                 const uint64_t& arg

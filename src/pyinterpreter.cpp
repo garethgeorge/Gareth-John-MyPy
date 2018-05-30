@@ -25,7 +25,10 @@ InterpreterState::InterpreterState(ValueCode code) {
 #ifdef PROFILING_ON
     #ifdef PER_OPCODE_PROFILING
         opcode_data_file = fopen("per_opcode_data.txt","a");
-        per_opcode_curr_time = time(NULL);
+        fprintf(opcode_data_file,"\n\n---\nCLOCK_TICKS_PER_SECOND: %d\n",CLOCKS_PER_SEC);
+        //per_opcode_curr_time = time(NULL);
+        //time(&per_opcode_curr_time);
+        per_opcode_clk = clock();
     #endif
 #endif
 
@@ -38,11 +41,15 @@ InterpreterState::InterpreterState(ValueCode code) {
                                                 const uint64_t& arg
         ) {
             // Print the time it took since last opcode to get here
-            fprintf(opcode_data_file,"TIME: %lf\nOPCODE: %s,  ", 
-                        difftime(time(NULL),per_opcode_curr_time),
-                        op::name[bytecode]
+            fprintf(opcode_data_file,"TIME: %d\nOPCODE: %s, ARG: %llu, ", 
+                        //difftime(time(NULL),per_opcode_curr_time),
+                        clock() - per_opcode_clk,
+                        op::name[bytecode],
+                        arg
             );
-            per_opcode_curr_time = time(NULL);
+            per_opcode_clk = clock();
+            //per_opcode_curr_time = time(NULL);
+            //time(&per_opcode_curr_time);
         }
     #endif
 #endif
