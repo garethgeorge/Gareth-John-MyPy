@@ -8,6 +8,38 @@
 #include "pyophelpers.hpp"
 #include "optflags.hpp"
 
+#ifdef PROFILING_ON
+    #ifdef PER_OPCODE_PROFILING
+        #define EMIT_PER_OPCODE_TIME this->interpreter_state->emit_opcode_data(instruction,bytecode,arg);
+    #else
+        #define EMIT_PER_OPCODE_TIME
+    #endif
+
+    #ifdef TYPE_INFORMATION_PROFILING
+        #define PROFILE_TYPE_INFO(value_var,namee,store_type) \
+        {\
+            const auto& lnotab = this->code->lnotab; \
+            size_t c_line = 0;\
+            for (size_t i = 1; i < lnotab.size(); ++i) { \
+                auto mapping = lnotab[i];\
+                if (i == lnotab.size() - 1) {\
+                    c_line = mapping.line;\
+                    break;\
+                } else if (mapping.pc >= this->r_pc) {\
+                    c_line = lnotab[i - 1].line;\
+                    break;\
+                }\
+            }\
+            nonbuffering_emit_type_info(value_var,c_line,namee,store_type);\
+        }
+    #else
+        #define PROFILE_TYPE_INFO(value_var,namee,store_type)
+    #endif
+#else
+    #define EMIT_PER_OPCODE_TIME
+    #define PROFILE_TYPE_INFO(value_var,namee,store_type)
+#endif
+
 #ifdef DIRECT_THREADED
     #define CONTEXT_SWITCH break;
     #define CONTEXT_SWITCH_KEEP_PC return;
@@ -20,22 +52,22 @@
     #define CONTEXT_SWITCH_IF_NEEDED \
         if(__builtin_expect(!(this->interpreter_state->cur_frame.get() == this),0)) break;
 
-    #define GOTO_NEXT_OP \
-    this->r_pc++;\
+    #define DECODE_AND_JUMP \
     instruction = code->instructions[this->r_pc];\
     bytecode = instruction.bytecode;\
     arg = instruction.arg;\
+    EMIT_PER_OPCODE_TIME\
     DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])\
     goto *jmp_table[bytecode];
+
+    #define GOTO_NEXT_OP \
+    this->r_pc++;\
+    DECODE_AND_JUMP
 
     // Basically the same, but without incrementing pc
     // Used in jumps
     #define GOTO_TARGET_OP \
-    instruction = code->instructions[this->r_pc];\
-    bytecode = instruction.bytecode;\
-    arg = instruction.arg;\
-    DEBUG("%03llu EVALUATE BYTECODE AFTER JUMP: %s", this->r_pc, op::name[bytecode])\
-    goto *jmp_table[bytecode];
+    DECODE_AND_JUMP
 
 #else
     #define GOTO_NEXT_OP break;
@@ -49,6 +81,28 @@
 using std::string;
 
 namespace py {
+
+#ifdef PROFILING_ON
+
+    #ifdef TYPE_INFORMATION_PROFILING
+        void FrameState::nonbuffering_emit_type_info(const Value& val,
+                                                    const size_t& line,
+                                                    const std::string& name,
+                                                    const char* store_type)
+        const {
+            std::stringstream outstr;
+            outstr <<
+                "---" <<
+                "STORE: " << std::string(store_type) << ", " <<
+                "NAME: " << name << ", " <<
+                "FUNCTION: " << code->co_name << ", " <<
+                "LINE: " << std::to_string(line) << ", " <<
+                "TYPE: " << val.index() << ", " <<
+                "VALUE: " << val;
+            fprintf(this->interpreter_state->profiling_file,"%s\n",outstr.str().c_str());
+        }
+    #endif
+#endif
 
 FrameState::FrameState(const ValueCode code) 
 {
@@ -527,6 +581,7 @@ inline void FrameState::eval_next() {
     Code::Instruction instruction = code->instructions[this->r_pc];
     Code::ByteCode bytecode = instruction.bytecode;
     uint64_t arg = instruction.arg;
+    EMIT_PER_OPCODE_TIME
 
     DEBUG("%03llu EVALUATE BYTECODE: %s", this->r_pc, op::name[bytecode])
     switch (bytecode) {
@@ -689,6 +744,7 @@ inline void FrameState::eval_next() {
 
             // Access the closure of the function or the cells
             if(arg < this->cells.size()){
+                    PROFILE_TYPE_INFO(this->value_stack.back(),std::to_string(arg),"STORE_DEREF");
                     (*(this->cells[arg]->attrs))["contents"] = std::move(this->value_stack.back());
                     this->value_stack.pop_back();
             } else {
@@ -705,6 +761,7 @@ inline void FrameState::eval_next() {
                 } else {
                     throw pyerror("Attempted STORE_DEREF out of range\n");
                 }
+                PROFILE_TYPE_INFO(this->value_stack.back(),std::to_string(arg),"STORE_DEREF");
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
                 (*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs))["contents"]
                                                                     = std::move(this->value_stack.back());
@@ -749,6 +806,7 @@ inline void FrameState::eval_next() {
                 // Check which name we are storing and store it
                 const std::string& name = this->code->co_names.at(arg);
                 DEBUG_ADV("\top::STORE_GLOBAL set " << name << " = " << this->value_stack.back());
+                PROFILE_TYPE_INFO(this->value_stack.back(),name,"STORE_GLOBAL");
                 (*(this->interpreter_state->ns_globals))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -762,6 +820,7 @@ inline void FrameState::eval_next() {
                 // Check which name we are storing and store it
                 const std::string& name = this->code->co_varnames.at(arg);
                 DEBUG_ADV("\top::STORE_FAST set " << name << " = " << this->value_stack.back());
+                PROFILE_TYPE_INFO(this->value_stack.back(),name,"STORE_FAST");
                 (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -774,6 +833,7 @@ inline void FrameState::eval_next() {
             try {
                 const std::string& name = this->code->co_names.at(arg);
                 DEBUG_ADV("\top::STORE_NAME set " << name << " = " << this->value_stack.back());
+                PROFILE_TYPE_INFO(this->value_stack.back(),name,"STORE_NAME");
                 (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -1273,8 +1333,10 @@ inline void FrameState::eval_next() {
             this->check_stack_size(2);
             DEBUG("Storing Attr %s",this->code->co_names[arg].c_str()) ;
             
+            PROFILE_TYPE_INFO(this->value_stack.back(),this->code->co_names[arg],"STORE_ATTR [class]");
             Value tos = std::move(this->value_stack.back());
             this->value_stack.pop_back();
+            PROFILE_TYPE_INFO(this->value_stack.back(),this->code->co_names[arg],"STORE_ATTR [value]");
             Value val = std::move(this->value_stack.back());
             this->value_stack.pop_back();
 
@@ -1523,8 +1585,14 @@ void InterpreterState::eval() {
     try {
         while (this->cur_frame != nullptr) {
             this->cur_frame->eval_next();
-        }
+        } 
+        #ifdef PROFILING_ON
+            dump_and_clear_time_events();
+        #endif
     } catch (const pyerror& err) {
+        #ifdef PROFILING_ON
+            dump_and_clear_time_events();
+        #endif
         auto& frame = *(this->cur_frame);
         std::cerr << err.what() << std::endl;
         std::cerr << "FRAME TRACE: " << std::endl;
