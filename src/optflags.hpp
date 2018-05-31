@@ -7,8 +7,9 @@
 */
 
 #define DIRECT_THREADED
+#define RECYCLING_ON
 
-#define DEBUG_ON
+// #define DEBUG_ON
 // #define DEBUG_STACK
 
 //#define JOHN_DEBUG_ON

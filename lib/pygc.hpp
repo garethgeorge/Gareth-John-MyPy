@@ -7,6 +7,7 @@
 #include <memory>
 #include <stdint.h>
 
+// #define DEBUG_ON
 #include <debug.hpp>
 
 // we will have to implement a custom allocator that allows us to track the memory
@@ -196,15 +197,14 @@ public:
             DEBUG("trying to allocate an object");
             itertype object_itr = 
                 this->objects.emplace(this->objects.begin(), std::forward<Args>(args)...);
-            
             return ptr_t(*object_itr);
         } else {
             DEBUG("trying to recycle an object");
             // always recycle the most recently returned object,
             // its memory is more likely to be in the page cache
-            this->objects.splice(this->objects.end(), this->freelist, this->freelist.end());
-            gc_object& obj = this->objects.back();
+            gc_object& obj = this->freelist.front();
             obj.object.recycle(std::forward<Args>(args)...);
+            this->objects.splice(this->objects.begin(), this->freelist, this->freelist.begin());
             return ptr_t(obj);
         }
          
@@ -214,10 +214,11 @@ public:
         for (auto itr = this->objects.begin(); itr != this->objects.end();) {
             auto &obj = *itr;
             if (!obj.flags) { // object.flags must be all 0's for us to clear it :)
-                auto next_itr = ++itr;
+                auto next_itr = itr;
+                next_itr++;
                 // we splice the object out rather than truely delete it
-                (*itr).object.reset();
-                this->freelist.splice(this->freelist.end(), this->objects, itr);
+                (*itr).object.initialize_fields();
+                this->freelist.splice(this->freelist.begin(), this->objects, itr);
                 itr = next_itr;
             } else {
                 (*itr).flags &= ~(ptr_t::FLAG_MARKED);

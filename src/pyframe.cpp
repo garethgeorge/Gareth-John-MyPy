@@ -56,24 +56,25 @@ FrameState::FrameState(const ValueCode code)
 }
 
 void FrameState::initialize_fields() {
+    DEBUG_ADV("initializing fields");
     this->r_pc = 0;
     this->flags = 0;
     this->parent_frame = nullptr;
     this->interpreter_state = nullptr;
-
     this->code = nullptr;
-    this->value_stack.resize(0);
-    this->block_stack.resize(0);
-
+    this->value_stack.clear();
+    this->block_stack.clear();
     this->ns_local = nullptr;
     this->init_class = nullptr;
     this->curr_func = nullptr;
-    this->cells.resize(0);
+    this->cells.clear();
 }
 
 void FrameState::recycle(const ValueCode code) {
     DEBUG("constructed a new frame");
+    #ifndef RECYCLING_ON
     this->initialize_fields();
+    #endif
 
     // this->ns_local = std::make_shared<std::unordered_map<std::string, Value>>();
     this->ns_local = alloc.heap_namespace.make();
@@ -90,7 +91,9 @@ FrameState::FrameState(const ValueCode code, ValuePyClass& init_class)
 
 void FrameState::recycle(const ValueCode code, ValuePyClass& init_class) {
     DEBUG("constructed a new frame for statically initializing a class");
+    #ifndef RECYCLING_ON
     this->initialize_fields();
+    #endif
     // Everything is mostly the same, but our local namespace is also the class's
     this->code = code;
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);

@@ -1,10 +1,7 @@
-def print_msg(msg):
-    def printer():
-        return msg
-    return printer
+def func(a, b):
+    return a + b
 
-a = print_msg(100)
-print(a())
-b = print_msg(200)
-print(b())
-print(a())
+x = 0
+while x < 1000000:
+    x = func(x, 1)
+print(x)
