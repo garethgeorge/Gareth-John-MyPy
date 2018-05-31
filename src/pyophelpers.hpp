@@ -10,7 +10,7 @@
 #include <sstream>
 #include <tuple>
 #include <variant>
-#define DEBUG_ON
+// #define DEBUG_ON
 #include "../lib/debug.hpp"
 #include "../src/builtins/builtins.hpp"
 
@@ -294,6 +294,17 @@ struct add_visitor: public numeric_visitor<op_add> {
             alloc.heap_string.make(*v1 + *v2)
         );
     }
+
+    void operator()(ValueList& v1, ValueList& v2) const {
+        DEBUG_ADV("we are adding two lists");
+        ValueList newList = alloc.heap_list.make();
+        newList->values.assign(v1->values.begin(), v1->values.end());
+        // DEBUG_ADV("added in vector 1");
+        newList->values.insert(newList->values.end(), v2->values.begin(), v2->values.end());
+        // DEBUG_ADV("added in vector 2");
+        frame.value_stack.push_back(newList);
+        DEBUG_ADV("sum of the two lists: " << newList);
+    }
 };
 
 struct mult_visitor: public numeric_visitor<op_mult> {
@@ -471,6 +482,7 @@ struct store_subscr_visitor {
 
                 size_t index = 0;
                 while (sstart < sstop) {
+                    DEBUG_ADV("\tassigning with assign subscript!");
                     if (index >= listValue->size()) {
                         throw pyerror("index out of range, no more values to assign in slice assignment");
                     }
@@ -528,25 +540,15 @@ struct unpack_sequence_visitor {
     FrameState& frame;
     uint64_t arg;
     
-    void operator()(ValueList list) {
-        if (list->size() < arg) {
-            std::stringstream ss;
-            ss << "not enough values to unpack, expected: " << arg << " got: " << list->size();
-            throw pyerror(ss.str());
-        }
-        for (size_t i = 0; i < arg; ++i) {
-            frame.value_stack.push_back(list->values[i]);
-        }
-    }
-
     void operator()(ValueTuple list) {
         if (list->size() < arg) {
             std::stringstream ss;
             ss << "not enough values to unpack, expected: " << arg << " got: " << list->size();
             throw pyerror(ss.str());
         }
-        for (int64_t i = arg - 1; i > 0; --i) {
-            frame.value_stack.push_back(list->values[i]);
+        DEBUG_ADV("unpacking a tuple!");
+        for (int64_t i = 0; i < arg; ++i) {
+            frame.value_stack.push_back(list->values[arg - i - 1]);
         }
     }
 

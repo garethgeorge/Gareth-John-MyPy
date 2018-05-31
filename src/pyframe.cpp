@@ -1,4 +1,4 @@
-#define DEBUG_ON
+// #define DEBUG_ON
 
 #include "pyinterpreter.hpp"
 #include "pyvalue_helpers.hpp"
@@ -1115,6 +1115,19 @@ inline void FrameState::eval_next() {
         CASE(POP_BLOCK)
             this->block_stack.pop();
             GOTO_NEXT_OP;
+        CASE(POP_JUMP_IF_TRUE)
+        {
+            this->check_stack_size(1);
+            // TODO: implement handling for truthy values.
+            Value top = std::move(this->value_stack.back());
+            this->value_stack.pop_back();
+
+            if (std::visit(value_helper::visitor_is_truthy(), top)) {
+                this->r_pc = arg;
+                GOTO_TARGET_OP;
+            }
+            GOTO_NEXT_OP;
+        }
         CASE(POP_JUMP_IF_FALSE)
         {
             this->check_stack_size(1);
@@ -1268,6 +1281,17 @@ inline void FrameState::eval_next() {
             GOTO_NEXT_OP;
         }
         CASE(BUILD_TUPLE)
+        {
+            this->check_stack_size(arg);
+
+            // Pop the arguments to turn into a list.
+            ValueTuple newTuple = alloc.heap_tuple.make();
+            newTuple->values.assign(this->value_stack.end() - arg, this->value_stack.end());
+            this->value_stack.resize(this->value_stack.size() - arg);
+            this->value_stack.push_back(newTuple);
+
+            GOTO_NEXT_OP ;
+        }
         CASE(BUILD_LIST)
         {
             this->check_stack_size(arg);
@@ -1395,9 +1419,19 @@ inline void FrameState::eval_next() {
             }
             GOTO_NEXT_OP ;
         }
-        CASE(ROT_THREE)
         CASE(DUP_TOP)
+        {
+            this->value_stack.push_back(*(this->value_stack.end() - 1));
+            GOTO_NEXT_OP ;
+        }
         CASE(DUP_TOP_TWO)
+        {
+            for (size_t i = 0; i < 2; ++i) {
+                this->value_stack.push_back(*(this->value_stack.end() - 1));
+            }
+            GOTO_NEXT_OP ;
+        }
+        CASE(ROT_THREE)
         CASE(UNARY_POSITIVE)
         CASE(UNARY_NEGATIVE)
         CASE(UNARY_NOT)
@@ -1428,7 +1462,6 @@ inline void FrameState::eval_next() {
         CASE(IMPORT_FROM)
         CASE(JUMP_IF_FALSE_OR_POP)
         CASE(JUMP_IF_TRUE_OR_POP)
-        CASE(POP_JUMP_IF_TRUE)
         CASE(CONTINUE_LOOP)
         CASE(SETUP_EXCEPT)
         CASE(SETUP_FINALLY)

@@ -11,7 +11,6 @@
 
 namespace py {
 
-
 Allocator alloc;
 
 struct gc_visitor {
@@ -162,6 +161,8 @@ void Allocator::collect_garbage(InterpreterState& interp) {
     
     DEBUG_ADV("\tCLEANING LISTS");
     heap_list.sweep();
+    DEBUG_ADV("\tCLEANING TUPLES");
+    heap_tuple.sweep();
     DEBUG_ADV("\tCLEANING STRINGS");
     heap_string.sweep();
     DEBUG_ADV("\tCLEANING CODE");
@@ -186,6 +187,7 @@ void Allocator::collect_garbage(InterpreterState& interp) {
 
 void Allocator::retain_all() {
     heap_list.retain_all();
+    heap_tuple.retain_all();
     heap_string.retain_all();
     heap_code.retain_all();
     heap_frame.retain_all();

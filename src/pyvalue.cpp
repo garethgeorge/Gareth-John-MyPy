@@ -20,7 +20,7 @@ struct visitor_debug_repr {
     visitor_debug_repr(std::ostream& stream) : stream(stream) { };
 
     void operator()(bool v) {
-        stream << v ? "true" : "false";
+        stream << (v ? "true" : "false");
     }
 
     void operator()(double d) {

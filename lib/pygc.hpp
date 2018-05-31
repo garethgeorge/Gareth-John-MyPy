@@ -137,7 +137,6 @@ private:
 
     // the objects array is effectively the heap
     std::list<gc_object> objects;
-    std::list<gc_object*> rootset;
 
 public:
     template < typename... Args> 
@@ -175,6 +174,67 @@ public:
     }
 };
 
+
+template<typename T>
+class gc_heap_recycler {
+private:
+    // declare a few type aliases to make our code more concise
+    using ptr_t = gc_ptr<T>;
+    using gc_object = typename ptr_t::gc_object;
+
+    // the objects array is effectively the heap
+    std::list<gc_object> objects;
+    std::list<gc_object> freelist;
+
+public:
+    template < typename... Args> 
+    ptr_t make(Args&&... args) {
+        using itertype = typename std::list<gc_object>::iterator;
+        if (freelist.size() == 0) {
+            DEBUG("trying to allocate an object");
+            itertype object_itr = 
+                objects.emplace(objects.begin(), std::forward<Args>(args)...);
+            
+            return ptr_t(*object_itr);
+        } else {
+            DEBUG("trying to recycle an object");
+            // always recycle the most recently returned object,
+            // its memory is more likely to be in the page cache
+            this->objects.splice(this->objects.end(), this->freelist, this->freelist.end());
+            return ptr_t(this->objects.back());
+        }
+         
+    }
+
+    size_t size() {
+        return objects.size();
+    }
+
+    size_t memory_footprint() {
+        return size() * sizeof(T);
+    }
+    
+    void sweep() {
+        for (auto itr = this->objects.begin(); itr != this->objects.end();) {
+            auto &obj = *itr;
+            if (!obj.flags) { // object.flags must be all 0's for us to clear it :)
+                auto next_itr = ++itr;
+                // we splice the object out rather than truely delete it
+                this->freelist.splice(this->freelist.end(), this->objects, itr);
+                itr = next_itr;
+            } else {
+                (*itr).flags &= ~(ptr_t::FLAG_MARKED);
+                ++itr;
+            }
+        }
+    }
+
+    void retain_all() {
+        for (auto& object : this->objects) {
+            object.flags |= 1;
+        }
+    }
+};
 
 
 }

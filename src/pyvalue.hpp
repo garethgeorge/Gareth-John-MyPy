@@ -78,7 +78,7 @@ using ValuePyGenerator = value::PyGenerator;
 using ValueCGenerator = std::shared_ptr<value::CGenerator>;
 using ValuePyClass = gc_ptr<value::PyClass>;
 using ValueList = gc_ptr<value::List>;
-using ValueTuple = gc_ptr<const value::Tuple>;
+using ValueTuple = gc_ptr<value::Tuple>;
 
 using Value = std::variant<
     bool,

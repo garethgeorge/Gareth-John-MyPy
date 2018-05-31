@@ -18,6 +18,7 @@ namespace py {
         size_t size_at_last_gc = 32; // 32 bytes or something like that.
 
         gc_heap<value::List> heap_list;
+        gc_heap<value::Tuple> heap_tuple;
         gc_heap<const std::string> heap_string;
         gc_heap<Code> heap_code;
         gc_heap<FrameState> heap_frame;
@@ -28,6 +29,7 @@ namespace py {
         
         inline size_t memory_footprint() {
             return heap_list.memory_footprint() + 
+                heap_tuple.memory_footprint() + 
                 heap_string.memory_footprint() + 
                 heap_code.memory_footprint() + 
                 heap_frame.memory_footprint() + 
