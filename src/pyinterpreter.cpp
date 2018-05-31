@@ -23,11 +23,11 @@ InterpreterState::InterpreterState(ValueCode code) {
     this->main_code = code;
 
 #ifdef PROFILING_ON
+tmp_time = std::chrono::high_resolution_clock::now();
+profiling_file = fopen("profiling_data.txt","a");
+fprintf(profiling_file,"\n\n---------Program Output:\n");
     #ifdef PER_OPCODE_PROFILING
-        opcode_data_file = fopen("per_opcode_data.txt","a");
-        //fprintf(opcode_data_file,"\n\n---\nCLOCK_TICKS_PER_SECOND: %d\n",CLOCKS_PER_SEC);
-        //per_opcode_clk = clock();
-        clock_gettime(CLOCK_REALTIME, &per_opcode_timespec);
+        per_opcode_time = std::chrono::high_resolution_clock::now();
     #endif
 #endif
 
@@ -39,47 +39,60 @@ InterpreterState::InterpreterState(ValueCode code) {
                                                 const Code::ByteCode& bytecode, 
                                                 const uint64_t& arg
         ) {
-            // Print the time it took since last opcode to get here
-            /*fprintf(opcode_data_file,"TIME: %d\nOPCODE: %s, ARG: %llu, ", 
-                        //difftime(time(NULL),per_opcode_curr_time),
-                        clock() - per_opcode_clk,
-                        op::name[bytecode],
-                        arg
-            );
-            per_opcode_clk = clock();*/
-            //clock_gettime(CLOCK_REALTIME, &tmp_timespec);
-            clock_gettime(CLOCK_REALTIME, &per_opcode_timespec);
-            /*fprintf(opcode_data_file,"OPCODE: %s, ARG: %llu, TIME: %llu sec %llu ns\n", 
-                        op::name[bytecode],
-                        arg,
-                        per_opcode_timespec.tv_sec,
-                        per_opcode_timespec.tv_nsec
-            );*/
-            time_events.resize(time_events.size() + 4);
+            // Just put a right now timestamp on it and continue
+            per_opcode_time = std::chrono::high_resolution_clock::now();
+            time_events.reserve(time_events.size() + 3);
             time_events.push_back(bytecode);
             time_events.push_back(arg);
-            time_events.push_back(per_opcode_timespec.tv_sec);
-            time_events.push_back(per_opcode_timespec.tv_nsec);
+            time_events.push_back(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(per_opcode_time.time_since_epoch()).count()
+            );
+        }
+    #endif
+
+    #ifdef GARBAGE_COLLECTION_PROFILING
+        void InterpreterState::emit_gc_event(bool start){
+            tmp_time = std::chrono::high_resolution_clock::now();
+            time_events.reserve(time_events.size() + 3);
+            if(start){
+                time_events.push_back(GC_START);
+            } else {
+                time_events.push_back(GC_END);
+            }
+            time_events.push_back(0);
+            time_events.push_back(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(tmp_time.time_since_epoch()).count()
+            );
         }
     #endif
 
     // Every time event is an opcode, it's arg, the seconds, and the nanoseconds
     // For time events that are not opcodes, I use values that do not correspond to opcodes
     void InterpreterState::dump_and_clear_time_events(){
-        clock_gettime(CLOCK_REALTIME, &tmp_timespec);
-        fprintf(opcode_data_file,"\n\n------Time Data Dump:\n");
-        fprintf(opcode_data_file,"\n------Dump Start Time: %llu sec %llu ns\n",
-                                tmp_timespec.tv_sec,tmp_timespec.tv_nsec);
-        for(int i = 0;i < time_events.size();i+=4){
-            fprintf(opcode_data_file,"OPCODE: %s, ARG: %llu, TIME: %llu sec %llu ns\n", 
-                        op::name[time_events[i]],
-                        time_events[i + 1],
-                        time_events[i + 2],
-                        time_events[i + 3]
-            );
+        tmp_time = std::chrono::high_resolution_clock::now();
+        fprintf(profiling_file,"\n------Dump Start Time: %llu ns\n",
+            std::chrono::duration_cast<std::chrono::nanoseconds>(tmp_time.time_since_epoch()).count()
+        );
+        for(int i = 0;i < time_events.size();i+=3){
+            uint64_t c_op = time_events[i];
+            if(c_op == GC_START || c_op == GC_END){
+                fprintf(profiling_file,"---GARBAGE COLLECTION %s: %llu ns\n",
+                    (c_op == GC_START ? "START" : "END"),
+                    time_events[i + 2]
+                );
+            } else {
+                fprintf(profiling_file,"OPCODE: %s, ARG: %llu, TIME: %llu ns\n", 
+                            op::name[time_events[i]],
+                            time_events[i + 1],
+                            time_events[i + 2]
+                );
+            }
         }
-        fprintf(opcode_data_file,"\n------Dump End Time: %llu sec %llu ns\n",
-                        tmp_timespec.tv_sec,tmp_timespec.tv_nsec);
+        tmp_time = std::chrono::high_resolution_clock::now();
+        fprintf(profiling_file,"------Dump End Time: %llu ns\n",
+            std::chrono::duration_cast<std::chrono::nanoseconds>(tmp_time.time_since_epoch()).count()
+        );
+                        //tmp_timespec.tv_sec,tmp_timespec.tv_nsec);
         time_events.clear();
     }
 #endif

@@ -154,6 +154,13 @@ void Allocator::print_debug_info() {
 }
 
 void Allocator::collect_garbage(InterpreterState& interp) {
+    
+    #ifdef PROFILING_ON
+        #ifdef GARBAGE_COLLECTION_PROFILING
+            interp.emit_gc_event(true);
+        #endif
+    #endif
+
     this->mark_live_objects(interp);
 
     size_t size_before = this->memory_footprint();
@@ -182,6 +189,12 @@ void Allocator::collect_garbage(InterpreterState& interp) {
     print_debug_info();
 
     this->size_at_last_gc = new_size;
+
+        #ifdef PROFILING_ON
+        #ifdef GARBAGE_COLLECTION_PROFILING
+            interp.emit_gc_event(false);
+        #endif
+    #endif
 }
 
 void Allocator::retain_all() {

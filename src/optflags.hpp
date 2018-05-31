@@ -18,6 +18,6 @@
 // Output a timestamp at every opcode
 #define PER_OPCODE_PROFILING
 
-//#define 
+#define GARBAGE_COLLECTION_PROFILING
 
 #endif
