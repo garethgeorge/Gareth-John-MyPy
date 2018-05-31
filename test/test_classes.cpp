@@ -346,7 +346,6 @@ check_val12(6 >= a)
         (*(state.ns_builtins))["check_val12"] = make_builtin_check_value((int64_t)6);
         state.eval();
     }
-    
     SECTION( "of the __call__ operator"){
             auto code = build_string(R"(
 class A:
@@ -366,8 +365,8 @@ check_int2(foo(foo(2)))
         (*(state.ns_builtins))["check_int2"] = make_builtin_check_value((int64_t)200);
         state.eval();
     }
-    
-    
+
+
     SECTION( "of the + operator"){
             auto code = build_string(R"(
 class A:
@@ -600,7 +599,6 @@ check_int9(bar)
         (*(state.ns_builtins))["check_int9"] = make_builtin_check_value((int64_t)0);
         state.eval();
     }
-    
     SECTION( "of the ** operator"){
         auto code = build_string(R"(
 class A:
