@@ -19,6 +19,9 @@ template<typename T>
 struct gc_heap;
 
 template<typename T>
+struct gc_heap_recycler;
+
+template<typename T>
 class gc_ptr {
 protected:
     // the last bit is used to hold a marked flag
@@ -110,6 +113,7 @@ public:
     }
 
     friend class gc_heap<T>;
+    friend class gc_heap_recycler<T>;
 
     // WARNING: maximum reference count is 127, greater than this and things
     // break horribly, and there is no checking.
@@ -130,7 +134,7 @@ public:
 
 template<typename T>
 class gc_heap {
-private:
+protected:
     // declare a few type aliases to make our code more concise
     using ptr_t = gc_ptr<T>;
     using gc_object = typename ptr_t::gc_object;
@@ -176,14 +180,12 @@ public:
 
 
 template<typename T>
-class gc_heap_recycler {
-private:
+class gc_heap_recycler : public gc_heap<T> {
+protected:
     // declare a few type aliases to make our code more concise
     using ptr_t = gc_ptr<T>;
     using gc_object = typename ptr_t::gc_object;
 
-    // the objects array is effectively the heap
-    std::list<gc_object> objects;
     std::list<gc_object> freelist;
 
 public:
@@ -193,7 +195,7 @@ public:
         if (freelist.size() == 0) {
             DEBUG("trying to allocate an object");
             itertype object_itr = 
-                objects.emplace(objects.begin(), std::forward<Args>(args)...);
+                this->objects.emplace(this->objects.begin(), std::forward<Args>(args)...);
             
             return ptr_t(*object_itr);
         } else {
@@ -201,37 +203,26 @@ public:
             // always recycle the most recently returned object,
             // its memory is more likely to be in the page cache
             this->objects.splice(this->objects.end(), this->freelist, this->freelist.end());
-            return ptr_t(this->objects.back());
+            gc_object& obj = this->objects.back();
+            obj.object.recycle(std::forward<Args>(args)...);
+            return ptr_t(obj);
         }
          
     }
 
-    size_t size() {
-        return objects.size();
-    }
-
-    size_t memory_footprint() {
-        return size() * sizeof(T);
-    }
-    
     void sweep() {
         for (auto itr = this->objects.begin(); itr != this->objects.end();) {
             auto &obj = *itr;
             if (!obj.flags) { // object.flags must be all 0's for us to clear it :)
                 auto next_itr = ++itr;
                 // we splice the object out rather than truely delete it
+                (*itr).object.reset();
                 this->freelist.splice(this->freelist.end(), this->objects, itr);
                 itr = next_itr;
             } else {
                 (*itr).flags &= ~(ptr_t::FLAG_MARKED);
                 ++itr;
             }
-        }
-    }
-
-    void retain_all() {
-        for (auto& object : this->objects) {
-            object.flags |= 1;
         }
     }
 };
