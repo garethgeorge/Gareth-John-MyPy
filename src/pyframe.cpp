@@ -55,21 +55,6 @@ FrameState::FrameState(const ValueCode code)
     this->recycle(code);
 }
 
-void FrameState::initialize_fields() {
-    DEBUG_ADV("initializing fields");
-    this->r_pc = 0;
-    this->flags = 0;
-    this->parent_frame = nullptr;
-    this->interpreter_state = nullptr;
-    this->code = nullptr;
-    this->value_stack.clear();
-    this->block_stack.clear();
-    this->ns_local = nullptr;
-    this->init_class = nullptr;
-    this->curr_func = nullptr;
-    this->cells.clear();
-}
-
 void FrameState::recycle(const ValueCode code) {
     DEBUG("constructed a new frame");
     #ifndef RECYCLING_ON
