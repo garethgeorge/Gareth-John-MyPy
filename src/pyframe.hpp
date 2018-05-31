@@ -47,7 +47,7 @@ public:
 
     ValueCode code;
     std::vector<Value> value_stack;
-    std::stack<Block> block_stack; // a stack containing blocks: this should be changed to a standard vector
+    std::vector<Block> block_stack; // a stack containing blocks: this should be changed to a standard vector
     Namespace ns_local; // the local value namespace
     uint8_t flags = 0;
     
@@ -64,6 +64,10 @@ public:
 
     FrameState(const ValueCode code);
     FrameState(const ValueCode code, ValuePyClass& init_class);
+
+    void initialize_fields();
+    void recycle(const ValueCode code);
+    void recycle(const ValueCode code, ValuePyClass& init_class);
 
     void eval_next();
 

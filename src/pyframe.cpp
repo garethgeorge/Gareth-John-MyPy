@@ -52,7 +52,29 @@ namespace py {
 
 FrameState::FrameState(const ValueCode code) 
 {
+    this->recycle(code);
+}
+
+void FrameState::initialize_fields() {
+    this->r_pc = 0;
+    this->flags = 0;
+    this->parent_frame = nullptr;
+    this->interpreter_state = nullptr;
+
+    this->code = nullptr;
+    this->value_stack.resize(0);
+    this->block_stack.resize(0);
+
+    this->ns_local = nullptr;
+    this->init_class = nullptr;
+    this->curr_func = nullptr;
+    this->cells.resize(0);
+}
+
+void FrameState::recycle(const ValueCode code) {
     DEBUG("constructed a new frame");
+    this->initialize_fields();
+
     // this->ns_local = std::make_shared<std::unordered_map<std::string, Value>>();
     this->ns_local = alloc.heap_namespace.make();
     this->code = code;
@@ -63,7 +85,12 @@ FrameState::FrameState(const ValueCode code)
 // Construct a framestate meant to initialize everything static about a class
 FrameState::FrameState(const ValueCode code, ValuePyClass& init_class)
 {
+    this->recycle(code, init_class);
+}
+
+void FrameState::recycle(const ValueCode code, ValuePyClass& init_class) {
     DEBUG("constructed a new frame for statically initializing a class");
+    this->initialize_fields();
     // Everything is mostly the same, but our local namespace is also the class's
     this->code = code;
     DEBUG("reserved %lu bytes for the stack", code->co_stacksize);
@@ -1096,14 +1123,14 @@ inline void FrameState::eval_next() {
             newBlock.level = this->value_stack.size();
             newBlock.pc_start = this->code->instructions[this->r_pc + 1].bytecode_index; // GARETH: changed this offset to 1
             newBlock.pc_delta = arg;
-            this->block_stack.push(newBlock);
+            this->block_stack.push_back(newBlock);
             DEBUG("new block stack height: %lu", this->block_stack.size())
             GOTO_NEXT_OP;
         }
         CASE(BREAK_LOOP)
         {
-            Block topBlock = this->block_stack.top();
-            this->block_stack.pop();
+            Block topBlock = this->block_stack.back();
+            this->block_stack.pop_back();
             size_t jumpTo = this->code->pc_map[(topBlock.pc_start + topBlock.pc_delta)];
             if (jumpTo == 0) {
                 throw pyerror("invalid jump destination for break loop!");
@@ -1113,7 +1140,7 @@ inline void FrameState::eval_next() {
             GOTO_TARGET_OP;
         }
         CASE(POP_BLOCK)
-            this->block_stack.pop();
+            this->block_stack.pop_back();
             GOTO_NEXT_OP;
         CASE(POP_JUMP_IF_TRUE)
         {
