@@ -17,7 +17,7 @@ using std::string;
 using namespace py;
 using namespace py::builtins;
 
-#define STATS_ON
+// #define STATS_ON
 
 int main(const int argc, const char *argv[]) 
 {

@@ -7,14 +7,6 @@ The sum of the primes below 10 is 2 + 3 + 5 + 7 = 17.
 Find the sum of all the primes below two million.
 """
 
-
-#returns list of primes <= limit
-def enumerate(gen):
-  x = 0
-  for val in gen:
-    yield x, val
-    x += 1
-
 def sum(gen):
   acum = 0
   for val in gen:
@@ -31,20 +23,29 @@ The sum of the primes below 10 is 2 + 3 + 5 + 7 = 17.
 Find the sum of all the primes below two million.
 """
 
-#returns list of primes <= limit
+def enumerate(iter):
+  x = 0
+  for val in iter:
+    yield x, val 
+    x += 1
+
 def primeSieve(limit):
     if limit < 2: return []
     if limit < 3: return [2]
+    #Create a sieve
     size = (limit - 3) // 2
-    sieve = [True] * (size + 1)
+    thing  = (size + 1)
+    sieve = [True] * thing
 
     maxint=int(limit**0.5)
     for i in range( (maxint - 1) // 2 ):
         if sieve[i]:
             prime = 2 * i + 3
             start = prime * (i + 1) + i
-            sieve[start:len(sieve):prime] = [False] * ((size - start) // prime + 1)
-    
+
+            for x in range(start, -1, prime):
+                sieve[x] = False
+
     tmplist = []
     for i, v in enumerate(sieve):
         if v:

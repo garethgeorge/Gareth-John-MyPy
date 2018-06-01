@@ -163,6 +163,10 @@ extern void inject_builtins(Namespace& ns) {
         frame.value_stack.push_back(value::NoneType());
     });
 
+    (*ns)["add_three"] = pycfunction_builder([](int64_t a, int64_t b, int64_t c) -> int64_t {
+        return (int64_t)(a + b + c);
+    }).to_pycfunction();
+
 
 
     // Build a re[resentation of a class

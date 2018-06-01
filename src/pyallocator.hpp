@@ -25,7 +25,7 @@ namespace py {
         gc_heap<value::PyObject> heap_pyobject;
         gc_heap<value::PyClass> heap_pyclass;
         gc_heap<std::unordered_map<std::string, Value>> heap_namespace;
-
+    
         // the recyclable heap types are defined here
         #ifdef RECYCLING_ON
         gc_heap_recycler<FrameState> heap_frame;

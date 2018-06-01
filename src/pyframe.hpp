@@ -115,9 +115,11 @@ public:
     // helper method for checking the stack has enough values for the current
     // operation!
     inline const void check_stack_size(size_t expected) {
-        if (this->value_stack.size() < expected) {
-            throw pyerror("INTERNAL ERROR: not enough values on stack to complete operation");
-        }
+        #ifdef CHECK_STACK_SIZES
+            if (this->value_stack.size() < expected) {
+                throw pyerror("INTERNAL ERROR: not enough values on stack to complete operation");
+            }
+        #endif
     }
 };
 
