@@ -37,4 +37,4 @@ for i in range(2,10001):
         if divsum( divsum(i) ) == i:
             ans+=i
 
-print("Answer",ans)
+print("Answer", ans)

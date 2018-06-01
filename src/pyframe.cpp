@@ -1219,6 +1219,9 @@ inline void FrameState::eval_next() {
         CASE(JUMP_ABSOLUTE)
             this->r_pc = arg;
             // if (alloc.check_if_gc_needed()) FOR
+            if (alloc.check_if_gc_needed()) {
+                alloc.collect_garbage(*(this->interpreter_state));
+            }
             GOTO_TARGET_OP;
         CASE(JUMP_FORWARD)
             this->r_pc += arg;

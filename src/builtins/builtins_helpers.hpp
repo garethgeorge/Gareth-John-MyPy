@@ -3,6 +3,7 @@
 
 #include <sstream>
 #include "../pyvalue.hpp"
+#include "./builtins_helpers_old.hpp"
 
 
 namespace py {

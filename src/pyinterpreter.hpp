@@ -73,6 +73,10 @@ struct InterpreterState {
     #endif
 
     void dump_and_clear_time_events();
+
+    ~InterpreterState() {
+        fflush(this->profiling_file);
+    }
 #endif
 };
 

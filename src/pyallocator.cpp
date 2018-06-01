@@ -14,7 +14,7 @@ namespace py {
 Allocator alloc;
 
 struct gc_visitor {
-    void operator() (value::PyGenerator& gen) {
+    void operator() (value::PyGenerator gen) {
         gen.frame.mark();
     }
 
@@ -38,14 +38,17 @@ namespace gc {
     void mark_children(const std::vector<Value>& values) {
         DEBUG_ADV("\tMarking a vector");
         for (auto& value : values) {
+            // DEBUG_ADV("\t\tvalue: " << value);
             std::visit(gc_visitor(), value);
         }
     }
 
     void mark_children(gc_ptr<FrameState> framestate) {
-        DEBUG_ADV("\tMarking frame state " << Value(framestate));
+        DEBUG_ADV("\tMarking frame state " << framestate);
         framestate->code.mark();
+        DEBUG_ADV("\t\tmarking the frame's value stack! size: " << framestate->value_stack.size());
         mark_children(framestate->value_stack);
+        DEBUG_ADV("\t\tdone marking frame's value stack!");
         framestate->ns_local.mark();
 
         if (framestate->init_class) {

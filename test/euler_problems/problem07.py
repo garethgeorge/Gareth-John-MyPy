@@ -6,12 +6,11 @@ By listing the first six prime numbers:
 What is the 10,001st prime number?
 """
 
-def enumerate(gen):
+def enumerate(iter):
   x = 0
-  for val in gen:
-    yield x, val
+  for val in iter:
+    yield x, val 
     x += 1
-
 
 def primeSieve(limit):
     if limit < 2: return []
@@ -26,8 +25,10 @@ def primeSieve(limit):
         if sieve[i]:
             prime = 2 * i + 3
             start = prime * (i + 1) + i
-            sieve[start:-1:prime] = [False] * ((size - start) // prime + 1)
-            
+
+            for x in range(start, -1, prime):
+                sieve[x] = False
+
     tmplist = []
     for i, v in enumerate(sieve):
         if v:

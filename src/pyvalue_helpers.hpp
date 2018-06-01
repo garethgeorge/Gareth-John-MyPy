@@ -102,16 +102,19 @@ struct numeric_visitor {
 
     numeric_visitor(FrameState& frame) : frame(frame) {}
 
-    void operator()(double v1, double v2) const {
+    inline void operator()(double v1, double v2) const {
         frame.value_stack.push_back(T::action(v1, v2));
     }
-    void operator()(double v1, int64_t v2) const {
+    
+    inline void operator()(double v1, int64_t v2) const {
         frame.value_stack.push_back(T::action(v1, v2));
     }
-    void operator()(int64_t v1, double v2) const {
+
+    inline void operator()(int64_t v1, double v2) const {
         frame.value_stack.push_back(T::action(v1, v2));
     } 
-    void operator()(int64_t v1, int64_t v2) const {
+
+    inline void operator()(int64_t v1, int64_t v2) const {
         frame.value_stack.push_back(T::action(v1, v2));
     }
     
