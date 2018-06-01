@@ -10,7 +10,7 @@
 #define RECYCLING_ON
 #define CHECK_STACK_SIZES
 
-// #define DEBUG_ON
+//#define DEBUG_ON
 // #define DEBUG_STACK
 
 //#define JOHN_DEBUG_ON

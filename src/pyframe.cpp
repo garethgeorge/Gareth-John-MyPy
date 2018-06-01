@@ -1507,11 +1507,17 @@ inline void FrameState::eval_next() {
         CASE(DUP_TOP_TWO)
         {
             for (size_t i = 0; i < 2; ++i) {
-                this->value_stack.push_back(*(this->value_stack.end() - 1));
+                this->value_stack.push_back(*(this->value_stack.end() - 2));
             }
             GOTO_NEXT_OP ;
         }
         CASE(ROT_THREE)
+        {
+            Value tmp = this->value_stack.back();
+            this->value_stack.pop_back();
+            this->value_stack.insert(this->value_stack.end() - 2,tmp);
+            GOTO_NEXT_OP;
+        }
         CASE(UNARY_POSITIVE)
         CASE(UNARY_NEGATIVE)
         CASE(UNARY_NOT)
