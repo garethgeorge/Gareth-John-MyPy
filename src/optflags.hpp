@@ -8,9 +8,9 @@
 
 #define DIRECT_THREADED
 #define RECYCLING_ON
-#define CHECK_STACK_SIZES
+//#define CHECK_STACK_SIZES
 
-//#define DEBUG_ON
+#define DEBUG_ON
 //#define DEBUG_STACK
 
 //#define JOHN_DEBUG_ON

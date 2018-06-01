@@ -642,8 +642,8 @@ inline void FrameState::eval_next() {
                 } else {
                     name = this->code->co_freevars.at(arg - this->code->co_cellvars.size());
                 }
-                const auto& globals = this->interpreter_state->ns_globals;
-                const auto& builtins = this->interpreter_state->ns_builtins;
+                //const auto& globals = this->interpreter_state->ns_globals;
+                //const auto& builtins = this->interpreter_state->ns_builtins;
                 // Search through all local namespaces up the stack
                 auto curr_frame = this;
                 bool found = false;
@@ -656,12 +656,22 @@ inline void FrameState::eval_next() {
                         found = true;
                         curr_frame = NULL;
                         break ;
-                    } 
+                    }
+                    /*if(curr_frame->curr_func){
+                        found = true;
+                        curr_frame = NULL;
+                        this->value_stack.push_back(curr_frame->curr_func->__closure__->values[arg - this->code->co_cellvars.size()]);
+                        break;
+                    }*/
                     curr_frame = curr_frame->parent_frame.get();
                 }
                 // Do not check globals or builtins for free vars
                 if(!found){
-                    throw pyerror(string("op::LOAD_CLOSURE name not found: ") + name);
+                    ValuePyObject neww_cell = value_helper::create_cell(value::NoneType());
+                    this->value_stack.push_back(neww_cell);
+                    this->add_to_ns_local(name,neww_cell);
+                    this->cells[arg] = neww_cell;
+                    //throw pyerror(string("op::LOAD_CLOSURE name not found: ") + name);
                 }
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_CLOSURE tried to load name out of range");
@@ -751,7 +761,7 @@ inline void FrameState::eval_next() {
                 // If the function does not have a closure yet, give it one
                 if(this->curr_func){
                     if(this->curr_func->__closure__ == nullptr){
-                        this->curr_func->__closure__ = alloc.heap_list.make();
+                        this->curr_func->__closure__ = alloc.heap_tuple.make();
                     }
                     while(this->curr_func->__closure__->values.size() <= arg){
                         this->curr_func->__closure__->values.push_back(
@@ -1255,7 +1265,8 @@ inline void FrameState::eval_next() {
             Value closure_code = std::move(value_stack.back());
             this->value_stack.pop_back();
             //ValueList closure = std::move(std::get<ValueList>(value_stack.back()));
-            ValueList closure = std::get<ValueList>(value_stack.back());
+            DEBUG_ADV("READ CLOSURE: " << value_stack.back());
+            ValueTuple closure = std::get<ValueTuple>(value_stack.back());
             this->value_stack.pop_back();
 
             // Create a shared pointer to a vector from the args
@@ -1276,7 +1287,7 @@ inline void FrameState::eval_next() {
                 this->value_stack.push_back(nv);
             } catch (std::bad_variant_access&) {
                 std::stringstream ss;
-                ss << "MAKE FUNCTION called with name '" << name << "' and code block: " << closure_code;
+                ss << "MAKE CLOSURE called with name '" << name << "' and code block: " << closure_code;
                 ss << ", but make function expects string and code object";
                 throw pyerror(ss.str());
             }
