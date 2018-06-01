@@ -223,6 +223,19 @@ namespace value {
         Tuple(Args&&... args) : List(std::forward<Args>(args)...) {
             
         }
+
+        inline void initialize_fields() {
+            this->values.resize(0);
+        }
+        
+        void recycle() {
+            // if no arguments are given, we are just an empty initial state
+        }
+
+        template<typename... Args>
+        void recycle(Args&&... args) {
+            values.assign(std::forward<Args>(args)...);
+        }
     };
     
     // struct Set {

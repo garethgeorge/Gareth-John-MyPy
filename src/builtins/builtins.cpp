@@ -4,6 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <variant>
+#include <math.h>
 #include "builtins.hpp"
 #include "builtins_helpers.hpp"
 #include "../pyvalue_helpers.hpp"
@@ -163,8 +164,18 @@ extern void inject_builtins(Namespace& ns) {
         frame.value_stack.push_back(value::NoneType());
     });
 
-    (*ns)["add_three"] = pycfunction_builder([](int64_t a, int64_t b, int64_t c) -> int64_t {
-        return (int64_t)(a + b + c);
+    (*ns)["math"] = alloc.heap_namespace.make();
+
+    (*ns)["sqrt"] = pycfunction_builder([](double val) -> double {
+        return sqrt(val);
+    }).to_pycfunction();
+
+    (*ns)["log"] = pycfunction_builder([](double val, double base) -> double {
+        return log(val) / log(base);
+    }).to_pycfunction();
+
+    (*ns)["log10"] = pycfunction_builder([](double val, double base) -> double {
+        return log10(val);
     }).to_pycfunction();
 
 

@@ -16,9 +16,8 @@ namespace py {
 
     struct Allocator {
         size_t size_at_last_gc = 32; // 32 bytes or something like that.
-
+        
         gc_heap<value::List> heap_list;
-        gc_heap<value::Tuple> heap_tuple;
         gc_heap<const std::string> heap_string;
         gc_heap<Code> heap_code;
         gc_heap<value::PyFunc> heap_pyfunc;
@@ -29,8 +28,10 @@ namespace py {
         // the recyclable heap types are defined here
         #ifdef RECYCLING_ON
         gc_heap_recycler<FrameState> heap_frame;
+        gc_heap_recycler<value::Tuple> heap_tuple;
         #else 
         gc_heap<FrameState> heap_frame;
+        gc_heap<value::Tuple> heap_tuple;
         #endif
         
         inline size_t memory_footprint() {

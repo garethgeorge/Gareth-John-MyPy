@@ -11,7 +11,7 @@
 #define CHECK_STACK_SIZES
 
 //#define DEBUG_ON
-// #define DEBUG_STACK
+//#define DEBUG_STACK
 
 //#define JOHN_DEBUG_ON
 
@@ -19,7 +19,6 @@
 
 // Output a timestamp at every opcode
 // #define PER_OPCODE_PROFILING
-
 // #define GARBAGE_COLLECTION_PROFILING
 
 // #define TYPE_INFORMATION_PROFILING

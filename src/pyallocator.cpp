@@ -146,6 +146,7 @@ void Allocator::mark_live_objects(InterpreterState& interp) {
 
 void Allocator::print_debug_info() {
     DEBUG_ADV("\tSIZE OF HEAP_LIST: " << heap_list.memory_footprint() << " - " << heap_list.size());
+    DEBUG_ADV("\tSIZE OF HEAP_TUPLE: " << heap_tuple.memory_footprint() << " - " << heap_tuple.size());
     DEBUG_ADV("\tSIZE OF HEAP_STRING: " << heap_string.memory_footprint() << " - " << heap_string.size());
     DEBUG_ADV("\tSIZE OF HEAP_CODE: " << heap_code.memory_footprint() << " - " << heap_code.size());
     DEBUG_ADV("\tSIZE OF HEAP_FRAME: " << heap_frame.memory_footprint() << " - " << heap_frame.size());
@@ -188,13 +189,22 @@ void Allocator::collect_garbage(InterpreterState& interp) {
     DEBUG_ADV("\tCLEANING NAMESPACES");
     heap_namespace.sweep();
 
+    DEBUG_ADV("DEBUG INFO AFTER");
+
+    print_debug_info();
+
     size_t new_size = this->memory_footprint();
     DEBUG_ADV("CLEANED UP " << size_before - new_size << " BYTES, NEW SIZE: " << new_size);
     print_debug_info();
 
     this->size_at_last_gc = new_size;
+    
+    for (auto& object : this->heap_list.objects) {
+        this->size_at_last_gc += object.object.size();
+    }
+    DEBUG_ADV("computing new size_at_last_gc as " << new_size << " + " << (this->size_at_last_gc - new_size) << " when we account for lists");
 
-        #ifdef PROFILING_ON
+    #ifdef PROFILING_ON
         #ifdef GARBAGE_COLLECTION_PROFILING
             interp.emit_gc_event(false);
         #endif

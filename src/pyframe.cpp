@@ -1199,7 +1199,13 @@ inline void FrameState::eval_next() {
 
             if (std::visit(value_helper::visitor_is_truthy(), top)) {
                 this->r_pc = arg;
+                if (alloc.check_if_gc_needed()) {
+                    alloc.collect_garbage(*(this->interpreter_state));
+                }
                 GOTO_TARGET_OP;
+            }
+            if (alloc.check_if_gc_needed()) {
+                alloc.collect_garbage(*(this->interpreter_state));
             }
             GOTO_NEXT_OP;
         }
@@ -1212,7 +1218,14 @@ inline void FrameState::eval_next() {
 
             if (!std::visit(value_helper::visitor_is_truthy(), top)) {
                 this->r_pc = arg;
+
+                if (alloc.check_if_gc_needed()) {
+                    alloc.collect_garbage(*(this->interpreter_state));
+                }
                 GOTO_TARGET_OP;
+            }
+            if (alloc.check_if_gc_needed()) {
+                alloc.collect_garbage(*(this->interpreter_state));
             }
             GOTO_NEXT_OP;
         }

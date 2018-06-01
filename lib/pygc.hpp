@@ -9,6 +9,7 @@
 
 // #define DEBUG_ON
 #include <debug.hpp>
+// #undef DEBUG_ON
 
 // we will have to implement a custom allocator that allows us to track the memory
 // that is being used, and free'd by our 'MyPy' implementation 
@@ -24,7 +25,7 @@ struct gc_heap_recycler;
 
 template<typename T>
 class gc_ptr {
-protected:
+public:
     // the last bit is used to hold a marked flag
     static const uint8_t FLAG_MARKED = 1 << 7;
     // the rest of the bits are used to store a reference count
@@ -135,7 +136,7 @@ public:
 
 template<typename T>
 class gc_heap {
-protected:
+public:
     // declare a few type aliases to make our code more concise
     using ptr_t = gc_ptr<T>;
     using gc_object = typename ptr_t::gc_object;
