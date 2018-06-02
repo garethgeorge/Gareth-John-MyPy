@@ -46,6 +46,7 @@ namespace py {
         }
 
         inline bool check_if_gc_needed() {
+            return false;
             return this->memory_footprint() >= size_at_last_gc * 2;
         }
 

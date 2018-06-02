@@ -4,10 +4,16 @@ def zip(u,v):
     for ind in range(0,len(u)):
         yield (u[ind],v[ind])
 
+def sum(iter):
+    outpt = 0
+    for x in iter:
+        outpt = outpt + x
+    return outpt
+
 def enumerate(iter):
-  x = 0
-  for val in iter:
-    yield x, val 
+    x = 0
+    for val in iter:
+        yield x, val 
     x += 1
 
 def eval_A(i, j):
@@ -55,7 +61,9 @@ def main():
     for ue, ve in zip(u, v):
         vBv += ue * ve
         vv  += ve * ve
+        print(sqrt(vBv/vv))
 
-    print("%0.9f" % (sqrt(vBv/vv)))
+    #print("%0.9f" % (sqrt(vBv/vv)))
+    print(sqrt(vBv/vv))
 
 main()

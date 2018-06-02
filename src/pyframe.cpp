@@ -640,41 +640,16 @@ inline void FrameState::eval_next() {
                 std::string name;
                 if(arg < this->code->co_cellvars.size()){
                     //name = this->code->co_cellvars.at(arg);
+                    DEBUG_ADV("LOAD_CLOSURE LOADED " << this->cells[arg]);
                     this->value_stack.push_back(this->cells[arg]);
                     GOTO_NEXT_OP;
                 } else {
-                    name = this->code->co_freevars.at(arg - this->code->co_cellvars.size());
-                }
-                //const auto& globals = this->interpreter_state->ns_globals;
-                //const auto& builtins = this->interpreter_state->ns_builtins;
-                // Search through all local namespaces up the stack
-                auto curr_frame = this;
-                bool found = false;
-                while(curr_frame != NULL){
-                    auto itr_local = curr_frame->ns_local->find(name);
-                    if (itr_local != curr_frame->ns_local->end()) {
-                        DEBUG("op::LOAD_CLOSURE ('%s') loaded a local", name.c_str());
-                        // This is expected to be a cell
-                        this->value_stack.push_back(itr_local->second);
-                        found = true;
-                        curr_frame = NULL;
-                        break ;
-                    }
-                    /*if(curr_frame->curr_func){
-                        found = true;
-                        curr_frame = NULL;
-                        this->value_stack.push_back(curr_frame->curr_func->__closure__->values[arg - this->code->co_cellvars.size()]);
-                        break;
-                    }*/
-                    curr_frame = curr_frame->parent_frame.get();
-                }
-                // Do not check globals or builtins for free vars
-                if(!found){
-                    /*ValuePyObject neww_cell = value_helper::create_cell(value::NoneType());
-                    this->value_stack.push_back(neww_cell);
-                    this->add_to_ns_local(name,neww_cell);
-                    this->cells[arg] = neww_cell;*/
-                    throw pyerror(string("op::LOAD_CLOSURE name not found: ") + name);
+                    //name = this->code->co_freevars.at(arg - this->code->co_cellvars.size());
+                    DEBUG_ADV("LOAD_CLOSURE LOADED " << this->curr_func->__closure__->values[arg - this->code->co_cellvars.size()]);
+                    this->value_stack.push_back(
+                        this->curr_func->__closure__->values[arg - this->code->co_cellvars.size()]
+                    );
+                    GOTO_NEXT_OP;
                 }
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_CLOSURE tried to load name out of range");
@@ -738,15 +713,9 @@ inline void FrameState::eval_next() {
                 );
             } else {
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
-                DEBUG_ADV("Here are some things: "   
-                    << which_frame->curr_func << ","
-                    << which_frame->curr_func->__closure__ << ","
-                    << which_frame->curr_func->__closure__->values[arg] << ","
-                    << std::get<ValuePyObject>(which_frame->curr_func->__closure__->values[arg]) << ","
-                    << (*(std::get<ValuePyObject>(which_frame->curr_func->__closure__->values[arg])->attrs))["contents"] << "\n"
-                );
                 this->value_stack.push_back(
-                    std::get<ValuePyObject>(which_frame->curr_func->__closure__->values[arg])->attrs->at("contents")
+                    std::get<ValuePyObject>(which_frame->curr_func->__closure__->values[arg - which_frame->cells.size()])->attrs->at("contents")
+                    //(*vpo)->attrs->at("contents")
                 );
             }
             GOTO_NEXT_OP;
@@ -754,6 +723,8 @@ inline void FrameState::eval_next() {
         CASE(STORE_DEREF)
         {
             this->check_stack_size(1);
+
+            DEBUG_ADV("STORE INDEX: " << arg);
 
             // Access the closure of the function or the cells
             if(arg < this->cells.size()){
@@ -769,7 +740,7 @@ inline void FrameState::eval_next() {
                     if(this->curr_func->__closure__ == nullptr){
                         this->curr_func->__closure__ = alloc.heap_tuple.make();
                     }
-                    while(this->curr_func->__closure__->values.size() <= arg){
+                    while(this->curr_func->__closure__->values.size() <= arg - this->cells.size()){
                         this->curr_func->__closure__->values.push_back(
                             value_helper::create_cell(value::NoneType())
                         );
@@ -779,7 +750,7 @@ inline void FrameState::eval_next() {
                 }
                 PROFILE_TYPE_INFO(this->value_stack.back(),std::to_string(arg),"STORE_DEREF");
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
-                (*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs))["contents"]
+                (*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg - this->cells.size()])->attrs))["contents"]
                                                                     = std::move(this->value_stack.back());
                 this->value_stack.pop_back();  
             }
@@ -1271,7 +1242,7 @@ inline void FrameState::eval_next() {
             Value closure_code = std::move(value_stack.back());
             this->value_stack.pop_back();
             //ValueList closure = std::move(std::get<ValueList>(value_stack.back()));
-            DEBUG_ADV("READ CLOSURE: " << value_stack.back());
+            //DEBUG_ADV("READ CLOSURE: " << value_stack.back());
             ValueTuple closure = std::get<ValueTuple>(value_stack.back());
             this->value_stack.pop_back();
 
@@ -1398,6 +1369,9 @@ inline void FrameState::eval_next() {
             ValueTuple newTuple = alloc.heap_tuple.make();
             newTuple->values.assign(this->value_stack.end() - arg, this->value_stack.end());
             this->value_stack.resize(this->value_stack.size() - arg);
+            
+            DEBUG_ADV("RESULTING TUPLE: " << newTuple);
+            
             this->value_stack.push_back(newTuple);
 
             GOTO_NEXT_OP ;
