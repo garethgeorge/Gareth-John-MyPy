@@ -365,9 +365,10 @@ void FrameState::initialize_from_pyfunc(ValuePyFunction func, ArgList& args){
         DEBUG_ADV("\t" << i << ") assigning '" << varname << "' = '" << v << "'");
 
         if (have_cells && (this->code->co_cellmap.find(varname) != this->code->co_cellmap.end())) {
+            DEBUG_ADV("IS CELL " << this->code->co_cellmap[varname]);
             ValuePyObject new_cell = value_helper::create_cell(v);
             this->ns_local->emplace(varname, new_cell);
-            this->cells[i] = new_cell;
+            this->cells[this->code->co_cellmap[varname]] = new_cell;
         } else {
             this->ns_local->emplace(varname, v);
         }
@@ -395,10 +396,10 @@ void FrameState::initialize_from_pyfunc(ValuePyFunction func, ArgList& args){
             DEBUG_ADV("\t" << i << ") assigning '" << varname << "' = '" << default_value << "'");
 
             if (have_cells && this->code->co_cellmap.find(varname) != this->code->co_cellmap.end()) {
+                DEBUG_ADV("IS CELL " << this->code->co_cellmap[varname]);
                 ValuePyObject new_cell = value_helper::create_cell(default_value);
                 this->ns_local->emplace(varname, new_cell);
-
-                this->cells[i] = new_cell;
+                this->cells[this->code->co_cellmap[varname]] = new_cell;
             } else {
                 this->ns_local->emplace(varname, default_value);
             }
@@ -638,7 +639,9 @@ inline void FrameState::eval_next() {
             try {
                 std::string name;
                 if(arg < this->code->co_cellvars.size()){
-                    name = this->code->co_cellvars.at(arg);
+                    //name = this->code->co_cellvars.at(arg);
+                    this->value_stack.push_back(this->cells[arg]);
+                    GOTO_NEXT_OP;
                 } else {
                     name = this->code->co_freevars.at(arg - this->code->co_cellvars.size());
                 }
@@ -667,11 +670,11 @@ inline void FrameState::eval_next() {
                 }
                 // Do not check globals or builtins for free vars
                 if(!found){
-                    ValuePyObject neww_cell = value_helper::create_cell(value::NoneType());
+                    /*ValuePyObject neww_cell = value_helper::create_cell(value::NoneType());
                     this->value_stack.push_back(neww_cell);
                     this->add_to_ns_local(name,neww_cell);
-                    this->cells[arg] = neww_cell;
-                    //throw pyerror(string("op::LOAD_CLOSURE name not found: ") + name);
+                    this->cells[arg] = neww_cell;*/
+                    throw pyerror(string("op::LOAD_CLOSURE name not found: ") + name);
                 }
             } catch (std::out_of_range& err) {
                 throw pyerror("op::LOAD_CLOSURE tried to load name out of range");
@@ -755,6 +758,9 @@ inline void FrameState::eval_next() {
             // Access the closure of the function or the cells
             if(arg < this->cells.size()){
                     PROFILE_TYPE_INFO(this->value_stack.back(),std::to_string(arg),"STORE_DEREF");
+                    if(!(this->cells[arg])){
+                        this->cells[arg] = value_helper::create_cell(value::NoneType());
+                    }
                     (*(this->cells[arg]->attrs))["contents"] = std::move(this->value_stack.back());
                     this->value_stack.pop_back();
             } else {
