@@ -103,15 +103,6 @@ public:
         this->flags &= (~flag);
     }
     
-    #ifdef PROFILING_ON
-        #ifdef TYPE_INFORMATION_PROFILING
-            void nonbuffering_emit_type_info(const Value& val,
-                                             const size_t& line,
-                                             const std::string& name,
-                                             const char* store_type) const;
-        #endif
-    #endif
-
     // helper method for checking the stack has enough values for the current
     // operation!
     inline const void check_stack_size(size_t expected) {

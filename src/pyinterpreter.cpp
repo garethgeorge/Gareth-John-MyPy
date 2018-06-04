@@ -23,6 +23,7 @@ InterpreterState::InterpreterState(ValueCode code) {
     this->main_code = code;
 
     #ifdef PROFILING_ON
+    std::chrono::high_resolution_clock::time_point tmp_time;
     tmp_time = std::chrono::high_resolution_clock::now();
     profiling_file = fopen("profiling_data.txt","a");
     fprintf(profiling_file,"Program Output");
@@ -40,6 +41,7 @@ InterpreterState::InterpreterState(ValueCode code) {
                                                 const uint64_t& arg
         ) {
             // Just put a right now timestamp on it and continue
+            std::chrono::high_resolution_clock::time_point per_opcode_time;
             per_opcode_time = std::chrono::high_resolution_clock::now();
             time_events.push_back(bytecode);
             time_events.push_back(arg);
@@ -86,6 +88,7 @@ InterpreterState::InterpreterState(ValueCode code) {
                 );
             }
         }
+        std::chrono::high_resolution_clock::time_point tmp_time;
         tmp_time = std::chrono::high_resolution_clock::now();
         fprintf(profiling_file,"Dump End Time: %llu\n",
             std::chrono::duration_cast<std::chrono::nanoseconds>(tmp_time.time_since_epoch()).count()

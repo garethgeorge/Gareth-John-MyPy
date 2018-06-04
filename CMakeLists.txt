@@ -2,8 +2,8 @@
 cmake_minimum_required(VERSION 3.11)
 project(MyPy)
 
-set(CMAKE_C_COMPILER "gcc-7")
-set(CMAKE_CXX_COMPILER "g++-7")
+set(CMAKE_C_COMPILER "gcc-8")
+set(CMAKE_CXX_COMPILER "g++-8")
 
 set (MyPy_VERSION_MAJOR 1)
 set (MyPy_VERSION_MINOR 0)
@@ -12,9 +12,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_FLAGS_DEBUG "-O1")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -flto")
+set(CMAKE_BUILD_TYPE Release)
+# set(CMAKE_CXX_FLAGS_DEBUG "-std=c++17 -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "-std=c++17 -O3 -march=native -flto")
 
 # set lib as an include directory so we can use #include <filename>
 include_directories("lib")
@@ -51,6 +51,7 @@ include_directories(${ASMJIT_DIR})
 # 
 add_library( mypycore ${SRCS_MYPY} ${SRCS_LIB})
 target_link_libraries( mypycore asmjit ${ASMJIT_DEPS})
+# target_link_libraries( mypycore profiler ) # used for gprof
 
 #
 # create mypy executable

@@ -56,5 +56,10 @@ int main(const int argc, const char *argv[])
     builtins::inject_builtins(state.ns_builtins);
     state.eval();
 
+    #ifdef PROFILING_SIMPLE
+        state.dump_op_durations();
+    #endif
+    
+    std::cout << "Done." << std::endl;
     return 0;
 }

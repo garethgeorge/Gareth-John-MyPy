@@ -1,4 +1,6 @@
 from collections import defaultdict 
+import sys
+from tqdm import tqdm
 
 def get_raw_events(file):
     events = []
@@ -30,7 +32,7 @@ def get_raw_events(file):
 
 def group_by_dump(event_stream):
     events = []
-    for event in event_stream:
+    for event in tqdm(event_stream):
         if event[0] == "DUMP END":
             yield events 
             events = []
@@ -56,18 +58,17 @@ def get_time_deltas(event_stream):
         last_event = event 
         last_event_ts = event_ts
 
+print("running! input file: " + sys.argv[1])
 
-counts = defaultdict(int)
+counts = defaultdict(int) 
 durations = defaultdict(int)
-generator = get_raw_events("./profiling_data.txt")
-
-
+generator = get_raw_events(sys.argv[1])
 for events in group_by_dump(generator):
-    print("making progress...")
     for type, op, delta in get_time_deltas(iter(events)):
         if type == "OP":
             counts[op] += 1
             durations[op] += delta
 
 for key in counts:
-    print("%s - %f" % (key, float(durations[key]) / float(counts[key])))
+    print("%s - %d - %f" % (key, counts[key], float(durations[key]) / float(counts[key])))
+print("Done.")

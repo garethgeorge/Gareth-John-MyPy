@@ -18,5 +18,4 @@ for num in range(10,10**6):
     sum.append(sum[body] + sum[tail])
     if sum[num] == num:
         ans+=num
-print("Answer ",ans," computed in ms")
-        
+print("Answer ",ans)

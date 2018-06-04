@@ -14,30 +14,10 @@
     #else
         #define EMIT_PER_OPCODE_TIME
     #endif
-
-    #ifdef TYPE_INFORMATION_PROFILING
-        #define PROFILE_TYPE_INFO(value_var,namee,store_type) \
-        {\
-            const auto& lnotab = this->code->lnotab; \
-            size_t c_line = 0;\
-            for (size_t i = 1; i < lnotab.size(); ++i) { \
-                auto mapping = lnotab[i];\
-                if (i == lnotab.size() - 1) {\
-                    c_line = mapping.line;\
-                    break;\
-                } else if (mapping.pc >= this->r_pc) {\
-                    c_line = lnotab[i - 1].line;\
-                    break;\
-                }\
-            }\
-            nonbuffering_emit_type_info(value_var,c_line,namee,store_type);\
-        }
-    #else
-        #define PROFILE_TYPE_INFO(value_var,namee,store_type)
-    #endif
+#elif defined PROFILING_SIMPLE
+    #define EMIT_PER_OPCODE_TIME this->interpreter_state->profiler_begin_op(instruction,bytecode,arg);
 #else
     #define EMIT_PER_OPCODE_TIME
-    #define PROFILE_TYPE_INFO(value_var,namee,store_type)
 #endif
 
 #ifdef DIRECT_THREADED
@@ -744,7 +724,6 @@ inline void FrameState::eval_next() {
 
             // Access the closure of the function or the cells
             if(arg < this->cells.size()){
-                    PROFILE_TYPE_INFO(this->value_stack.back(),std::to_string(arg),"STORE_DEREF");
                     (*(this->cells[arg]->attrs))["contents"] = std::move(this->value_stack.back());
                     this->value_stack.pop_back();
             } else {
@@ -761,7 +740,6 @@ inline void FrameState::eval_next() {
                 } else {
                     throw pyerror("Attempted STORE_DEREF out of range\n");
                 }
-                PROFILE_TYPE_INFO(this->value_stack.back(),std::to_string(arg),"STORE_DEREF");
                 // Push to the top of the stack the contents of cell arg in the current enclosing scope
                 (*(std::get<ValuePyObject>(this->curr_func->__closure__->values[arg])->attrs))["contents"]
                                                                     = std::move(this->value_stack.back());
@@ -806,7 +784,6 @@ inline void FrameState::eval_next() {
                 // Check which name we are storing and store it
                 const std::string& name = this->code->co_names.at(arg);
                 DEBUG_ADV("\top::STORE_GLOBAL set " << name << " = " << this->value_stack.back());
-                PROFILE_TYPE_INFO(this->value_stack.back(),name,"STORE_GLOBAL");
                 (*(this->interpreter_state->ns_globals))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -820,7 +797,6 @@ inline void FrameState::eval_next() {
                 // Check which name we are storing and store it
                 const std::string& name = this->code->co_varnames.at(arg);
                 DEBUG_ADV("\top::STORE_FAST set " << name << " = " << this->value_stack.back());
-                PROFILE_TYPE_INFO(this->value_stack.back(),name,"STORE_FAST");
                 (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -833,7 +809,6 @@ inline void FrameState::eval_next() {
             try {
                 const std::string& name = this->code->co_names.at(arg);
                 DEBUG_ADV("\top::STORE_NAME set " << name << " = " << this->value_stack.back());
-                PROFILE_TYPE_INFO(this->value_stack.back(),name,"STORE_NAME");
                 (*(this->ns_local))[name] = std::move(this->value_stack.back());
                 this->value_stack.pop_back();
             } catch (std::out_of_range& err) {
@@ -1349,10 +1324,8 @@ inline void FrameState::eval_next() {
             this->check_stack_size(2);
             DEBUG("Storing Attr %s",this->code->co_names[arg].c_str()) ;
             
-            PROFILE_TYPE_INFO(this->value_stack.back(),this->code->co_names[arg],"STORE_ATTR [class]");
             Value tos = std::move(this->value_stack.back());
             this->value_stack.pop_back();
-            PROFILE_TYPE_INFO(this->value_stack.back(),this->code->co_names[arg],"STORE_ATTR [value]");
             Value val = std::move(this->value_stack.back());
             this->value_stack.pop_back();
 
@@ -1610,6 +1583,8 @@ void InterpreterState::eval() {
         } 
         #ifdef PROFILING_ON
             dump_and_clear_time_events();
+        #elif defined PROFILING_SIMPLE
+            
         #endif
     } catch (const pyerror& err) {
         #ifdef PROFILING_ON

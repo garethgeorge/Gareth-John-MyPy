@@ -202,7 +202,13 @@ void Allocator::collect_garbage(InterpreterState& interp) {
     for (auto& object : this->heap_list.objects) {
         this->size_at_last_gc += object.object.size();
     }
+
     DEBUG_ADV("computing new size_at_last_gc as " << new_size << " + " << (this->size_at_last_gc - new_size) << " when we account for lists");
+
+    if (this->size_at_last_gc < 16 * 1024) {
+        this->size_at_last_gc = 16 * 1024;
+        DEBUG_ADV("\tupped the size_at_last_gc to " << this->size_at_last_gc << " because it was too small.");
+    }
 
     #ifdef PROFILING_ON
         #ifdef GARBAGE_COLLECTION_PROFILING

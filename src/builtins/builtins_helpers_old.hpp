@@ -141,7 +141,7 @@ public:
         });
     }
 
-    Value operator()(FrameState& frame, ArgList args) const {
+    void operator()(FrameState& frame, ArgList args) const {
         typedef function_traits<decltype(func)> traits;
 
         auto caller = unpack_caller<traits>(args);

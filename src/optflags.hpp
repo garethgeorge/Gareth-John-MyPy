@@ -6,15 +6,17 @@
     by a macro pound defined in this file 
 */
 
-#define DIRECT_THREADED
-#define RECYCLING_ON
-#define CHECK_STACK_SIZES
+// #define DIRECT_THREADED
+// #define RECYCLING_ON
 
-//#define DEBUG_ON
-//#define DEBUG_STACK
+// #define CHECK_STACK_SIZES 
+
+// #define DEBUG_ON
+// #define DEBUG_STACK
 
 //#define JOHN_DEBUG_ON
 
+#define PROFILING_SIMPLE
 // #define PROFILING_ON
 
 // Output a timestamp at every opcode

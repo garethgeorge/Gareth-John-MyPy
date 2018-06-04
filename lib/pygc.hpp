@@ -208,7 +208,6 @@ public:
             this->objects.splice(this->objects.begin(), this->freelist, this->freelist.begin());
             return ptr_t(obj);
         }
-         
     }
 
     void sweep() {
