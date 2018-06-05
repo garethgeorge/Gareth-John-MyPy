@@ -33,13 +33,13 @@ or you can pass mypy a file name i.e
 Note that mypy only works when executed from the build directory as it invokes helper processes that are found via relative paths to the processes working directory.
 
 # Sources 
-https://github.com/python/cpython/blob/master/Include/typeslots.h
-https://tech.blog.aknin.name/tag/block-stack/ 
-https://docs.python.org/3/reference/ 
-https://www.ojdip.net/2014/06/simple-jit-compiler-cpp/
-https://late.am/post/2012/03/26/exploring-python-code-objects.html 
-https://docs.python.org/2/library/code.html#module-code
-https://tech.blog.aknin.name/2010/05/26/pythons-innards-pystate/ 
-http://unpyc.sourceforge.net/Opcodes.html 
-https://docs.python.org/2/c-api/function.html 
-https://github.com/jasongros619/Project-Euler 
+ - https://github.com/python/cpython/blob/master/Include/typeslots.h
+ - https://tech.blog.aknin.name/tag/block-stack/ 
+ - https://docs.python.org/3/reference/ 
+ - https://www.ojdip.net/2014/06/simple-jit-compiler-cpp/
+ - https://late.am/post/2012/03/26/exploring-python-code-objects.html 
+ - https://docs.python.org/2/library/code.html#module-code
+ - https://tech.blog.aknin.name/2010/05/26/pythons-innards-pystate/ 
+ - http://unpyc.sourceforge.net/Opcodes.html 
+ - https://docs.python.org/2/c-api/function.html 
+ - https://github.com/jasongros619/Project-Euler 
