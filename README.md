@@ -14,6 +14,8 @@ You will need to brew install gcc-8 to build the project as well as a version of
 ```
 git clone <repo> MyPy 
 cd MyPy
+git submodule init 
+git submodule update -r 
 mkdir -p build 
 cd build 
 cmake ..
