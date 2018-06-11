@@ -16,7 +16,7 @@
 
 //#define JOHN_DEBUG_ON
 
-#define PROFILING_SIMPLE
+// #define PROFILING_SIMPLE
 // #define PROFILING_ON
 
 // Output a timestamp at every opcode
